@@ -206,7 +206,7 @@ URLs on the fly</description>
       directory on disk but lack a trailing slash, in the expectation that
       the <module>mod_dir</module> module will issue the client with a redirect to
       the canonical URL with a trailing slash.</p>
-      
+
       <p>When the <directive module="mod_dir">DirectorySlash</directive> directive
       is set to off, the <code>AllowNoSlash</code> option can be enabled to ensure
       that rewrite rules are no longer ignored. This option makes it possible to
@@ -236,7 +236,7 @@ URLs on the fly</description>
       Available in Apache HTTP Server 2.4.3 and later.</p>
 
       <note type="warning">
-      <title>Security Warning</title> 
+      <title>Security Warning</title>
 
       <p>Enabling this option will make the server vulnerable to
       security issues if used with rewrite rules which are not
@@ -258,8 +258,20 @@ URLs on the fly</description>
       default behavior in 2.4.0 through 2.4.3, and the flag to restore it is
       available Apache HTTP Server 2.4.4 and later.</p>
       </dd>
-      </dl>
 
+      <dt><code>IgnoreContextInfo</code></dt>
+      <dd>
+
+      <p>When a relative substitution is made
+         in directory (htaccess) context and <directive module="mod_rewrite"
+         >RewriteBase</directive> has not been set, this module uses some
+         extended URL and filesystem context information to change the
+         relative substitution back into a URL. Modules such as
+         <module>mod_userdir</module> and <module>mod_alias</module>
+         supply this extended context info.  </p>
+      </dd>
+
+      </dl>
 </usage>
 
 </directivesynopsis>
@@ -268,6 +280,7 @@ URLs on the fly</description>
 <name>RewriteMap</name>
 <description>Defines a mapping function for key-lookup</description>
 <syntax>RewriteMap <em>MapName</em> <em>MapType</em>:<em>MapSource</em>
+    <em>MapTypeOptions</em>
 </syntax>
 <contextlist><context>server config</context><context>virtual host</context>
 </contextlist>
@@ -305,15 +318,20 @@ URLs on the fly</description>
       <directive>RewriteMap</directive> as:</p>
 
       <highlight language="config">
-      RewriteMap examplemap txt:/path/to/file/map.txt
+RewriteMap examplemap "txt:/path/to/file/map.txt"
       </highlight>
 
       <p>You would then be able to use this map in a
       <directive>RewriteRule</directive> as follows:</p>
 
       <highlight language="config">
-      RewriteRule ^/ex/(.*) ${examplemap:$1}
+RewriteRule "^/ex/(.*)" "${examplemap:$1}"
       </highlight>
+
+      <p>The meaning of the <em>MapTypeOptions</em> argument depends on
+      particular <em>MapType</em>. See the
+      <a href="../rewrite/rewritemap.html">Using RewriteMap</a> for
+      more information.</p>
 
       <p>The following combinations for <em>MapType</em> and
       <em>MapSource</em> can be used:</p>
@@ -364,37 +382,42 @@ URLs on the fly</description>
 
 <usage>
       <p>The <directive>RewriteBase</directive> directive specifies the
-      URL prefix to be used for per-directory (htaccess) 
+      URL prefix to be used for per-directory (htaccess)
       <directive>RewriteRule</directive> directives that substitute a relative
       path.</p>
       <p> This directive is <em>required</em> when you use a relative path
       in a substitution in per-directory (htaccess) context unless either
       of the following conditions are true:</p>
       <ul>
-          <li> The original request, and the substitution, are underneath the 
+          <li> The original request, and the substitution, are underneath the
                <directive module="core">DocumentRoot</directive>
-               (as opposed to reachable by other means, such as 
+               (as opposed to reachable by other means, such as
                <directive module="mod_alias">Alias</directive>).</li>
           <li> The <em>filesystem</em> path to the directory containing the
-               <directive>RewriteRule</directive>, suffixed by the relative 
-               substitution is also valid as a URL path on the server 
+               <directive>RewriteRule</directive>, suffixed by the relative
+               substitution is also valid as a URL path on the server
                (this is rare).</li>
+          <li> In Apache HTTP Server 2.4.11 and later, this directive may be
+                omitted when the request is mapped via
+                <directive module="mod_alias">Alias</directive>
+                or <module>mod_userdir</module>.</li>
       </ul>
 
 <p> In the example below, <directive>RewriteBase</directive> is necessary
     to avoid rewriting to http://example.com/opt/myapp-1.2.3/welcome.html
-    since the resource was not relative to the document root.  This 
+    since the resource was not relative to the document root.  This
     misconfiguration would normally cause the server to look for an "opt"
     directory under the document root.</p>
 <highlight language="config">
-DocumentRoot /var/www/example.com
-Alias /myapp /opt/myapp-1.2.3
-&lt;Directory /opt/myapp-1.2.3&gt;
+DocumentRoot "/var/www/example.com"
+AliasMatch "^/myapp" "/opt/myapp-1.2.3"
+&lt;Directory "/opt/myapp-1.2.3"&gt;
     RewriteEngine On
-    RewriteBase /myapp/
-    RewriteRule ^index\.html$  welcome.html 
+    RewriteBase "/myapp/"
+    RewriteRule "^index\.html$"  "welcome.html"
 &lt;/Directory&gt;
 </highlight>
+
 </usage>
 
 </directivesynopsis>
@@ -592,9 +615,9 @@ Alias /myapp /opt/myapp-1.2.3
                   been determined by the server at the time
                   <code>REQUEST_FILENAME</code> is referenced. Otherwise,
                   such as when used in virtual host context, the same
-                  value as <code>REQUEST_URI</code>.  Depending on the value of 
+                  value as <code>REQUEST_URI</code>.  Depending on the value of
                   <directive module="core">AcceptPathInfo</directive>, the
-                  server may have only used some leading components of the 
+                  server may have only used some leading components of the
                   <code>REQUEST_URI</code> to map the request to a file.
                   </dd>
 
@@ -608,7 +631,7 @@ Alias /myapp /opt/myapp-1.2.3
 
                   <dd>The path component of the requested URI,
                   such as "/index.html".  This notably excludes the
-                  query string which is available as as its own variable
+                  query string which is available as its own variable
                   named <code>QUERY_STRING</code>.</dd>
 
                   <dt><code>THE_REQUEST</code></dt>
@@ -669,7 +692,9 @@ Alias /myapp /opt/myapp-1.2.3
         <module>mod_ssl</module> is loaded, but will always expand to
         the empty string if it is not.  Example:
         <code>%{SSL:SSL_CIPHER_USEKEYSIZE}</code> may expand to
-        <code>128</code>.</li>
+        <code>128</code>. These variables are available even without
+        setting the <code>StdEnvVars</code> option of the
+        <directive module="mod_ssl">SSLOptions</directive> directive.</li>
 
         <li>
         <code>%{HTTP:header}</code>, where <em>header</em> can be
@@ -688,7 +713,7 @@ Alias /myapp /opt/myapp-1.2.3
         so that certain conditions might not be evaluated at all.</p></li>
 
         <li>
-        <a id="LA-U" name="LA-U"><code>%{LA-U:variable}</code></a> 
+        <a id="LA-U" name="LA-U"><code>%{LA-U:variable}</code></a>
         can be used for look-aheads which perform
         an internal (URL-based) sub-request to determine the final
         value of <em>variable</em>. This can be used to access
@@ -871,8 +896,8 @@ Alias /myapp /opt/myapp-1.2.3
             it can impact your server's performance!</p>
             <p> This flag <em>only</em> returns information about things
             like access control, authentication, and authorization.  This flag
-            <em>does not</em> return information about the status code the 
-            configured handler (static file, CGI, proxy, etc.) would have 
+            <em>does not</em> return information about the status code the
+            configured handler (static file, CGI, proxy, etc.) would have
             returned.</p> </li>
 
             <li>'<strong>-x</strong>' (has e<strong>x</strong>ecutable
@@ -898,8 +923,8 @@ Alias /myapp /opt/myapp-1.2.3
            </p>
 
            <highlight language="config">
-           RewriteCond expr "! %{HTTP_REFERER} -strmatch '*://%{HTTP_HOST}/*'"<br />
-           RewriteRule ^/images - [F]
+RewriteCond expr "! %{HTTP_REFERER} -strmatch '*://%{HTTP_HOST}/*'"<br />
+RewriteRule "^/images" "-" [F]
            </highlight>
         </li>
 
@@ -927,9 +952,9 @@ Alias /myapp /opt/myapp-1.2.3
           instead of the implicit AND. Typical example:
 
 <highlight language="config">
-RewriteCond %{REMOTE_HOST}  ^host1  [OR]
-RewriteCond %{REMOTE_HOST}  ^host2  [OR]
-RewriteCond %{REMOTE_HOST}  ^host3
+RewriteCond "%{REMOTE_HOST}"  "^host1"  [OR]
+RewriteCond "%{REMOTE_HOST}"  "^host2"  [OR]
+RewriteCond "%{REMOTE_HOST}"  "^host3"
 RewriteRule ...some special stuff for any of these hosts...
 </highlight>
 
@@ -957,10 +982,10 @@ RewriteRule ...some special stuff for any of these hosts...
         use the following: </p>
 
 <highlight language="config">
-RewriteCond  %{HTTP_USER_AGENT}  (iPhone|Blackberry|Android)
-RewriteRule  ^/$                 /homepage.mobile.html  [L]
+RewriteCond  "%{HTTP_USER_AGENT}"  "(iPhone|Blackberry|Android)"
+RewriteRule  "^/$"                 "/homepage.mobile.html"  [L]
 
-RewriteRule  ^/$                 /homepage.std.html  [L]
+RewriteRule  "^/$"                 "/homepage.std.html"     [L]
 </highlight>
 
         <p>Explanation: If you use a browser which identifies itself
@@ -992,10 +1017,10 @@ RewriteRule  ^/$                 /homepage.std.html  [L]
       <p><a id="patterns" name="patterns"><em>Pattern</em></a> is
       a perl compatible <a id="regexp" name="regexp">regular
       expression</a>. On the first RewriteRule, it is matched against
-      the (%-decoded) <a href="directive-dict.html#Syntax">URL-path</a> (or 
-      <a href="directive-dict.html#Syntax">file-path</a>, depending 
-      on the context) of the request. Subsequent patterns are matched against the 
-      output of the last matching RewriteRule.</p>
+      the (%-decoded) <a href="directive-dict.html#Syntax">URL-path</a>
+      of the request, or, in per-directory context (see below), the URL
+      path relative to that per-directory context. Subsequent patterns
+      are matched against the output of the last matching RewriteRule.</p>
 
 <note><title><a id="what_is_matched" name="what_is_matched">What is matched?</a></title>
       <p>In <directive module="core">VirtualHost</directive> context,
@@ -1048,8 +1073,10 @@ matches in per-directory context.</li>
 
 <li>Although rewrite rules are syntactically permitted in <directive
 type="section" module="core">Location</directive> and <directive
-type="section" module="core">Files</directive> sections, this
-should never be necessary and is unsupported.</li>
+type="section" module="core">Files</directive> sections
+(including their regular expression counterparts), this
+should never be necessary and is unsupported. A likely feature
+to break in these contexts is relative substitutions.</li>
 </ul>
 </note>
 
@@ -1085,7 +1112,7 @@ cannot use <code>$N</code> in the substitution string!
 
         <dd>Designates the location on the file-system of the resource
         to be delivered to the client.  Substitutions are only
-        treated as a file-system path when the rule is configured in 
+        treated as a file-system path when the rule is configured in
         server (virtualhost) context and the first component of the
         path in the substitution exists in the file-system</dd>
 
@@ -1100,7 +1127,7 @@ cannot use <code>$N</code> in the substitution string!
         you specify a <em>Substitution</em> string of
         <code>/www/file.html</code>, then this will be treated as a
         URL-path <em>unless</em> a directory named <code>www</code>
-        exists at the root or your file-system (or, in the case of 
+        exists at the root or your file-system (or, in the case of
         using rewrites in a <code>.htaccess</code> file, relative to
         your document root), in which case it will
         be treated as a file-system path. If you wish other
@@ -1192,13 +1219,13 @@ cannot use <code>$N</code> in the substitution string!
     </tr>
     <tr>
         <td>B</td>
-        <td>Escape non-alphanumeric characters in backreferences <em>before</em> 
+        <td>Escape non-alphanumeric characters in backreferences <em>before</em>
         applying the transformation. <em><a
         href="../rewrite/flags.html#flag_b">details ...</a></em></td>
     </tr>
     <tr>
         <td>backrefnoplus|BNP</td>
-        <td>If backreferences are being escaped, spaces should be escaped to 
+        <td>If backreferences are being escaped, spaces should be escaped to
         %20 instead of +. Useful when the backreference will be used in the
         path component rather than the query string.<em><a
         href="../rewrite/flags.html#flag_bnp">details ...</a></em></td>
@@ -1299,7 +1326,7 @@ cannot use <code>$N</code> in the substitution string!
     </tr>
     <tr>
         <td>qsappend|QSA</td>
-        <td>Appends any query string from the original request URL to 
+        <td>Appends any query string from the original request URL to
         any query string created in the rewrite target.<em><a
         href="../rewrite/flags.html#flag_qsa">details ...</a></em></td>
     </tr>
@@ -1421,7 +1448,7 @@ directive.</p>
       <p><strong>Inside per-directory configuration for
       <code>/somepath</code><br />
        (<code>/physical/path/to/somepath/.htaccess</code>, with
-      <code>RewriteBase /somepath</code>)<br />
+      <code>RewriteBase "/somepath"</code>)<br />
        for request ``<code>GET
       /somepath/localpath/pathinfo</code>'':</strong><br />
      </p>

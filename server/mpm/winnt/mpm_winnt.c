@@ -359,6 +359,13 @@ static int send_handles_to_child(apr_pool_t *p,
     HANDLE os_start;
     HANDLE hScore;
 
+    if ((rv = apr_file_write_full(child_in, &my_generation,
+                                  sizeof(my_generation), NULL))
+            != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_CRIT, rv, ap_server_conf, APLOGNO(02964)
+                     "Parent: Unable to send its generation to the child");
+        return -1;
+    }
     if (!DuplicateHandle(hCurrentProcess, child_ready_event, hProcess, &hDup,
         EVENT_MODIFY_STATE | SYNCHRONIZE, FALSE, 0)) {
         ap_log_error(APLOG_MARK, APLOG_CRIT, apr_get_os_error(), ap_server_conf, APLOGNO(00392)
@@ -1036,6 +1043,7 @@ static void winnt_rewrite_args(process_rec *process)
     {
         HANDLE filehand;
         HANDLE hproc = GetCurrentProcess();
+        DWORD BytesRead;
 
         /* This is the child */
         my_pid = GetCurrentProcessId();
@@ -1073,6 +1081,16 @@ static void winnt_rewrite_args(process_rec *process)
          * already
          */
 
+        /* Read this child's generation number as soon as now,
+         * so that further hooks can query it.
+         */
+        if (!ReadFile(pipe, &my_generation, sizeof(my_generation),
+                      &BytesRead, (LPOVERLAPPED) NULL)
+                || (BytesRead != sizeof(my_generation))) {
+            ap_log_error(APLOG_MARK, APLOG_CRIT, apr_get_os_error(), NULL, APLOGNO(02965)
+                         "Child: Unable to retrieve my generation from the parent");
+            exit(APEXIT_CHILDINIT);
+        }
 
         /* The parent is responsible for providing the
          * COMPLETE ARGUMENTS REQUIRED to the child.
@@ -1664,8 +1682,6 @@ static void winnt_child_init(apr_pool_t *pchild, struct server_rec *s)
 
         /* Done reading from the parent, close that channel */
         CloseHandle(pipe);
-
-        my_generation = ap_scoreboard_image->global->running_generation;
     }
     else {
         /* Single process mode - this lock doesn't even need to exist */
@@ -1722,7 +1738,7 @@ static int winnt_run(apr_pool_t *_pconf, apr_pool_t *plog, server_rec *s )
         ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, ap_server_conf, APLOGNO(00456)
                      "Server built: %s", ap_get_server_built());
         ap_log_command_line(plog, s);
-        ap_log_common(s);
+        ap_log_mpm_common(s);
 
         restart = master_main(ap_server_conf, shutdown_event, restart_event);
 

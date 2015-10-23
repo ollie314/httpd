@@ -45,8 +45,8 @@ hosting</description>
       /usr/local/apache2/cgi-bin/script.pl</code> in all cases:</p>
 
       <highlight language="config">
-ScriptAlias /cgi-bin/ /usr/local/apache2/cgi-bin/
-VirtualScriptAlias /never/found/%0/cgi-bin/
+ScriptAlias "/cgi-bin/" "/usr/local/apache2/cgi-bin/"
+VirtualScriptAlias "/never/found/%0/cgi-bin/"
       </highlight>
     </note>
 </summary>
@@ -128,7 +128,7 @@ VirtualScriptAlias /never/found/%0/cgi-bin/
 
     <highlight language="config">
 UseCanonicalName    Off
-VirtualDocumentRoot /usr/local/apache/vhosts/%0
+VirtualDocumentRoot "/usr/local/apache/vhosts/%0"
     </highlight>
 
     <p>A request for
@@ -144,7 +144,7 @@ VirtualDocumentRoot /usr/local/apache/vhosts/%0
 
     <highlight language="config">
 UseCanonicalName    Off
-VirtualDocumentRoot /usr/local/apache/vhosts/%3+/%2.1/%2.2/%2.3/%2
+VirtualDocumentRoot "/usr/local/apache/vhosts/%3+/%2.1/%2.2/%2.3/%2"
     </highlight>
 
     <p>A request for
@@ -156,7 +156,7 @@ VirtualDocumentRoot /usr/local/apache/vhosts/%3+/%2.1/%2.2/%2.3/%2
     end of the name, for example: </p>
 
 <highlight language="config">
-    VirtualDocumentRoot /usr/local/apache/vhosts/%3+/%2.-1/%2.-2/%2.-3/%2
+VirtualDocumentRoot "/usr/local/apache/vhosts/%3+/%2.-1/%2.-2/%2.-3/%2"
 </highlight>
 
     <p>The example request would come from
@@ -165,25 +165,25 @@ VirtualDocumentRoot /usr/local/apache/vhosts/%3+/%2.1/%2.2/%2.3/%2
     <p>Alternatively you might use: </p>
 
 <highlight language="config">
-    VirtualDocumentRoot /usr/local/apache/vhosts/%3+/%2.1/%2.2/%2.3/%2.4+
+VirtualDocumentRoot "/usr/local/apache/vhosts/%3+/%2.1/%2.2/%2.3/%2.4+"
 </highlight>
 
     <p>The example request would come from
     <code>/usr/local/apache/vhosts/example.com/d/o/m/ain/directory/file.html</code>.</p>
 
-<p> A very common request by users is the ability to point multiple domains to multiple 
-document roots without having to worry about the length or number of parts of the 
+<p> A very common request by users is the ability to point multiple domains to multiple
+document roots without having to worry about the length or number of parts of the
 hostname being requested. If the requested hostname is <code>sub.www.domain.example.com</code>
  instead of simply <code>www.domain.example.com</code>, then using %3+ will result in the document
 root being <code>/usr/local/apache/vhosts/domain.example.com/...</code> instead of the
-intended <code>example.com</code> directory. In such cases, it can be beneficial to use 
-the combination <code>%-2.0.%-1.0</code>, which will always yield the domain name and the 
-tld, for example <code>example.com</code> regardless of the number of subdomains appended 
-to the hostname. As such, one can make a configuration that will direct all first, second 
+intended <code>example.com</code> directory. In such cases, it can be beneficial to use
+the combination <code>%-2.0.%-1.0</code>, which will always yield the domain name and the
+tld, for example <code>example.com</code> regardless of the number of subdomains appended
+to the hostname. As such, one can make a configuration that will direct all first, second
 or third level subdomains to the same directory:
 </p>
 <highlight language="config">
-    VirtualDocumentRoot "/usr/local/apache/vhosts/%-2.0.%-1.0"
+VirtualDocumentRoot "/usr/local/apache/vhosts/%-2.0.%-1.0"
 </highlight>
 <p>
 In the example above, both <code>www.example.com</code> as well as <code>www.sub.example.com</code>
@@ -195,8 +195,8 @@ or <code>example.com</code> will all point to <code>/usr/local/apache/vhosts/exa
 
     <highlight language="config">
 UseCanonicalName DNS
-VirtualDocumentRootIP /usr/local/apache/vhosts/%1/%2/%3/%4/docs
-VirtualScriptAliasIP  /usr/local/apache/vhosts/%1/%2/%3/%4/cgi-bin
+VirtualDocumentRootIP "/usr/local/apache/vhosts/%1/%2/%3/%4/docs"
+VirtualScriptAliasIP  "/usr/local/apache/vhosts/%1/%2/%3/%4/cgi-bin"
     </highlight>
 
     <p>A request for
@@ -214,9 +214,9 @@ VirtualScriptAliasIP  /usr/local/apache/vhosts/%1/%2/%3/%4/cgi-bin
     a <code>%</code> directive, you can work around the problem in
     the following way:</p>
 
-<highlight language="config">
-    VirtualDocumentRoot /usr/local/apache/vhosts/%2.0.%3.0
-</highlight>
+    <highlight language="config">
+VirtualDocumentRoot "/usr/local/apache/vhosts/%2.0.%3.0"
+    </highlight>
 
     <p>A request for
     <code>http://www.domain.example.com/directory/file.html</code>
@@ -254,11 +254,11 @@ for a given virtual host</description>
 
 <note type="warning"><title>Note</title>
 <directive>VirtualDocumentRoot</directive> will override any <directive
-module="core">DocumentRoot</directive> directives you may have put in the same 
-context or child contexts. Putting a <directive>VirtualDocumentRoot</directive> 
-in the global server scope will effectively override <directive 
-module="core">DocumentRoot</directive> directives in any virtual hosts defined later 
-on, unless you set <directive>VirtualDocumentRoot</directive> to <code>None</code> 
+module="core">DocumentRoot</directive> directives you may have put in the same
+context or child contexts. Putting a <directive>VirtualDocumentRoot</directive>
+in the global server scope will effectively override <directive
+module="core">DocumentRoot</directive> directives in any virtual hosts defined later
+on, unless you set <directive>VirtualDocumentRoot</directive> to <code>None</code>
 in each virtual host.
 </note>
 
@@ -334,4 +334,3 @@ a given virtual host</description>
 
 </directivesynopsis>
 </modulesynopsis>
-

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -54,7 +56,10 @@ URLs on the fly</td></tr>
       <p>Further details, discussion, and examples, are provided in the
       <a href="../rewrite/">detailed mod_rewrite documentation</a>.</p>
 </div>
-<div id="quickview"><h3 class="directives">Directives</h3>
+<div id="quickview"><h3>Topics</h3>
+<ul id="topics">
+<li><img alt="" src="../images/down.gif" /> <a href="#logging">Logging</a></li>
+</ul><h3 class="directives">Directives</h3>
 <ul id="toc">
 <li><img alt="" src="../images/down.gif" /> <a href="#rewritebase">RewriteBase</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#rewritecond">RewriteCond</a></li>
@@ -63,10 +68,7 @@ URLs on the fly</td></tr>
 <li><img alt="" src="../images/down.gif" /> <a href="#rewriteoptions">RewriteOptions</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#rewriterule">RewriteRule</a></li>
 </ul>
-<h3>Topics</h3>
-<ul id="topics">
-<li><img alt="" src="../images/down.gif" /> <a href="#logging">Logging</a></li>
-</ul><ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
+<ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="section">
 <h2><a name="logging" id="logging">Logging</a></h2>
@@ -115,35 +117,40 @@ URLs on the fly</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_rewrite</td></tr>
 </table>
       <p>The <code class="directive">RewriteBase</code> directive specifies the
-      URL prefix to be used for per-directory (htaccess) 
+      URL prefix to be used for per-directory (htaccess)
       <code class="directive">RewriteRule</code> directives that substitute a relative
       path.</p>
       <p> This directive is <em>required</em> when you use a relative path
       in a substitution in per-directory (htaccess) context unless either
       of the following conditions are true:</p>
       <ul>
-          <li> The original request, and the substitution, are underneath the 
+          <li> The original request, and the substitution, are underneath the
                <code class="directive"><a href="../mod/core.html#documentroot">DocumentRoot</a></code>
-               (as opposed to reachable by other means, such as 
+               (as opposed to reachable by other means, such as
                <code class="directive"><a href="../mod/mod_alias.html#alias">Alias</a></code>).</li>
           <li> The <em>filesystem</em> path to the directory containing the
-               <code class="directive">RewriteRule</code>, suffixed by the relative 
-               substitution is also valid as a URL path on the server 
+               <code class="directive">RewriteRule</code>, suffixed by the relative
+               substitution is also valid as a URL path on the server
                (this is rare).</li>
+          <li> In Apache HTTP Server 2.4.11 and later, this directive may be
+                omitted when the request is mapped via
+                <code class="directive"><a href="../mod/mod_alias.html#alias">Alias</a></code>
+                or <code class="module"><a href="../mod/mod_userdir.html">mod_userdir</a></code>.</li>
       </ul>
 
 <p> In the example below, <code class="directive">RewriteBase</code> is necessary
     to avoid rewriting to http://example.com/opt/myapp-1.2.3/welcome.html
-    since the resource was not relative to the document root.  This 
+    since the resource was not relative to the document root.  This
     misconfiguration would normally cause the server to look for an "opt"
     directory under the document root.</p>
-<pre class="prettyprint lang-config">DocumentRoot /var/www/example.com
-Alias /myapp /opt/myapp-1.2.3
-&lt;Directory /opt/myapp-1.2.3&gt;
+<pre class="prettyprint lang-config">DocumentRoot "/var/www/example.com"
+AliasMatch "^/myapp" "/opt/myapp-1.2.3"
+&lt;Directory "/opt/myapp-1.2.3"&gt;
     RewriteEngine On
-    RewriteBase /myapp/
-    RewriteRule ^index\.html$  welcome.html 
+    RewriteBase "/myapp/"
+    RewriteRule "^index\.html$"  "welcome.html"
 &lt;/Directory&gt;</pre>
+
 
 
 </div>
@@ -338,9 +345,9 @@ Alias /myapp /opt/myapp-1.2.3
                   been determined by the server at the time
                   <code>REQUEST_FILENAME</code> is referenced. Otherwise,
                   such as when used in virtual host context, the same
-                  value as <code>REQUEST_URI</code>.  Depending on the value of 
+                  value as <code>REQUEST_URI</code>.  Depending on the value of
                   <code class="directive"><a href="../mod/core.html#acceptpathinfo">AcceptPathInfo</a></code>, the
-                  server may have only used some leading components of the 
+                  server may have only used some leading components of the
                   <code>REQUEST_URI</code> to map the request to a file.
                   </dd>
 
@@ -354,7 +361,7 @@ Alias /myapp /opt/myapp-1.2.3
 
                   <dd>The path component of the requested URI,
                   such as "/index.html".  This notably excludes the
-                  query string which is available as as its own variable
+                  query string which is available as its own variable
                   named <code>QUERY_STRING</code>.</dd>
 
                   <dt><code>THE_REQUEST</code></dt>
@@ -415,7 +422,9 @@ Alias /myapp /opt/myapp-1.2.3
         <code class="module"><a href="../mod/mod_ssl.html">mod_ssl</a></code> is loaded, but will always expand to
         the empty string if it is not.  Example:
         <code>%{SSL:SSL_CIPHER_USEKEYSIZE}</code> may expand to
-        <code>128</code>.</li>
+        <code>128</code>. These variables are available even without
+        setting the <code>StdEnvVars</code> option of the
+        <code class="directive"><a href="../mod/mod_ssl.html#ssloptions">SSLOptions</a></code> directive.</li>
 
         <li>
         <code>%{HTTP:header}</code>, where <em>header</em> can be
@@ -434,7 +443,7 @@ Alias /myapp /opt/myapp-1.2.3
         so that certain conditions might not be evaluated at all.</p></li>
 
         <li>
-        <a id="LA-U" name="LA-U"><code>%{LA-U:variable}</code></a> 
+        <a id="LA-U" name="LA-U"><code>%{LA-U:variable}</code></a>
         can be used for look-aheads which perform
         an internal (URL-based) sub-request to determine the final
         value of <em>variable</em>. This can be used to access
@@ -617,8 +626,8 @@ Alias /myapp /opt/myapp-1.2.3
             it can impact your server's performance!</p>
             <p> This flag <em>only</em> returns information about things
             like access control, authentication, and authorization.  This flag
-            <em>does not</em> return information about the status code the 
-            configured handler (static file, CGI, proxy, etc.) would have 
+            <em>does not</em> return information about the status code the
+            configured handler (static file, CGI, proxy, etc.) would have
             returned.</p> </li>
 
             <li>'<strong>-x</strong>' (has e<strong>x</strong>ecutable
@@ -643,8 +652,8 @@ Alias /myapp /opt/myapp-1.2.3
             to block unwanted hotlinking.
            </p>
 
-           <pre class="prettyprint lang-config">           RewriteCond expr "! %{HTTP_REFERER} -strmatch '*://%{HTTP_HOST}/*'"<br />
-           RewriteRule ^/images - [F]</pre>
+           <pre class="prettyprint lang-config">RewriteCond expr "! %{HTTP_REFERER} -strmatch '*://%{HTTP_HOST}/*'"<br />
+RewriteRule "^/images" "-" [F]</pre>
 
         </li>
 
@@ -671,9 +680,9 @@ Alias /myapp /opt/myapp-1.2.3
           Use this to combine rule conditions with a local OR
           instead of the implicit AND. Typical example:
 
-<pre class="prettyprint lang-config">RewriteCond %{REMOTE_HOST}  ^host1  [OR]
-RewriteCond %{REMOTE_HOST}  ^host2  [OR]
-RewriteCond %{REMOTE_HOST}  ^host3
+<pre class="prettyprint lang-config">RewriteCond "%{REMOTE_HOST}"  "^host1"  [OR]
+RewriteCond "%{REMOTE_HOST}"  "^host2"  [OR]
+RewriteCond "%{REMOTE_HOST}"  "^host3"
 RewriteRule ...some special stuff for any of these hosts...</pre>
 
 
@@ -700,10 +709,10 @@ RewriteRule ...some special stuff for any of these hosts...</pre>
         ``<code>User-Agent:</code>'' header of the request, you can
         use the following: </p>
 
-<pre class="prettyprint lang-config">RewriteCond  %{HTTP_USER_AGENT}  (iPhone|Blackberry|Android)
-RewriteRule  ^/$                 /homepage.mobile.html  [L]
+<pre class="prettyprint lang-config">RewriteCond  "%{HTTP_USER_AGENT}"  "(iPhone|Blackberry|Android)"
+RewriteRule  "^/$"                 "/homepage.mobile.html"  [L]
 
-RewriteRule  ^/$                 /homepage.std.html  [L]</pre>
+RewriteRule  "^/$"                 "/homepage.std.html"     [L]</pre>
 
 
         <p>Explanation: If you use a browser which identifies itself
@@ -751,6 +760,7 @@ RewriteRule  ^/$                 /homepage.std.html  [L]</pre>
 <table class="directive">
 <tr><th><a href="directive-dict.html#Description">Description:</a></th><td>Defines a mapping function for key-lookup</td></tr>
 <tr><th><a href="directive-dict.html#Syntax">Syntax:</a></th><td><code>RewriteMap <em>MapName</em> <em>MapType</em>:<em>MapSource</em>
+    <em>MapTypeOptions</em>
 </code></td></tr>
 <tr><th><a href="directive-dict.html#Context">Context:</a></th><td>server config, virtual host</td></tr>
 <tr><th><a href="directive-dict.html#Status">Status:</a></th><td>Extension</td></tr>
@@ -787,14 +797,19 @@ RewriteRule  ^/$                 /homepage.std.html  [L]</pre>
       <p>For example, you might define a
       <code class="directive">RewriteMap</code> as:</p>
 
-      <pre class="prettyprint lang-config">RewriteMap examplemap txt:/path/to/file/map.txt</pre>
+      <pre class="prettyprint lang-config">RewriteMap examplemap "txt:/path/to/file/map.txt"</pre>
 
 
       <p>You would then be able to use this map in a
       <code class="directive">RewriteRule</code> as follows:</p>
 
-      <pre class="prettyprint lang-config">RewriteRule ^/ex/(.*) ${examplemap:$1}</pre>
+      <pre class="prettyprint lang-config">RewriteRule "^/ex/(.*)" "${examplemap:$1}"</pre>
 
+
+      <p>The meaning of the <em>MapTypeOptions</em> argument depends on
+      particular <em>MapType</em>. See the
+      <a href="../rewrite/rewritemap.html">Using RewriteMap</a> for
+      more information.</p>
 
       <p>The following combinations for <em>MapType</em> and
       <em>MapSource</em> can be used:</p>
@@ -915,7 +930,7 @@ RewriteRule  ^/$                 /homepage.std.html  [L]</pre>
       directory on disk but lack a trailing slash, in the expectation that
       the <code class="module"><a href="../mod/mod_dir.html">mod_dir</a></code> module will issue the client with a redirect to
       the canonical URL with a trailing slash.</p>
-      
+
       <p>When the <code class="directive"><a href="../mod/mod_dir.html#directoryslash">DirectorySlash</a></code> directive
       is set to off, the <code>AllowNoSlash</code> option can be enabled to ensure
       that rewrite rules are no longer ignored. This option makes it possible to
@@ -942,7 +957,7 @@ RewriteRule  ^/$                 /homepage.std.html  [L]</pre>
       Available in Apache HTTP Server 2.4.3 and later.</p>
 
       <div class="warning">
-      <h3>Security Warning</h3> 
+      <h3>Security Warning</h3>
 
       <p>Enabling this option will make the server vulnerable to
       security issues if used with rewrite rules which are not
@@ -963,8 +978,19 @@ RewriteRule  ^/$                 /homepage.std.html  [L]</pre>
       default behavior in 2.4.0 through 2.4.3, and the flag to restore it is
       available Apache HTTP Server 2.4.4 and later.</p>
       </dd>
-      </dl>
 
+      <dt><code>IgnoreContextInfo</code></dt>
+      <dd>
+
+      <p>When a relative substitution is made
+         in directory (htaccess) context and <code class="directive"><a href="#rewritebase">RewriteBase</a></code> has not been set, this module uses some
+         extended URL and filesystem context information to change the
+         relative substitution back into a URL. Modules such as
+         <code class="module"><a href="../mod/mod_userdir.html">mod_userdir</a></code> and <code class="module"><a href="../mod/mod_alias.html">mod_alias</a></code>
+         supply this extended context info.  </p>
+      </dd>
+
+      </dl>
 
 </div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
@@ -987,10 +1013,10 @@ RewriteRule  ^/$                 /homepage.std.html  [L]</pre>
       <p><a id="patterns" name="patterns"><em>Pattern</em></a> is
       a perl compatible <a id="regexp" name="regexp">regular
       expression</a>. On the first RewriteRule, it is matched against
-      the (%-decoded) <a href="directive-dict.html#Syntax">URL-path</a> (or 
-      <a href="directive-dict.html#Syntax">file-path</a>, depending 
-      on the context) of the request. Subsequent patterns are matched against the 
-      output of the last matching RewriteRule.</p>
+      the (%-decoded) <a href="directive-dict.html#Syntax">URL-path</a>
+      of the request, or, in per-directory context (see below), the URL
+      path relative to that per-directory context. Subsequent patterns
+      are matched against the output of the last matching RewriteRule.</p>
 
 <div class="note"><h3><a id="what_is_matched" name="what_is_matched">What is matched?</a></h3>
       <p>In <code class="directive"><a href="../mod/core.html#virtualhost">VirtualHost</a></code> context,
@@ -1039,8 +1065,10 @@ a <code class="directive">RewriteCond</code>.</li>
 <em>never</em> has a leading slash.  Therefore, a <em>Pattern</em> with <code>^/</code> never
 matches in per-directory context.</li>
 
-<li>Although rewrite rules are syntactically permitted in <code class="directive"><a href="../mod/core.html#location">&lt;Location&gt;</a></code> and <code class="directive"><a href="../mod/core.html#files">&lt;Files&gt;</a></code> sections, this
-should never be necessary and is unsupported.</li>
+<li>Although rewrite rules are syntactically permitted in <code class="directive"><a href="../mod/core.html#location">&lt;Location&gt;</a></code> and <code class="directive"><a href="../mod/core.html#files">&lt;Files&gt;</a></code> sections
+(including their regular expression counterparts), this
+should never be necessary and is unsupported. A likely feature
+to break in these contexts is relative substitutions.</li>
 </ul>
 </div>
 
@@ -1076,7 +1104,7 @@ cannot use <code>$N</code> in the substitution string!
 
         <dd>Designates the location on the file-system of the resource
         to be delivered to the client.  Substitutions are only
-        treated as a file-system path when the rule is configured in 
+        treated as a file-system path when the rule is configured in
         server (virtualhost) context and the first component of the
         path in the substitution exists in the file-system</dd>
 
@@ -1090,7 +1118,7 @@ cannot use <code>$N</code> in the substitution string!
         you specify a <em>Substitution</em> string of
         <code>/www/file.html</code>, then this will be treated as a
         URL-path <em>unless</em> a directory named <code>www</code>
-        exists at the root or your file-system (or, in the case of 
+        exists at the root or your file-system (or, in the case of
         using rewrites in a <code>.htaccess</code> file, relative to
         your document root), in which case it will
         be treated as a file-system path. If you wish other
@@ -1177,12 +1205,12 @@ cannot use <code>$N</code> in the substitution string!
     </tr>
 <tr>
         <td>B</td>
-        <td>Escape non-alphanumeric characters in backreferences <em>before</em> 
+        <td>Escape non-alphanumeric characters in backreferences <em>before</em>
         applying the transformation. <em><a href="../rewrite/flags.html#flag_b">details ...</a></em></td>
     </tr>
 <tr class="odd">
         <td>backrefnoplus|BNP</td>
-        <td>If backreferences are being escaped, spaces should be escaped to 
+        <td>If backreferences are being escaped, spaces should be escaped to
         %20 instead of +. Useful when the backreference will be used in the
         path component rather than the query string.<em><a href="../rewrite/flags.html#flag_bnp">details ...</a></em></td>
     </tr>
@@ -1274,7 +1302,7 @@ cannot use <code>$N</code> in the substitution string!
     </tr>
 <tr class="odd">
         <td>qsappend|QSA</td>
-        <td>Appends any query string from the original request URL to 
+        <td>Appends any query string from the original request URL to
         any query string created in the rewrite target.<em><a href="../rewrite/flags.html#flag_qsa">details ...</a></em></td>
     </tr>
 <tr>
@@ -1379,7 +1407,7 @@ directive.</p>
       <p><strong>Inside per-directory configuration for
       <code>/somepath</code><br />
        (<code>/physical/path/to/somepath/.htaccess</code>, with
-      <code>RewriteBase /somepath</code>)<br />
+      <code>RewriteBase "/somepath"</code>)<br />
        for request ``<code>GET
       /somepath/localpath/pathinfo</code>'':</strong><br />
      </p>
@@ -1463,7 +1491,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_rewrite.ht
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

@@ -55,6 +55,7 @@
 #include "apr_buckets.h"
 #include "apr_poll.h"
 #include "apr_thread_proc.h"
+#include "apr_hash.h"
 
 #include "os.h"
 
@@ -199,6 +200,10 @@ extern "C" {
 /** default limit on number of request header fields */
 #ifndef DEFAULT_LIMIT_REQUEST_FIELDS
 #define DEFAULT_LIMIT_REQUEST_FIELDS 100
+#endif
+/** default/hard limit on number of leading/trailing empty lines */
+#ifndef DEFAULT_LIMIT_BLANK_LINES
+#define DEFAULT_LIMIT_BLANK_LINES 10
 #endif
 
 /**
@@ -518,6 +523,8 @@ AP_DECLARE(const char *) ap_get_server_built(void);
 #define HTTP_UNSUPPORTED_MEDIA_TYPE          415
 #define HTTP_RANGE_NOT_SATISFIABLE           416
 #define HTTP_EXPECTATION_FAILED              417
+#define HTTP_IM_A_TEAPOT                     418
+#define HTTP_MISDIRECTED_REQUEST             421
 #define HTTP_UNPROCESSABLE_ENTITY            422
 #define HTTP_LOCKED                          423
 #define HTTP_FAILED_DEPENDENCY               424
@@ -605,6 +612,8 @@ AP_DECLARE(const char *) ap_get_server_built(void);
 #define M_BASELINE_CONTROL      24
 #define M_MERGE                 25
 #define M_INVALID               26      /** no valid method */
+#define M_BREW                  27      /** RFC 2324: HTCPCP/1.0 */
+#define M_WHEN                  28      /** RFC 2324: HTCPCP/1.0 */
 
 /**
  * METHODS needs to be equal to the number of bits
@@ -957,8 +966,9 @@ struct request_rec {
     char *uri;
     /** The filename on disk corresponding to this response */
     char *filename;
-    /* XXX: What does this mean? Please define "canonicalize" -aaron */
-    /** The true filename, we canonicalize r->filename if these don't match */
+    /** The true filename stored in the filesystem, as in the true alpha case
+     *  and alias correction, e.g. "Image.jpeg" not "IMAGE$1.JPE" on Windows.
+     *  The core map_to_storage canonicalizes r->filename when they mismatch */
     char *canonical_filename;
     /** The PATH_INFO extracted from this request */
     char *path_info;
@@ -1026,7 +1036,9 @@ struct request_rec {
     /** Mutex protect callbacks registered with ap_mpm_register_timed_callback
      * from being run before the original handler finishes running
      */
+#if APR_HAS_THREADS
     apr_thread_mutex_t *invoke_mtx;
+#endif
 
     /** A struct containing the components of URI */
     apr_uri_t parsed_uri;
@@ -1129,7 +1141,7 @@ struct conn_rec {
     conn_state_t *cs;
     /** Is there data pending in the input filters? */
     int data_in_input_filters;
-    /** Is there data pending in the output filters? */
+    /** No longer used, replaced with ap_filter_should_yield() */
     int data_in_output_filters;
 
     /** Are there any filters that clogg/buffer the input stream, breaking
@@ -1181,6 +1193,18 @@ struct conn_rec {
 
     /** Context under which this connection was suspended */
     void *suspended_baton;
+
+    /** Array of requests being handled under this connection. */
+    apr_array_header_t *requests;
+
+    /** Empty bucket brigade */
+    apr_bucket_brigade *empty;
+
+    /** Hashtable of filters with setaside buckets for write completion */
+    apr_hash_t *filters;
+
+    /** The minimum level of filter type to allow setaside buckets */
+    int async_filter;
 };
 
 struct conn_slave_rec {
@@ -1333,9 +1357,13 @@ struct server_rec {
     /** limit on number of request header fields  */
     int limit_req_fields;
 
-
     /** Opaque storage location */
     void *context;
+
+    /** Whether the keepalive timeout is explicit (1) or
+     *  inherited (0) from the base server (either first
+     *  server on the same IP:port or main server) */
+    unsigned int keep_alive_timeout_set:1;
 };
 
 /**
@@ -1836,7 +1864,7 @@ AP_DECLARE(char *) ap_make_full_path(apr_pool_t *a, const char *dir, const char 
                    AP_FN_ATTR_NONNULL_ALL;
 
 /**
- * Test if the given path has an an absolute path.
+ * Test if the given path has an absolute path.
  * @param p The pool to allocate from
  * @param dir The directory name
  * @note The converse is not necessarily true, some OS's (Win32/OS2/Netware) have
@@ -2387,6 +2415,28 @@ AP_DECLARE(char *) ap_get_exec_line(apr_pool_t *p,
 
 
 #define AP_NORESTART APR_OS_START_USEERR + 1
+
+/**
+ * Get the first index of the string in the array or -1 if not found. Start
+ * searching a start. 
+ * @param array The array the check
+ * @param s The string to find
+ * @param start Start index for search. If start is out of bounds (negative or  
+                equal to array length or greater), -1 will be returned.
+ * @return index of string in array or -1
+ */
+AP_DECLARE(int) ap_array_str_index(const apr_array_header_t *array, 
+                                   const char *s,
+                                   int start);
+
+/**
+ * Check if the string is member of the given array by strcmp.
+ * @param array The array the check
+ * @param s The string to find
+ * @return !=0 iff string is member of array (via strcmp)
+ */
+AP_DECLARE(int) ap_array_str_contains(const apr_array_header_t *array, 
+                                      const char *s);
 
 #ifdef __cplusplus
 }

@@ -75,6 +75,9 @@ compatibility variables.</p>
 <tr><td><code>SSL_CLIENT_M_SERIAL</code></td>           <td>string</td>    <td>The serial of the client certificate</td></tr>
 <tr><td><code>SSL_CLIENT_S_DN</code></td>               <td>string</td>    <td>Subject DN in client's certificate</td></tr>
 <tr><td><code>SSL_CLIENT_S_DN_</code><em>x509</em></td> <td>string</td>    <td>Component of client's Subject DN</td></tr>
+<tr><td><code>SSL_CLIENT_SAN_Email_</code><em>n</em></td> <td>string</td>  <td>Client certificate's subjectAltName extension entries of type rfc822Name</td></tr>
+<tr><td><code>SSL_CLIENT_SAN_DNS_</code><em>n</em></td> <td>string</td>    <td>Client certificate's subjectAltName extension entries of type dNSName</td></tr>
+<tr><td><code>SSL_CLIENT_SAN_OTHER_msUPN_</code><em>n</em></td> <td>string</td>    <td>Client certificate's subjectAltName extension entries of type otherName, Microsoft User Principal Name form (OID 1.3.6.1.4.1.311.20.2.3)</td></tr>
 <tr><td><code>SSL_CLIENT_I_DN</code></td>               <td>string</td>    <td>Issuer DN of client's certificate</td></tr>
 <tr><td><code>SSL_CLIENT_I_DN_</code><em>x509</em></td> <td>string</td>    <td>Component of client's Issuer DN</td></tr>
 <tr><td><code>SSL_CLIENT_V_START</code></td>            <td>string</td>    <td>Validity of client's certificate (start time)</td></tr>
@@ -84,10 +87,14 @@ compatibility variables.</p>
 <tr><td><code>SSL_CLIENT_A_KEY</code></td>              <td>string</td>    <td>Algorithm used for the public key of client's certificate</td></tr>
 <tr><td><code>SSL_CLIENT_CERT</code></td>               <td>string</td>    <td>PEM-encoded client certificate</td></tr>
 <tr><td><code>SSL_CLIENT_CERT_CHAIN_</code><em>n</em></td> <td>string</td>    <td>PEM-encoded certificates in client certificate chain</td></tr>
+<tr><td><code>SSL_CLIENT_CERT_RFC4523_CEA</code></td>   <td>string</td>    <td>Serial number and issuer of the certificate. The format matches that of the CertificateExactAssertion in RFC4523</td></tr>
 <tr><td><code>SSL_CLIENT_VERIFY</code></td>             <td>string</td>    <td><code>NONE</code>, <code>SUCCESS</code>, <code>GENEROUS</code> or <code>FAILED:</code><em>reason</em></td></tr>
 <tr><td><code>SSL_SERVER_M_VERSION</code></td>          <td>string</td>    <td>The version of the server certificate</td></tr>
 <tr><td><code>SSL_SERVER_M_SERIAL</code></td>           <td>string</td>    <td>The serial of the server certificate</td></tr>
 <tr><td><code>SSL_SERVER_S_DN</code></td>               <td>string</td>    <td>Subject DN in server's certificate</td></tr>
+<tr><td><code>SSL_SERVER_SAN_Email_</code><em>n</em></td> <td>string</td>  <td>Server certificate's subjectAltName extension entries of type rfc822Name</td></tr>
+<tr><td><code>SSL_SERVER_SAN_DNS_</code><em>n</em></td> <td>string</td>    <td>Server certificate's subjectAltName extension entries of type dNSName</td></tr>
+<tr><td><code>SSL_SERVER_SAN_OTHER_dnsSRV_</code><em>n</em></td> <td>string</td>    <td>Server certificate's subjectAltName extension entries of type otherName, SRVName form (OID 1.3.6.1.5.5.7.8.7, RFC 4985)</td></tr>
 <tr><td><code>SSL_SERVER_S_DN_</code><em>x509</em></td> <td>string</td>    <td>Component of server's Subject DN</td></tr>
 <tr><td><code>SSL_SERVER_I_DN</code></td>               <td>string</td>    <td>Issuer DN of server's certificate</td></tr>
 <tr><td><code>SSL_SERVER_I_DN_</code><em>x509</em></td> <td>string</td>    <td>Component of server's Issuer DN</td></tr>
@@ -173,9 +180,12 @@ provided. Information about this function is provided in the <a
 href="../ssl/ssl_compat.html">Compatibility</a> chapter.</p>
 <example><title>Example</title>
 <highlight language="config">
-CustomLog logs/ssl_request_log "%t %h %{SSL_PROTOCOL}x %{SSL_CIPHER}x \"%r\" %b"
+CustomLog "logs/ssl_request_log" "%t %h %{SSL_PROTOCOL}x %{SSL_CIPHER}x \"%r\" %b"
 </highlight>
 </example>
+<p>These formats even work without setting the <code>StdEnvVars</code>
+option of the <directive module="mod_ssl">SSLOptions</directive>
+directive.</p>
 </section>
 
 <section id="notes"><title>Request Notes</title>
@@ -204,6 +214,30 @@ string in <module>mod_log_config</module>.</p>
   for the current connection, the note is not set.</dd>
 </dl>
 
+</section>
+
+<section id="expressionparser"><title>Expression Parser Extension</title>
+
+<p>When <module>mod_ssl</module> is built into Apache or at least
+loaded (under DSO situation) any <a name="envvars">variables</a>
+provided by <module>mod_ssl</module> can be used in expressions
+for the <a href="../expr.html">ap_expr Expression Parser</a>.
+The variables can be referenced using the syntax
+``<code>%{</code><em>varname</em><code>}</code>''. Starting
+with version 2.4.18 one can also use the
+<module>mod_rewrite</module> style syntax
+``<code>%{SSL:</code><em>varname</em><code>}</code>'' or
+the function style syntax
+``<code>ssl(</code><em>varname</em><code>)</code>''.</p>
+<example><title>Example (using <module>mod_headers</module>)</title>
+<highlight language="config">
+Header set X-SSL-PROTOCOL "expr=%{SSL_PROTOCOL}"
+Header set X-SSL-CIPHER "expr=%{SSL:SSL_CIPHER}"
+</highlight>
+</example>
+<p>This feature even works without setting the <code>StdEnvVars</code>
+option of the <directive module="mod_ssl">SSLOptions</directive>
+directive.</p>
 </section>
 
 <section id="authzproviders"><title>Authorization providers for use with Require</title>
@@ -496,6 +530,7 @@ in the Session Cache</description>
 <default>SSLSessionCacheTimeout 300</default>
 <contextlist><context>server config</context>
 <context>virtual host</context></contextlist>
+<compatibility>Applies also to RFC 5077 TLS session resumption in Apache 2.4.10 and later</compatibility>
 
 <usage>
 <p>
@@ -573,7 +608,7 @@ by the applicable Security Policy.
 <name>SSLProtocol</name>
 <description>Configure usable SSL/TLS protocol versions</description>
 <syntax>SSLProtocol [+|-]<em>protocol</em> ...</syntax>
-<default>SSLProtocol all</default>
+<default>SSLProtocol all -SSLv3</default>
 <contextlist><context>server config</context>
 <context>virtual host</context></contextlist>
 
@@ -588,7 +623,8 @@ The available (case-insensitive) <em>protocol</em>s are:</p>
     <p>
     This is the Secure Sockets Layer (SSL) protocol, version 3.0, from
     the Netscape Corporation.
-    It is the successor to SSLv2 and the predecessor to TLSv1.</p></li>
+    It is the successor to SSLv2 and the predecessor to TLSv1, but is
+    deprecated in <a href="http://www.ietf.org/rfc/rfc7568.txt">RFC 7568</a>.</p></li>
 
 <li><code>TLSv1</code>
     <p>
@@ -611,7 +647,9 @@ The available (case-insensitive) <em>protocol</em>s are:</p>
     <p>
     This is a shortcut for ``<code>+SSLv3 +TLSv1</code>'' or
     - when using OpenSSL 1.0.1 and later -
-    ``<code>+SSLv3 +TLSv1 +TLSv1.1 +TLSv1.2</code>, respectively.</p></li>
+    ``<code>+SSLv3 +TLSv1 +TLSv1.1 +TLSv1.2</code>'', respectively
+    (except for OpenSSL versions compiled with the ``no-ssl3'' configuration
+    option, where <code>all</code> does not include <code>+SSLv3</code>).</p></li>
 </ul>
 <example><title>Example</title>
 <highlight language="config">
@@ -733,9 +771,9 @@ prefixes are:</p>
 <note>
 <title><code>aNULL</code>, <code>eNULL</code> and <code>EXP</code>
 ciphers are always disabled</title>
-<p>Beginning with version 2.5.0-dev as of 2013-09-25, null and export-grade
-ciphers are always disabled, as mod_ssl unconditionally prepends any supplied
-cipher suite string with <code>!aNULL:!eNULL:!EXP:</code> at initialization.</p>
+<p>Beginning with version 2.4.7, null and export-grade
+ciphers are always disabled, as mod_ssl unconditionally adds
+<code>!aNULL:!eNULL:!EXP</code> to any cipher string at initialization.</p>
 </note>
 
 <p>A simpler way to look at all of this is to use the ``<code>openssl ciphers
@@ -811,35 +849,44 @@ SSLCipherSuite RSA:!EXP:!NULL:+HIGH:+MEDIUM:-LOW
 <p>
 This directive points to a file with certificate data in PEM format.
 At a minimum, the file must include an end-entity (leaf) certificate.
-Beginning with version 2.5.0-dev as of 2013-12-28, it may also
-include intermediate CA certificates, sorted from leaf to root,
-and obsoletes <directive module="mod_ssl">SSLCertificateChainFile</directive>.
-</p>
-
-<p>
-Additional optional elements are DH parameters and/or an EC curve name
-for ephemeral keys, as generated by <code>openssl dhparam</code> and
-<code>openssl ecparam</code>, respectively (supported in version 2.5.0-dev
-as of 2013-09-29), and finally, the end-entity certificate's private key.
-If the private key is encrypted, the pass phrase dialog is forced
-at startup time.</p>
-
-<p>
-This directive can be used multiple times (referencing different filenames)
+The directive can be used multiple times (referencing different filenames)
 to support multiple algorithms for server authentication - typically
 RSA, DSA, and ECC. The number of supported algorithms depends on the
 OpenSSL version being used for mod_ssl: with version 1.0.0 or later,
 <code>openssl list-public-key-algorithms</code> will output a list
-of supported algorithms.</p>
+of supported algorithms.
+</p>
 
 <p>
-When running with OpenSSL 1.0.2 or later, this directive allows
-to configure the intermediate CA chain on a per-certificate basis,
-which removes a limitation of the (now obsolete)
-<directive module="mod_ssl">SSLCertificateChainFile</directive> directive.
-DH and ECDH parameters, however, are only read from the first
-<directive>SSLCertificateFile</directive> directive, as they
-are applied independently of the authentication algorithm type.</p>
+The files may also include intermediate CA certificates, sorted from
+leaf to root. This is supported with version 2.4.8 and later,
+and obsoletes <directive module="mod_ssl">SSLCertificateChainFile</directive>.
+When running with OpenSSL 1.0.2 or later, this allows
+to configure the intermediate CA chain on a per-certificate basis.
+</p>
+
+<p>
+Custom DH parameters and an EC curve name for ephemeral keys,
+can also be added to end of the first file configured using
+<directive module="mod_ssl">SSLCertificateFile</directive>.
+This is supported in version 2.4.7 or later.
+Such parameters can be generated using the commands
+<code>openssl dhparam</code> and <code>openssl ecparam</code>.
+The parameters can be added as-is to the end of the first
+certificate file. Only the first file can be used for custom
+parameters, as they are applied independently of the authentication
+algorithm type.
+</p>
+
+<p>
+Finally the end-entity certificate's private key can also be
+added to the certificate file instead of using a separate
+<directive module="mod_ssl">SSLCertificateKeyFile</directive>
+directive. This practice is highly discouraged. If it is used,
+the certificate files using such an embedded key must be configured
+after the certificates using a separate key file. If the private
+key is encrypted, the pass phrase dialog is forced at startup time.
+</p>
 
 <note>
 <title>DH parameter interoperability with primes > 1024 bit</title>
@@ -875,9 +922,7 @@ SSLCertificateFile /usr/local/apache2/conf/ssl.crt/server.crt
 <usage>
 <p>
 This directive points to the PEM-encoded private key file for the
-server (the private key may also be combined with the certificate in the
-<directive module="mod_ssl">SSLCertificateFile</directive>, but this practice
-is discouraged). If the contained private key is encrypted, the pass phrase
+server. If the contained private key is encrypted, the pass phrase
 dialog is forced at startup time.</p>
 
 <p>
@@ -886,6 +931,13 @@ to support multiple algorithms for server authentication. For each
 <directive module="mod_ssl">SSLCertificateKeyFile</directive>
 directive, there must be a matching <directive>SSLCertificateFile</directive>
 directive.</p>
+
+<p>
+The private key may also be combined with the certificate in the file given by
+<directive module="mod_ssl">SSLCertificateFile</directive>, but this practice
+is highly discouraged. If it is used, the certificate files using such
+an embedded key must be configured after the certificates using a separate
+key file.</p>
 
 <example><title>Example</title>
 <highlight language="config">
@@ -904,9 +956,8 @@ SSLCertificateKeyFile /usr/local/apache2/conf/ssl.key/server.key
 
 <usage>
 <note><title>SSLCertificateChainFile is deprecated</title>
-<p><code>SSLCertificateChainFile</code> became obsolete with version
-2.5.0-dev as of 2013-12-28, when
-<directive module="mod_ssl">SSLCertificateFile</directive>
+<p><code>SSLCertificateChainFile</code> became obsolete with version 2.4.8,
+when <directive module="mod_ssl">SSLCertificateFile</directive>
 was extended to also load intermediate CA certificates from the server
 certificate file.</p>
 </note>
@@ -1254,7 +1305,6 @@ SSLVerifyDepth 10
 <compatibility>Available in httpd 2.4.4 and later, if using OpenSSL 1.0.1 or
 later</compatibility>
 
-
 <usage>
 <p>
 This directive enables TLS-SRP and sets the path to the OpenSSL SRP (Secure
@@ -1520,9 +1570,9 @@ href="#envvars">Environment Variables</a> can be used.  For
 the <a href="../expr.html#functions">ap_expr documentation</a>.</p>
 
 <p>The <em>expression</em> is parsed into an internal machine
-representation when the configuration is loaded, and then evaluated 
-during request processing.  In .htaccess context, the <em>expression</em> is 
-both parsed and executed each time the .htaccess file is encountered during 
+representation when the configuration is loaded, and then evaluated
+during request processing.  In .htaccess context, the <em>expression</em> is
+both parsed and executed each time the .htaccess file is encountered during
 request processing.</p>
 
 <example><title>Example</title>
@@ -1839,7 +1889,7 @@ compared against the hostname of the request URL. If both are not equal
 a 502 status code (Bad Gateway) is sent.
 </p>
 <p>
-SSLProxyCheckPeerCN has been superseded by
+In 2.4.5 and later, SSLProxyCheckPeerCN has been superseded by
 <directive module="mod_ssl">SSLProxyCheckPeerName</directive>, and its
 setting is only taken into account when
 <code>SSLProxyCheckPeerName off</code> is specified at the same time.
@@ -1860,6 +1910,7 @@ SSLProxyCheckPeerCN on
 <default>SSLProxyCheckPeerName on</default>
 <contextlist><context>server config</context>
 <context>virtual host</context></contextlist>
+<compatibility>Apache HTTP Server 2.4.5 and later</compatibility>
 
 <usage>
 <p>
@@ -1919,7 +1970,7 @@ proxy SSL/TLS requests.</p>
 <name>SSLProxyProtocol</name>
 <description>Configure usable SSL protocol flavors for proxy usage</description>
 <syntax>SSLProxyProtocol [+|-]<em>protocol</em> ...</syntax>
-<default>SSLProxyProtocol all</default>
+<default>SSLProxyProtocol all -SSLv3</default>
 <contextlist><context>server config</context>
 <context>virtual host</context></contextlist>
 <override>Options</override>
@@ -2285,7 +2336,7 @@ which means that OCSP responses are considered valid as long as their
 <default>SSLOCSPUseRequestNonce on</default>
 <contextlist><context>server config</context>
 <context>virtual host</context></contextlist>
-<compatibility>Available in httpd 2.5-dev and later</compatibility>
+<compatibility>Available in httpd 2.4.10 and later</compatibility>
 
 <usage>
 <p>This option determines whether queries to OCSP responders should contain
@@ -2366,6 +2417,14 @@ stated goal of "saving roundtrips and resources" - see also
 <a href="http://www.ietf.org/rfc/rfc6961.txt">RFC 6961</a>
 (TLS Multiple Certificate Status Extension).
 </p>
+
+<p>When OCSP stapling is enabled, the <code>ssl-stapling</code> mutex is used
+to control access to the OCSP stapling cache in order to prevent corruption,
+and the <code>sss-stapling-refresh</code> mutex is used to control refreshes
+of OCSP responses.  These mutexes can be configured using the
+<directive module="core">Mutex</directive> directive.
+</p>
+
 </usage>
 </directivesynopsis>
 
@@ -2383,10 +2442,6 @@ is enabled. Configuration of a cache is mandatory for OCSP stapling.
 With the exception of <code>none</code> and <code>nonenotnull</code>,
 the same storage types are supported as with
 <directive module="mod_ssl">SSLSessionCache</directive>.</p>
-
-<p>The <code>ssl-stapling</code> mutex is used to serialize access to the
-OCSP stapling cache to prevent corruption.  This mutex can be configured
-using the <directive module="core">Mutex</directive> directive.</p>
 </usage>
 </directivesynopsis>
 
@@ -2555,7 +2610,9 @@ dd if=/dev/random of=/path/to/file.tkey bs=1 count=48
 
 <p>Ticket keys should be rotated (replaced) on a frequent basis,
 as this is the only way to invalidate an existing session ticket -
-OpenSSL currently doesn't allow to specify a limit for ticket lifetimes.</p>
+OpenSSL currently doesn't allow to specify a limit for ticket lifetimes.
+A new ticket key only gets used after restarting the web server.
+All existing session tickets become invalid after a restart.</p>
 
 <note type="warning">
 <p>The ticket key file contains sensitive keying material and should
@@ -2586,6 +2643,27 @@ CRIME attack).</p>
 </directivesynopsis>
 
 <directivesynopsis>
+<name>SSLSessionTickets</name>
+<description>Enable or disable use of TLS session tickets</description>
+<syntax>SSLSessionTickets on|off</syntax>
+<default>SSLSessionTickets on</default>
+<contextlist><context>server config</context>
+<context>virtual host</context></contextlist>
+<compatibility>Available in httpd 2.4.11 and later, if using OpenSSL 0.9.8f
+or later.</compatibility>
+
+<usage>
+<p>This directive allows to enable or disable the use of TLS session tickets
+(RFC 5077).</p>
+<note type="warning">
+<p>TLS session tickets are enabled by default. Using them without restarting
+the web server with an appropriate frequency (e.g. daily) compromises perfect
+forward secrecy.</p>
+</note>
+</usage>
+</directivesynopsis>
+
+<directivesynopsis>
 <name>SSLOpenSSLConfCmd</name>
 <description>Configure OpenSSL parameters through its <em>SSL_CONF</em> API</description>
 <syntax>SSLOpenSSLConfCmd <em>command-name</em> <em>command-value</em></syntax>
@@ -2603,7 +2681,7 @@ features are added to OpenSSL.</p>
 depends on the OpenSSL version being used for <module>mod_ssl</module>
 (at least version 1.0.2 is required). For a list of supported command
 names, see the section <em>Supported configuration file commands</em> in the
-<a href="http://www.openssl.org/docs/ssl/SSL_CONF_cmd.html#SUPPORTED_CONFIGURATION_FILE_COM">SSL_CONF_cmd(3)</a> manual page for OpenSSL.</p>
+<a href="http://www.openssl.org/docs/man1.0.2/ssl/SSL_CONF_cmd.html#SUPPORTED-CONFIGURATION-FILE-COMMANDS">SSL_CONF_cmd(3)</a> manual page for OpenSSL.</p>
 
 <p>Some of the <directive>SSLOpenSSLConfCmd</directive> commands can be used
 as an alternative to existing directives (such as

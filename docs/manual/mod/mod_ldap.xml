@@ -70,7 +70,7 @@ LDAPCacheTTL 600
 LDAPOpCacheEntries 1024
 LDAPOpCacheTTL 600
 
-&lt;Location /ldap-status&gt;
+&lt;Location "/ldap-status"&gt;
     SetHandler ldap-status
 
     Require host yourdomain.example.com
@@ -179,7 +179,7 @@ LDAPOpCacheTTL 600
       <module>mod_ldap</module> cache information:</p>
 
       <highlight language="config">
-&lt;Location /server/cache-info&gt;
+&lt;Location "/server/cache-info"&gt;
     SetHandler ldap-status
 &lt;/Location&gt;
       </highlight>
@@ -212,7 +212,7 @@ LDAPOpCacheTTL 600
 
 LDAPTrustedGlobalCert CA_DER /certs/certfile.der
 
-&lt;Location /ldap-status&gt;
+&lt;Location "/ldap-status"&gt;
     SetHandler ldap-status
 
     Require host yourdomain.example.com
@@ -233,7 +233,7 @@ LDAPTrustedGlobalCert CA_DER /certs/certfile.der
 
 LDAPTrustedGlobalCert CA_DER /certs/certfile.der
 
-&lt;Location /ldap-status&gt;
+&lt;Location "/ldap-status"&gt;
     SetHandler ldap-status
 
     Require host yourdomain.example.com
@@ -285,7 +285,7 @@ LDAPTrustedGlobalCert CA_CERT7_DB /certs/cert7.db
 LDAPTrustedGlobalCert CERT_KEY3_DB /certs/key3.db
 # Specify the secmod file if required
 LDAPTrustedGlobalCert CA_SECMOD /certs/secmod
-&lt;Location /ldap-status&gt;
+&lt;Location "/ldap-status"&gt;
     SetHandler ldap-status
 
     Require host yourdomain.example.com
@@ -354,7 +354,7 @@ LDAPTrustedGlobalCert KEY_BASE64 /certs/key1.pem [password]
 # Specify two CA certificate files
 LDAPTrustedGlobalCert CA_DER /certs/cacert1.der
 LDAPTrustedGlobalCert CA_BASE64 /certs/cacert2.pem
-&lt;Location /ldap-status&gt;
+&lt;Location "/ldap-status"&gt;
     SetHandler ldap-status
 
     Require host yourdomain.example.com
@@ -421,11 +421,11 @@ LDAPTrustedGlobalCert CA_BASE64 /certs/cacert2.pem
 <contextlist><context>server config</context></contextlist>
 
 <usage>
-    <p>Specifies the path of the shared memory cache file. If not set, 
+    <p>Specifies the path of the shared memory cache file. If not set,
     anonymous shared memory will be used if the platform supports it.</p>
 
     <p>If <var>file-path</var> is not an absolute path, the location specified
-    will be relative to the value of 
+    will be relative to the value of
     <directive module="core">DefaultRuntimeDir</directive>.</p>
 </usage>
 </directivesynopsis>
@@ -757,7 +757,7 @@ connection client certificates.</description>
     connection pool.  The default value of -1, and any other negative value,
     allows connections of any age to be reused.</p>
 
-    <p>For performance reasons, the reference time used by this directive is 
+    <p>For performance reasons, the reference time used by this directive is
     based on when the LDAP connection is returned to the pool, not the time
     of the last successful I/O with the LDAP server.  </p>
 
@@ -766,7 +766,7 @@ connection client certificates.</description>
     time is not updated if no backend LDAP conncetions were needed. Second,
     the reference time uses the time the HTTP request was received instead
     of the time the request is completed.</p>
-    
+
     <note><p>This timeout defaults to units of seconds, but accepts
     suffixes for milliseconds (ms), minutes (min), and hours (h).
     </p></note>

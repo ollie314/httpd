@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -126,7 +128,14 @@
     <p>Further details, discussion, and examples, are provided in the
     <a href="../caching.html">Caching Guide</a>.</p>
 </div>
-<div id="quickview"><h3 class="directives">Directives</h3>
+<div id="quickview"><h3>Topics</h3>
+<ul id="topics">
+<li><img alt="" src="../images/down.gif" /> <a href="#related">Related Modules and Directives</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#sampleconf">Sample Configuration</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#thunderingherd">Avoiding the Thundering Herd</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#finecontrol">Fine Control with the CACHE Filter</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#status">Cache Status and Logging</a></li>
+</ul><h3 class="directives">Directives</h3>
 <ul id="toc">
 <li><img alt="" src="../images/down.gif" /> <a href="#cachedefaultexpire">CacheDefaultExpire</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#cachedetailheader">CacheDetailHeader</a></li>
@@ -151,14 +160,7 @@
 <li><img alt="" src="../images/down.gif" /> <a href="#cachestorenostore">CacheStoreNoStore</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#cachestoreprivate">CacheStorePrivate</a></li>
 </ul>
-<h3>Topics</h3>
-<ul id="topics">
-<li><img alt="" src="../images/down.gif" /> <a href="#related">Related Modules and Directives</a></li>
-<li><img alt="" src="../images/down.gif" /> <a href="#sampleconf">Sample Configuration</a></li>
-<li><img alt="" src="../images/down.gif" /> <a href="#thunderingherd">Avoiding the Thundering Herd</a></li>
-<li><img alt="" src="../images/down.gif" /> <a href="#finecontrol">Fine Control with the CACHE Filter</a></li>
-<li><img alt="" src="../images/down.gif" /> <a href="#status">Cache Status and Logging</a></li>
-</ul><h3>See also</h3>
+<h3>See also</h3>
 <ul class="seealso">
 <li><a href="../caching.html">Caching Guide</a></li>
 </ul><ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
@@ -181,7 +183,7 @@ LoadModule cache_module modules/mod_cache.so
         CacheDirLevels 5
         CacheDirLength 3
     &lt;/IfModule&gt;
-    
+
     # When acting as a proxy, don't cache the list of security updates
     CacheDisable http://security.update.server/update-list/
 &lt;/IfModule&gt;</pre>
@@ -337,10 +339,10 @@ AddOutputFilterByType INCLUDES;CACHE;DEFLATE text/html</pre>
   <p>This makes it possible to support conditional logging of cached requests
   as per the following example:</p>
 
-  <pre class="prettyprint lang-config">CustomLog cached-requests.log common env=cache-hit
-CustomLog uncached-requests.log common env=cache-miss
-CustomLog revalidated-requests.log common env=cache-revalidate
-CustomLog invalidated-requests.log common env=cache-invalidate</pre>
+  <pre class="prettyprint lang-config">CustomLog "cached-requests.log" common env=cache-hit
+CustomLog "uncached-requests.log" common env=cache-miss
+CustomLog "revalidated-requests.log" common env=cache-revalidate
+CustomLog "invalidated-requests.log" common env=cache-invalidate</pre>
 
 
   <p>For module authors, a hook called <var>cache_status</var> is available,
@@ -422,7 +424,7 @@ CacheDetailHeader on</pre>
     the path needs to be specified below the Location, or if the word "on"
     is used, caching for the whole location will be disabled.</p>
 
-    <div class="example"><h3>Example</h3><pre class="prettyprint lang-config">&lt;Location /foo&gt;
+    <div class="example"><h3>Example</h3><pre class="prettyprint lang-config">&lt;Location "/foo"&gt;
     CacheDisable on
 &lt;/Location&gt;</pre>
 </div>
@@ -473,18 +475,18 @@ manager</td></tr>
     <code class="directive">&lt;LocationMatch&gt;</code> sections are processed
     before globally defined <code class="directive">CacheEnable</code> directives.</p>
 
-    <p>When acting as a forward proxy server, <var>url-string</var> must 
+    <p>When acting as a forward proxy server, <var>url-string</var> must
     minimally begin with a protocol for which caching should be enabled.</p>
 
     <pre class="prettyprint lang-config"># Cache content (normal handler only)
 CacheQuickHandler off
-&lt;Location /foo&gt;
+&lt;Location "/foo"&gt;
     CacheEnable disk
 &lt;/Location&gt;
 
 # Cache regex (normal handler only)
 CacheQuickHandler off
-&lt;LocationMatch foo$&gt;
+&lt;LocationMatch "foo$"&gt;
     CacheEnable disk
 &lt;/LocationMatch&gt;
 
@@ -570,7 +572,7 @@ CacheHeader on</pre>
     <code class="directive">CacheIgnoreCacheControl</code> directive allows this
     behavior to be overridden.  <code class="directive">CacheIgnoreCacheControl On</code>
     tells the server to attempt to serve the resource from the cache even
-    if the request contains no-cache header values.</p>  
+    if the request contains no-cache header values.</p>
 
     <pre class="prettyprint lang-config">CacheIgnoreCacheControl On</pre>
 
@@ -842,7 +844,7 @@ CacheLock on</pre>
 </table>
   <p>The <code class="directive">CacheLockPath</code> directive allows you to specify the
   directory in which the locks are created.  If <var>directory</var> is not an absolute
-  path, the location specified will be relative to the value of 
+  path, the location specified will be relative to the value of
   <code class="directive"><a href="../mod/core.html#defaultruntimedir">DefaultRuntimeDir</a></code>.</p>
 
 </div>
@@ -1064,7 +1066,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_cache.html
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

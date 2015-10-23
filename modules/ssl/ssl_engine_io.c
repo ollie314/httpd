@@ -196,6 +196,7 @@ static int bio_filter_out_write(BIO *bio, const char *in, int inl)
 {
     bio_filter_out_ctx_t *outctx = (bio_filter_out_ctx_t *)(bio->ptr);
     apr_bucket *e;
+    int need_flush;
 
     /* Abort early if the client has initiated a renegotiation. */
     if (outctx->filter_ctx->config->reneg_state == RENEG_ABORT) {
@@ -213,6 +214,26 @@ static int bio_filter_out_write(BIO *bio, const char *in, int inl)
      * filter must setaside if necessary. */
     e = apr_bucket_transient_create(in, inl, outctx->bb->bucket_alloc);
     APR_BRIGADE_INSERT_TAIL(outctx->bb, e);
+
+    /* In theory, OpenSSL should flush as necessary, but it is known
+     * not to do so correctly in some cases (< 0.9.8m; see PR 46952),
+     * or on the proxy/client side (after ssl23_client_hello(), e.g.
+     * ssl/proxy.t test suite).
+     *
+     * Historically, this flush call was performed only for an SSLv2
+     * connection or for a proxy connection.  Calling _out_flush can
+     * be expensive in cases where requests/reponses are pipelined,
+     * so limit the performance impact to handshake time.
+     */
+#if OPENSSL_VERSION_NUMBER < 0x0009080df
+     need_flush = !SSL_is_init_finished(outctx->filter_ctx->pssl)
+#else
+     need_flush = SSL_in_connect_init(outctx->filter_ctx->pssl);
+#endif
+    if (need_flush) {
+        e = apr_bucket_flush_create(outctx->bb->bucket_alloc);
+        APR_BRIGADE_INSERT_TAIL(outctx->bb, e);
+    }
 
     if (bio_filter_out_pass(outctx) < 0) {
         return -1;
@@ -315,7 +336,6 @@ typedef struct {
     apr_pool_t *pool;
     char buffer[AP_IOBUFSIZE];
     ssl_filter_ctx_t *filter_ctx;
-    int npn_finished;  /* 1 if NPN has finished, 0 otherwise */
 } bio_filter_in_ctx_t;
 
 /*
@@ -336,7 +356,7 @@ static int char_buffer_read(char_buffer_t *buffer, char *in, int inl)
     }
 
     if (buffer->length > inl) {
-        /* we have have enough to fill the caller's buffer */
+        /* we have enough to fill the caller's buffer */
         memmove(in, buffer->value, inl);
         buffer->value += inl;
         buffer->length -= inl;
@@ -460,21 +480,6 @@ static int bio_filter_in_read(BIO *bio, char *in, int inlen)
     /* Abort early if the client has initiated a renegotiation. */
     if (inctx->filter_ctx->config->reneg_state == RENEG_ABORT) {
         inctx->rc = APR_ECONNABORTED;
-        return -1;
-    }
-
-    /* In theory, OpenSSL should flush as necessary, but it is known
-     * not to do so correctly in some cases; see PR 46952.
-     *
-     * Historically, this flush call was performed only for an SSLv2
-     * connection or for a proxy connection.  Calling _out_flush
-     * should be very cheap in cases where it is unnecessary (and no
-     * output is buffered) so the performance impact of doing it
-     * unconditionally should be minimal.
-     */
-    if (bio_filter_out_flush(inctx->bio_out) < 0) {
-        bio_filter_out_ctx_t *outctx = inctx->bio_out->ptr;
-        inctx->rc = outctx->rc;
         return -1;
     }
 
@@ -1050,7 +1055,7 @@ static void ssl_filter_io_shutdown(ssl_filter_ctx_t *filter_ctx,
     }
 
     SSL_set_shutdown(ssl, shutdown_type);
-    SSL_smart_shutdown(ssl);
+    modssl_smart_shutdown(ssl);
 
     /* and finally log the fact that we've closed the connection */
     if (APLOG_CS_IS_LEVEL(c, mySrvFromConn(c), loglevel)) {
@@ -1137,7 +1142,9 @@ static apr_status_t ssl_io_filter_handshake(ssl_filter_ctx_t *filter_ctx)
          * IPv4 and IPv6 addresses are not permitted".)
          */
         if (hostname_note &&
+#ifndef OPENSSL_NO_SSL3
             sc->proxy->protocol != SSL_PROTOCOL_SSLV3 &&
+#endif
             apr_ipsubnet_create(&ip, hostname_note, NULL,
                                 c->pool) != APR_SUCCESS) {
             if (SSL_set_tlsext_host_name(filter_ctx->pssl, hostname_note)) {
@@ -1180,8 +1187,8 @@ static apr_status_t ssl_io_filter_handshake(ssl_filter_ctx_t *filter_ctx)
             hostname_note) {
             apr_table_unset(c->notes, "proxy-request-hostname");
             if (!cert
-                || SSL_X509_match_name(c->pool, cert, hostname_note,
-                                       TRUE, server) == FALSE) {
+                || modssl_X509_match_name(c->pool, cert, hostname_note,
+                                          TRUE, server) == FALSE) {
                 proxy_ssl_check_peer_ok = FALSE;
                 ap_log_cerror(APLOG_MARK, APLOG_INFO, 0, c, APLOGNO(02411)
                               "SSL Proxy: Peer certificate does not match "
@@ -1229,7 +1236,7 @@ static apr_status_t ssl_io_filter_handshake(ssl_filter_ctx_t *filter_ctx)
             /* ensure that the SSL structures etc are freed, etc: */
             ssl_filter_io_shutdown(filter_ctx, c, 1);
             apr_table_setn(c->notes, "SSL_connect_rv", "err");
-            return HTTP_BAD_GATEWAY;
+            return MODSSL_ERROR_BAD_GATEWAY;
         }
 
         apr_table_setn(c->notes, "SSL_connect_rv", "ok");
@@ -1483,37 +1490,6 @@ static apr_status_t ssl_io_filter_input(ap_filter_t *f,
         APR_BRIGADE_INSERT_TAIL(bb, bucket);
     }
 
-#ifdef HAVE_TLS_NPN
-    /* By this point, Next Protocol Negotiation (NPN) should be completed (if
-     * our version of OpenSSL supports it).  If we haven't already, find out
-     * which protocol was decided upon and inform other modules by calling
-     * npn_proto_negotiated_hook. */
-    if (!inctx->npn_finished) {
-        SSLConnRec *sslconn = myConnConfig(f->c);
-        const unsigned char *next_proto = NULL;
-        unsigned next_proto_len = 0;
-        int n;
-
-        if (sslconn->npn_negofns) {
-            SSL_get0_next_proto_negotiated(
-                inctx->ssl, &next_proto, &next_proto_len);
-            ap_log_cerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, f->c,
-                          APLOGNO(02306) "SSL NPN negotiated protocol: '%*s'",
-                          next_proto_len, (const char*)next_proto);
-            
-            for (n = 0; n < sslconn->npn_negofns->nelts; n++) {
-                ssl_npn_proto_negotiated fn = 
-                    APR_ARRAY_IDX(sslconn->npn_negofns, n, ssl_npn_proto_negotiated);
-                
-                if (fn(f->c, (const char *)next_proto, next_proto_len) == DONE)
-                    break;
-            }
-        }
-            
-        inctx->npn_finished = 1;
-    }
-#endif
-
     return APR_SUCCESS;
 }
 
@@ -1667,12 +1643,16 @@ static apr_status_t ssl_io_filter_output(ap_filter_t *f,
     ssl_filter_ctx_t *filter_ctx = f->ctx;
     bio_filter_in_ctx_t *inctx;
     bio_filter_out_ctx_t *outctx;
+    apr_bucket *flush_upto = NULL;
     apr_read_type_e rblock = APR_NONBLOCK_READ;
 
     if (f->c->aborted) {
         apr_brigade_cleanup(bb);
         return APR_ECONNABORTED;
     }
+
+    /* Reinstate any buffered content */
+    ap_filter_reinstate_brigade(f, bb, &flush_upto);
 
     if (!filter_ctx->pssl) {
         /* ssl_filter_io_shutdown was called */
@@ -1693,48 +1673,41 @@ static apr_status_t ssl_io_filter_output(ap_filter_t *f,
         return ssl_io_filter_error(f, bb, status);
     }
 
-    while (!APR_BRIGADE_EMPTY(bb)) {
+    while (!APR_BRIGADE_EMPTY(bb) && status == APR_SUCCESS) {
         apr_bucket *bucket = APR_BRIGADE_FIRST(bb);
 
-        /* If it is a flush or EOS, we need to pass this down.
-         * These types do not require translation by OpenSSL.
-         */
-        if (APR_BUCKET_IS_EOS(bucket)) {
-            /*
-             * By definition, nothing can come after EOS.
-             * which also means we can pass the rest of this brigade
-             * without creating a new one since it only contains the
-             * EOS bucket.
-             */
-
-            if ((status = ap_pass_brigade(f->next, bb)) != APR_SUCCESS) {
-                return status;
-            }
-            break;
-        }
-        else if (APR_BUCKET_IS_FLUSH(bucket)) {
-
-            if (bio_filter_out_flush(filter_ctx->pbioWrite) < 0) {
-                status = outctx->rc;
+        /* if the core has set aside data, back off and try later */
+        if (!flush_upto) {
+            if (ap_filter_should_yield(f)) {
                 break;
             }
-
-            /* bio_filter_out_flush() already passed down a flush bucket
-             * if there was any data to be flushed.
-             */
-            apr_bucket_delete(bucket);
         }
-        else if (AP_BUCKET_IS_EOC(bucket)) {
-            /* The EOC bucket indicates connection closure, so SSL
-             * shutdown must now be performed.  */
-            ssl_filter_io_shutdown(filter_ctx, f->c, 0);
-            if ((status = ap_pass_brigade(f->next, bb)) != APR_SUCCESS) {
-                return status;
+        else if (flush_upto == bucket) {
+            flush_upto = NULL;
+        }
+
+        if (APR_BUCKET_IS_METADATA(bucket)) {
+            /* Pass through metadata buckets untouched.  EOC is
+             * special; terminate the SSL layer first. */
+            if (AP_BUCKET_IS_EOC(bucket)) {
+                ssl_filter_io_shutdown(filter_ctx, f->c, 0);
             }
-            break;
+
+            AP_DEBUG_ASSERT(APR_BRIGADE_EMPTY(outctx->bb));
+
+            /* Metadata buckets are passed one per brigade; it might
+             * be more efficient (but also more complex) to use
+             * outctx->bb as a true buffer and interleave these with
+             * data buckets. */
+            APR_BUCKET_REMOVE(bucket);
+            APR_BRIGADE_INSERT_HEAD(outctx->bb, bucket);
+            status = ap_pass_brigade(f->next, outctx->bb);
+            if (status == APR_SUCCESS && f->c->aborted)
+                status = APR_ECONNRESET;
+            apr_brigade_cleanup(outctx->bb);
         }
         else {
-            /* filter output */
+            /* Filter a data bucket. */
             const char *data;
             apr_size_t len;
 
@@ -1747,7 +1720,9 @@ static apr_status_t ssl_io_filter_output(ap_filter_t *f,
                     break;
                 }
                 rblock = APR_BLOCK_READ;
-                continue; /* and try again with a blocking read. */
+                /* and try again with a blocking read. */
+                status = APR_SUCCESS;
+                continue;
             }
 
             rblock = APR_NONBLOCK_READ;
@@ -1758,11 +1733,12 @@ static apr_status_t ssl_io_filter_output(ap_filter_t *f,
 
             status = ssl_filter_write(f, data, len);
             apr_bucket_delete(bucket);
-
-            if (status != APR_SUCCESS) {
-                break;
-            }
         }
+
+    }
+
+    if (APR_STATUS_IS_EOF(status) || (status == APR_SUCCESS)) {
+        return ap_filter_setaside_brigade(f, bb);
     }
 
     return status;
@@ -1806,7 +1782,7 @@ int ssl_io_buffer_fill(request_rec *r, apr_size_t maxlen)
         if (rv) {
             ap_log_rerror(APLOG_MARK, APLOG_ERR, rv, r, APLOGNO(02015)
                           "could not read request body for SSL buffer");
-            return HTTP_INTERNAL_SERVER_ERROR;
+            return ap_map_http_request_error(rv, HTTP_INTERNAL_SERVER_ERROR);
         }
 
         /* Iterate through the returned brigade: setaside each bucket
@@ -1994,7 +1970,6 @@ static void ssl_io_input_add_filter(ssl_filter_ctx_t *filter_ctx, conn_rec *c,
     inctx->block = APR_BLOCK_READ;
     inctx->pool = c->pool;
     inctx->filter_ctx = filter_ctx;
-    inctx->npn_finished = 0;
 }
 
 /* The request_rec pointer is passed in here only to ensure that the
@@ -2153,7 +2128,7 @@ long ssl_io_data_cb(BIO *bio, int cmd,
             }
             ap_log_cserror(APLOG_MARK, APLOG_TRACE4, 0, c, s,
                     "%s: %s %ld/%d bytes %s BIO#%pp [mem: %pp] %s",
-                    SSL_LIBRARY_NAME,
+                    MODSSL_LIBRARY_NAME,
                     (cmd == (BIO_CB_WRITE|BIO_CB_RETURN) ? "write" : "read"),
                     rc, argi, (cmd == (BIO_CB_WRITE|BIO_CB_RETURN) ? "to" : "from"),
                     bio, argp, dump);
@@ -2163,7 +2138,7 @@ long ssl_io_data_cb(BIO *bio, int cmd,
         else {
             ap_log_cserror(APLOG_MARK, APLOG_TRACE4, 0, c, s,
                     "%s: I/O error, %d bytes expected to %s on BIO#%pp [mem: %pp]",
-                    SSL_LIBRARY_NAME, argi,
+                    MODSSL_LIBRARY_NAME, argi,
                     (cmd == (BIO_CB_WRITE|BIO_CB_RETURN) ? "write" : "read"),
                     bio, argp);
         }

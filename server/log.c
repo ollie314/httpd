@@ -421,8 +421,8 @@ int ap_open_logs(apr_pool_t *pconf, apr_pool_t *p /* plog */,
              * as stdin. This in turn would prevent the piped logger from
              * exiting.
              */
-             apr_file_close(s_main->error_log);
-             s_main->error_log = stderr_log;
+            apr_file_close(s_main->error_log);
+            s_main->error_log = stderr_log;
         }
     }
     /* note that stderr may still need to be replaced with something
@@ -563,7 +563,7 @@ static int log_ctime(const ap_errorlog_info *info, const char *arg,
     int time_len = buflen;
     int option = AP_CTIME_OPTION_NONE;
 
-    while(arg && *arg) {
+    while (arg && *arg) {
         switch (*arg) {
             case 'u':   option |= AP_CTIME_OPTION_USEC;
                         break;
@@ -1357,7 +1357,7 @@ static void fmt_data(unsigned char *buf, const void *vdata, apr_size_t len, apr_
         unsigned char c = data[*off];
 
         if (apr_isprint(c)
-	    && c != '\\') {  /* backslash will be escaped later, which throws
+            && c != '\\') {  /* backslash will be escaped later, which throws
                               * off the formatting
                               */
             *chars = c;
@@ -1489,7 +1489,7 @@ AP_DECLARE(void) ap_log_command_line(apr_pool_t *plog, server_rec *s)
 }
 
 /* grab bag function to log commonly logged and shared info */
-AP_DECLARE(void) ap_log_common(server_rec *s)
+AP_DECLARE(void) ap_log_mpm_common(server_rec *s)
 {
     ap_log_error(APLOG_MARK, APLOG_DEBUG , 0, s, APLOGNO(02639)
                  "Using SO_REUSEPORT: %s (%d)",

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="fr" xml:lang="fr"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="fr" xml:lang="fr"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -156,6 +158,7 @@ fichiers</dd>
 HTTP</dd>
 <dt><a href="mod_heartbeat.html">mod_heartbeat</a></dt><dd>Sends messages with server status to frontend proxy</dd>
 <dt><a href="mod_heartmonitor.html">mod_heartmonitor</a></dt><dd>Centralized monitor for mod_heartbeat origin servers</dd>
+<dt><a href="mod_http2.html">mod_http2</a></dt><dd>Support for the HTTP/2 transport layer</dd>
 <dt><a href="mod_ident.html" id="I" name="I">mod_ident</a></dt><dd>Recherche d'identité conformément à la RFC
 1413</dd>
 <dt><a href="mod_imagemap.html">mod_imagemap</a></dt><dd>Server-side imagemap processing</dd>
@@ -172,7 +175,8 @@ serveur</dd>
 cache du résultat à destination des autres modules LDAP</dd>
 <dt><a href="mod_log_config.html">mod_log_config</a></dt><dd>Logging of the requests made to the server</dd>
 <dt><a href="mod_log_debug.html">mod_log_debug</a></dt><dd>Additional configurable debug logging</dd>
-<dt><a href="mod_log_forensic.html">mod_log_forensic</a></dt><dd>Forensic Logging of the requests made to the server</dd>
+<dt><a href="mod_log_forensic.html">mod_log_forensic</a></dt><dd>Journalisation légale des requêtes envoyées au
+serveur</dd>
 <dt><a href="mod_logio.html">mod_logio</a></dt><dd>Logging of input and output bytes per request</dd>
 <dt><a href="mod_lua.html">mod_lua</a></dt><dd>Fournit des points d'entrée Lua dans différentes parties du
 traitement des requêtes httpd</dd>
@@ -263,7 +267,7 @@ identifiant unique pour chaque requête</dd>
 <dt><a href="mod_version.html" id="V" name="V">mod_version</a></dt><dd>Version dependent configuration</dd>
 <dt><a href="mod_vhost_alias.html">mod_vhost_alias</a></dt><dd>Provides for dynamically configured mass virtual
 hosting</dd>
-<dt><a href="mod_watchdog.html" id="W" name="W">mod_watchdog</a></dt><dd>provides infrastructure for other modules to periodically run 
+<dt><a href="mod_watchdog.html" id="W" name="W">mod_watchdog</a></dt><dd>provides infrastructure for other modules to periodically run
     tasks</dd>
 <dt><a href="mod_xml2enc.html" id="X" name="X">mod_xml2enc</a></dt><dd>Enhanced charset/internationalisation support for libxml2-based
 filter modules</dd>
@@ -278,7 +282,7 @@ filter modules</dd>
 <a href="../tr/mod/" hreflang="tr" rel="alternate" title="Türkçe">&nbsp;tr&nbsp;</a> |
 <a href="../zh-cn/mod/" hreflang="zh-cn" rel="alternate" title="Simplified Chinese">&nbsp;zh-cn&nbsp;</a></p>
 </div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Autorisé sous <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Autorisé sous <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossaire</a> | <a href="../sitemap.html">Plan du site</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

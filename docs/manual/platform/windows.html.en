@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -45,6 +47,7 @@
 <li><img alt="" src="../images/down.gif" /> <a href="#wincons">Running Apache as a Console Application</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#test">Testing the Installation</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#windrivemap">Configuring Access to Network Resources</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#tuning">Windows Tuning</a></li>
 </ul><ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="section">
@@ -62,8 +65,8 @@
 <h2><a name="down" id="down">Downloading Apache for Windows</a></h2>
     
 
-    <p>The Apache HTTP Server Project itself does not provide binary releases of 
-    software, only source code. Individual committers <em>may</em> provide 
+    <p>The Apache HTTP Server Project itself does not provide binary releases of
+    software, only source code. Individual committers <em>may</em> provide
     binary packages as a convenience, but it is not a release deliverable.</p>
     <p>If you cannot compile the Apache HTTP Server
     yourself, you can obtain a binary package from numerous binary distributions
@@ -74,7 +77,7 @@
     <ul>
     <li><a href="http://www.apachehaus.com/cgi-bin/download.plx">ApacheHaus</a></li>
     <li><a href="http://www.apachelounge.com/download/">Apache Lounge</a></li>
-    <li><a href="http://bitnami.com/stack/wamp">BitNami WAMP Stack</a></li>
+    <li><a href="http://bitnami.com/stack/wamp">Bitnami WAMP Stack</a></li>
     <li><a href="http://www.wampserver.com/">WampServer</a></li>
     <li><a href="http://www.apachefriends.org/en/xampp.html">XAMPP</a></li>
     </ul>
@@ -141,9 +144,9 @@
       is used in URLs, you can use something like:</p>
 
       <pre class="prettyprint lang-config">RewriteEngine On
-RewriteMap lowercase int:tolower
-RewriteCond %{REQUEST_URI} [A-Z]
-RewriteRule (.*) ${lowercase:$1} [R,L]</pre>
+RewriteMap lowercase "int:tolower"
+RewriteCond "%{REQUEST_URI}" "[A-Z]"
+RewriteRule "(.*)"           "${lowercase:$1}" [R,L]</pre>
 </li>
 
       <li><p>When running, Apache needs write access only to the logs
@@ -165,7 +168,7 @@ RewriteRule (.*) ${lowercase:$1} [R,L]</pre>
       module, use the following (in addition to the status-activating
       directives in <code>access.conf</code>):</p>
 
-      <pre class="prettyprint lang-config">LoadModule status_module modules/mod_status.so</pre>
+      <pre class="prettyprint lang-config">LoadModule status_module "modules/mod_status.so"</pre>
 
 
       <p>Information on <a href="../mod/mod_so.html#creating">creating
@@ -435,8 +438,8 @@ RewriteRule (.*) ${lowercase:$1} [R,L]</pre>
     Programs. Change to the folder to which you installed Apache, type
     the command <code>httpd.exe</code>, and read the error message. Then
     change to the logs folder, and review the <code>error.log</code>
-    file for configuration mistakes. Assuming httpd was installed into 
-    <code>C:\Program Files\Apache Software Foundation\Apache2.5\</code>, 
+    file for configuration mistakes. Assuming httpd was installed into
+    <code>C:\Program Files\Apache Software Foundation\Apache2.5\</code>,
     you can do the following:</p>
 
     <div class="example"><p><code>
@@ -603,15 +606,15 @@ RewriteRule (.*) ${lowercase:$1} [R,L]</pre>
   (Arcane and error prone procedures may work around the restriction
   on mapped drive letters, but this is not recommended.)</p>
 
-  <div class="example"><h3>Example DocumentRoot with UNC path</h3><pre class="prettyprint lang-config">DocumentRoot //dochost/www/html/</pre>
+  <div class="example"><h3>Example DocumentRoot with UNC path</h3><pre class="prettyprint lang-config">DocumentRoot "//dochost/www/html/"</pre>
 </div>
 
-  <div class="example"><h3>Example DocumentRoot with IP address in UNC path</h3><pre class="prettyprint lang-config">DocumentRoot //192.168.1.50/docs/</pre>
+  <div class="example"><h3>Example DocumentRoot with IP address in UNC path</h3><pre class="prettyprint lang-config">DocumentRoot "//192.168.1.50/docs/"</pre>
 </div>
 
-  <div class="example"><h3>Example Alias and corresponding Directory with UNC path</h3><pre class="prettyprint lang-config">Alias /images/ //imagehost/www/images/
+  <div class="example"><h3>Example Alias and corresponding Directory with UNC path</h3><pre class="prettyprint lang-config">Alias "/images/" "//imagehost/www/images/"
 
-&lt;Directory //imagehost/www/images/&gt;
+&lt;Directory "//imagehost/www/images/"&gt;
 #...
 &lt;Directory&gt;</pre>
 </div>
@@ -619,6 +622,15 @@ RewriteRule (.*) ${lowercase:$1} [R,L]</pre>
   <p>When running Apache httpd as a service, you must create a
   separate account in order to access network resources, as described
   above.</p>
+  </div><div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
+<div class="section">
+<h2><a name="tuning" id="tuning">Windows Tuning</a></h2>
+    
+    <ul>
+      <li><p>If more than a few dozen piped loggers are used on an operating system
+      instance, scaling up the "desktop heap" is often necessary. For
+      more detailed information, refer to the <a href="../logs.html#piped">piped logging</a> documentation.</p></li>
+    </ul>
   </div></div>
 <div class="bottomlang">
 <p><span>Available Languages: </span><a href="../en/platform/windows.html" title="English">&nbsp;en&nbsp;</a> |
@@ -641,7 +653,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/platform/windows.h
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

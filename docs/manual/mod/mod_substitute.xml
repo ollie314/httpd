@@ -71,7 +71,7 @@
 
     <example><title>Example</title>
     <highlight language="config">
-&lt;Location /&gt;
+&lt;Location "/"&gt;
     AddOutputFilterByType SUBSTITUTE text/html
     Substitute s/foo/bar/ni
 &lt;/Location&gt;
@@ -83,7 +83,7 @@
 
     <example><title>Example of using an alternate delimiter</title>
     <highlight language="config">
-&lt;Location /&gt;
+&lt;Location "/"&gt;
     AddOutputFilterByType SUBSTITUTE text/html
     Substitute "s|&lt;BR */?&gt;|&lt;br /&gt;|i"
 &lt;/Location&gt;
@@ -94,9 +94,9 @@
     when regular expressions are used, as illustrated in the following example: </p>
     <example><title>Example of using backreferences and captures</title>
     <highlight language="config">
-&lt;Location /&gt;
+&lt;Location "/"&gt;
     AddOutputFilterByType SUBSTITUTE text/html
-    # "foo=k,bar=k" -> "foo/bar=k" 
+    # "foo=k,bar=k" -> "foo/bar=k"
     Substitute "s|foo=(\w+),bar=\1|foo/bar=$1"
 &lt;/Location&gt;
     </highlight>
@@ -113,8 +113,8 @@
 
     <example><title>Rewriting URLs embedded in proxied content</title>
     <highlight language="config">
-ProxyPass /blog/ http://internal.blog.example.com
-ProxyPassReverse /blog/ http://internal.blog.example.com/
+ProxyPass        "/blog/" "http://internal.blog.example.com"
+ProxyPassReverse "/blog/" "http://internal.blog.example.com/"
 
 Substitute "s|http://internal.blog.example.com/|http://www.example.com/blog/|i"
     </highlight>
@@ -151,7 +151,7 @@ Substitute "s|http://internal.blog.example.com/|http://www.example.com/blog/|i"
 
     <example><title>Example</title>
     <highlight language="config">
-&lt;Location /&gt;
+&lt;Location "/"&gt;
     AddOutputFilterByType SUBSTITUTE text/html
     SubstituteMaxLineLength 10m
     Substitute s/foo/bar/ni
@@ -159,6 +159,30 @@ Substitute "s|http://internal.blog.example.com/|http://www.example.com/blog/|i"
         </highlight>
     </example>
 
+</usage>
+</directivesynopsis>
+
+<directivesynopsis>
+<name>SubstituteInheritBefore</name>
+<description>Change the merge order of inherited patterns</description>
+<syntax>SubstituteInheritBefore on|off</syntax>
+<default>SubstituteInheritBefore on</default>
+<contextlist><context>directory</context>
+<context>.htaccess</context></contextlist>
+<override>FileInfo</override>
+<compatibility>Available in httpd 2.5 and later</compatibility>
+
+<usage>
+    <p>Whether to apply the inherited <directive>Substitute</directive>
+    patterns first (<code>on</code>), or after the ones of the current
+    context (<code>off</code>).
+    The latter was the default in versions 2.4 and earlier, but changed
+    starting with 2.5, hence <directive>SubstituteInheritBefore</directive>
+    set to <code>off</code> allows to restore the legacy behaviour.
+    <directive>SubstituteInheritBefore</directive> is itself inherited,
+    hence contexts that inherit it (those that don't specify their own
+    <directive>SubstituteInheritBefore</directive> value) will apply the
+    closest defined merge order.</p>
 </usage>
 </directivesynopsis>
 

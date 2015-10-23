@@ -56,6 +56,7 @@
   <modulefile>mod_headers.xml.fr</modulefile>
   <modulefile>mod_heartbeat.xml</modulefile>
   <modulefile>mod_heartmonitor.xml</modulefile>
+  <modulefile>mod_http2.xml</modulefile>
   <modulefile>mod_ident.xml.fr</modulefile>
   <modulefile>mod_imagemap.xml</modulefile>
   <modulefile>mod_include.xml</modulefile>
@@ -69,7 +70,7 @@
   <modulefile>mod_ldap.xml.fr</modulefile>
   <modulefile>mod_log_config.xml</modulefile>
   <modulefile>mod_log_debug.xml</modulefile>
-  <modulefile>mod_log_forensic.xml</modulefile>
+  <modulefile>mod_log_forensic.xml.fr</modulefile>
   <modulefile>mod_logio.xml</modulefile>
   <modulefile>mod_lua.xml.fr</modulefile>
   <modulefile>mod_macro.xml.fr</modulefile>

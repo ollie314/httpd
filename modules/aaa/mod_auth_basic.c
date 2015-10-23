@@ -146,14 +146,11 @@ static const char *add_basic_fake(cmd_parms * cmd, void *config,
     const char *err;
 
     if (!strcasecmp(user, "off")) {
-
         conf->fakeuser = NULL;
         conf->fakepass = NULL;
         conf->fake_set = 1;
-
     }
     else {
-
         /* if password is unspecified, set it to the fixed string "password" to
          * be compatible with the behaviour of mod_ssl.
          */
@@ -174,11 +171,10 @@ static const char *add_basic_fake(cmd_parms * cmd, void *config,
                         &err, NULL);
         if (err) {
             return apr_psprintf(cmd->pool,
-                    "Could not parse fake password expression '%s': %s", user,
+                    "Could not parse fake password expression '%s': %s", pass,
                     err);
         }
         conf->fake_set = 1;
-
     }
 
     return NULL;
@@ -195,7 +191,7 @@ static const char *set_use_digest_algorithm(cmd_parms *cmd, void *config,
                            "AuthBasicUseDigestAlgorithm: ", alg, NULL);
     }
 
-    conf->use_digest_algorithm = apr_pstrdup(cmd->pool, alg);
+    conf->use_digest_algorithm = alg;
     conf->use_digest_algorithm_set = 1;
 
     return NULL;

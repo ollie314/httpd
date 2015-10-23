@@ -144,7 +144,7 @@ module="mod_mime_magic">MimeMagicFile</directive></seealso>
 
     <example><title>Configure handler based on final extension only</title>
     <highlight language="config">
-&lt;FilesMatch \.cgi$&gt;
+&lt;FilesMatch "[^.]+\.cgi$"&gt;
   SetHandler cgi-script
 &lt;/FilesMatch&gt;
     </highlight>
@@ -192,7 +192,9 @@ module="mod_mime_magic">MimeMagicFile</directive></seealso>
     resource, in order to tell the client browser about the
     encoding method.</p>
 
-    <highlight language="config">Content-encoding: pkzip</highlight>
+    <highlight language="config">
+Content-encoding: pkzip
+    </highlight>
 </section>
 
 <section id="charset-lang"><title>Character sets and languages</title>
@@ -364,7 +366,7 @@ handler</description>
     might use:</p>
 
     <highlight language="config">
-      AddHandler cgi-script .cgi
+AddHandler cgi-script .cgi
     </highlight>
 
     <p>Once that has been put into your httpd.conf file, any file containing
@@ -497,7 +499,7 @@ responses from the server</description>
     compress the output using <module>mod_deflate</module>.</p>
 
     <highlight language="config">
-      AddOutputFilter INCLUDES;DEFLATE shtml
+AddOutputFilter INCLUDES;DEFLATE shtml
     </highlight>
 
     <p>If more than one filter is specified, they must be separated
@@ -519,19 +521,19 @@ responses from the server</description>
     <highlight language="config">
 # Effective filter "DEFLATE"
 AddOutputFilter DEFLATE shtml
-&lt;Location /foo&gt;
+&lt;Location "/foo"&gt;
   # Effective filter "INCLUDES", replacing "DEFLATE"
   AddOutputFilter INCLUDES shtml
 &lt;/Location&gt;
-&lt;Location /bar&gt;
+&lt;Location "/bar"&gt;
   # Effective filter "INCLUDES;DEFLATE", replacing "DEFLATE"
   AddOutputFilter INCLUDES;DEFLATE shtml
 &lt;/Location&gt;
-&lt;Location /bar/baz&gt;
+&lt;Location "/bar/baz"&gt;
   # Effective filter "BUFFER", replacing "INCLUDES;DEFLATE"
   AddOutputFilter BUFFER shtml
 &lt;/Location&gt;
-&lt;Location /bar/baz/buz&gt;
+&lt;Location "/bar/baz/buz"&gt;
   # No effective filter, replacing "BUFFER"
   RemoveOutputFilter shtml
 &lt;/Location&gt;
@@ -568,16 +570,16 @@ type</description>
 
     <example><title>Example</title>
     <highlight language="config">
-      AddType image/gif .gif
-      </highlight>
+AddType image/gif .gif
+    </highlight>
     </example>
 
     <p>Or, to specify multiple file extensions in one directive:</p>
 
     <example><title>Example</title>
     <highlight language="config">
-      AddType image/jpeg jpeg jpg jpe
-      </highlight>
+AddType image/jpeg jpeg jpg jpe
+    </highlight>
     </example>
 
     <p>The <var>extension</var> argument is case-insensitive and can
@@ -593,8 +595,8 @@ type</description>
 
     <example><title>Example</title>
     <highlight language="config">
-      AddType application/rss+xml;qs=0.8 .xml
-      </highlight>
+AddType application/rss+xml;qs=0.8 .xml
+    </highlight>
     </example>
 
     <p>This is useful in situations, <em>e.g.</em> when a client
@@ -605,6 +607,29 @@ type</description>
     static files served out of the filesystem.  For resources other than
     static files, where the generator of the response typically specifies
     a Content-Type, this directive has no effect.</p>
+
+
+    <note><title>Note</title>
+    <p>If no handler is explicitly set for a request, the specified content
+    type will also be used as the handler name. </p>
+   
+    <p>When explicit directives such as 
+    <directive module="core" >SetHandler</directive> or 
+    <directive module="mod_mime">AddHandler</directive> do not apply 
+    to the current request, the internal handler name normally set by those
+    directives is instead set to the content type specified by this directive. 
+    </p> 
+    <p>
+    This is a historical behavior that may be used by some third-party modules 
+    (such as mod_php) for taking responsibility for the matching request.
+    </p>
+
+    <p>Configurations that rely on such "synthetic" types should be avoided. 
+    Additionally, configurations that restrict access to 
+    <directive module="core" >SetHandler</directive> or 
+    <directive module="mod_mime">AddHandler</directive> should
+    restrict access to this directive as well.</p>
+    </note>
 
 </usage>
 <seealso><directive module="core">ForceType</directive></seealso>
@@ -658,7 +683,7 @@ a matching file with MultiViews</description>
     files:</p>
 
     <highlight language="config">
-      MultiviewsMatch Handlers Filters
+MultiviewsMatch Handlers Filters
     </highlight>
 
     <p><directive>MultiviewsMatch</directive> is not allowed in a
@@ -700,8 +725,8 @@ assigned a language-tag by some other means.</description>
 
     <example><title>Example</title>
     <highlight language="config">
-      DefaultLanguage en
-      </highlight>
+DefaultLanguage en
+    </highlight>
     </example>
 </usage>
 <seealso><module>mod_negotiation</module></seealso>
@@ -726,8 +751,8 @@ components as part of the filename</description>
 
     <example><title>Example</title>
     <highlight language="config">
-      ModMimeUsePathInfo On
-      </highlight>
+ModMimeUsePathInfo On
+    </highlight>
     </example>
 
     <p>If you have a request for <code>/index.php/foo.shtml</code>
@@ -765,8 +790,8 @@ extensions</description>
 
     <example><title>Example</title>
     <highlight language="config">
-      RemoveCharset .html .shtml
-      </highlight>
+RemoveCharset .html .shtml
+    </highlight>
     </example>
 </usage>
 </directivesynopsis>
@@ -792,7 +817,7 @@ extensions</description>
     <highlight language="config">
 AddEncoding x-gzip .gz
 AddType text/plain .asc
-&lt;Files *.gz.asc&gt;
+&lt;Files "*.gz.asc"&gt;
     RemoveEncoding .gz
 &lt;/Files&gt;
       </highlight>
@@ -833,14 +858,14 @@ extensions</description>
 
     <example><title>/foo/.htaccess:</title>
     <highlight language="config">
-      AddHandler server-parsed .html
-      </highlight>
+AddHandler server-parsed .html
+    </highlight>
     </example>
 
     <example><title>/foo/bar/.htaccess:</title>
     <highlight language="config">
-      RemoveHandler .html
-      </highlight>
+RemoveHandler .html
+    </highlight>
     </example>
 
     <p>This has the effect of returning <code>.html</code> files in
@@ -923,8 +948,8 @@ extensions</description>
 
     <example><title>Example</title>
     <highlight language="config">
-      RemoveOutputFilter shtml
-      </highlight>
+RemoveOutputFilter shtml
+    </highlight>
     </example>
 </usage>
 <seealso><directive module="mod_mime">AddOutputFilter</directive></seealso>
@@ -950,8 +975,8 @@ extensions</description>
 
     <example><title>/foo/.htaccess:</title>
     <highlight language="config">
-      RemoveType .cgi
-      </highlight>
+RemoveType .cgi
+    </highlight>
     </example>
 
     <p>This will remove any special handling of <code>.cgi</code>

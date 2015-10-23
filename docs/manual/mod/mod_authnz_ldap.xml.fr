@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE modulesynopsis SYSTEM "../style/modulesynopsis.dtd">
 <?xml-stylesheet type="text/xsl" href="../style/manual.fr.xsl"?>
-<!-- English Revision : 1591113 -->
+<!-- English Revision: 1683883 -->
 <!-- French translation : Lucien GENTIS -->
 <!-- Reviewed by : Vincent Deffontaines -->
 
@@ -70,8 +70,8 @@ HTTP de base.</description>
 <section id="contents"><title>Sommaire</title>
 
     <ul>
-      <li>
-        <a href="#operation">Mode op&eacute;ratoire</a>
+      <li> <a href="#gcaveats">Mises en garde &agrave; caract&egrave;re g&eacute;n&eacute;ral</a> </li>
+      <li> <a href="#operation">Mode op&eacute;ratoire</a>
 
         <ul>
           <li><a href="#authenphase">La phase
@@ -110,6 +110,20 @@ HTTP de base.</description>
         </ul>
       </li>
     </ul>
+</section>
+
+<section id="gcaveats"><title>Mises en garde &agrave; caract&egrave;re g&eacute;n&eacute;ral</title>
+<p>Ce module effectue une mise en cache des r&eacute;sultats du processus
+d'authentification et d'autorisation en fonction de la configuration du
+module <module>mod_ldap</module>. Les modifications effectu&eacute;es au niveau
+du serveur LDAP d'arri&egrave;re-plan comme les
+verrouillages ou r&eacute;vocations d'utilisateurs, les changements de mot de
+passe, ou les changements d'appartenance &agrave; un groupe (et cette liste
+n'est pas exhaustive), ne seront pas imm&eacute;diatement propag&eacute;es jusqu'au
+serveur HTTP. Consultez les directives du module
+<module>mod_ldap</module> pour plus de d&eacute;tails &agrave; propos de la
+configuration de la mise en cache.
+</p>
 </section>
 
 <section id="operation"><title>Mode op&eacute;ratoire</title>
@@ -462,12 +476,12 @@ uniqueMember: cn=Elliot Rhodes, o=Example
 </pre></example>
 
     <p>Les directives suivantes autoriseraient alors l'acc&egrave;s &agrave; Bob
-    Ellis, Tom Jackson, Barbara Jensen, Fred User, Allan Jefferson, et
+    Ellis, Tom Jackson, Barbara Jenson, Fred User, Allan Jefferson, et
     Paul Tilley, mais l'interdiraient &agrave; Jim Swenson, ou Elliot Rhodes
     (car ils sont situ&eacute;s dans un sous-groupe de niveau de profondeur 2)
     :</p>
 <highlight language="config">
-Require ldap-group cn=Employees, o-Example
+Require ldap-group cn=Employees, o=Example
 AuthLDAPMaxSubGroupDepth 1
 </highlight>
 
@@ -514,7 +528,8 @@ AuthLDAPMaxSubGroupDepth 1
     <p>La directive suivante accorderait l'autorisation d'acc&egrave;s &agrave; tout
     utilisateur dont l'attribut employeeType a pour valeur "actif" :</p>
 
-    <highlight language="config">Require ldap-attribute employeeType=active</highlight>
+    <highlight language="config">Require ldap-attribute
+    "employeeType=active"</highlight>
 
     <p>Plusieurs paires attribut/valeur peuvent &ecirc;tre sp&eacute;cifi&eacute;es par une
     m&ecirc;me directive en les s&eacute;parant par des espaces, ou en d&eacute;finissant
@@ -530,7 +545,8 @@ AuthLDAPMaxSubGroupDepth 1
     utilisateur dont l'attribut city aurait pour valeur "San Jose", ou
     donc l'attribut status aurait pour valeur "actif" :</p>
 
-    <highlight language="config">Require ldap-attribute city="San Jose" status=active</highlight>
+    <highlight language="config">Require ldap-attribute city="San Jose"
+    "status=active"</highlight>
 
 </section>
 
@@ -546,7 +562,8 @@ AuthLDAPMaxSubGroupDepth 1
     utilisateur poss&eacute;dant un t&eacute;l&eacute;phone cellulaire et faisant partie du
     d&eacute;partement "marketing" :</p>
 
-    <highlight language="config">Require ldap-filter &amp;(cell=*)(department=marketing)</highlight>
+    <highlight language="config">Require ldap-filter
+    "&amp;(cell=*)(department=marketing)"</highlight>
 
     <p>Alors que la directive <code>Require ldap-attribute</code> se
     contente d'une simple comparaison d'attributs, la directive
@@ -565,8 +582,9 @@ AuthLDAPMaxSubGroupDepth 1
     fonction ldap.</p>
 
 <highlight language="config">
-&lt;LocationMatch ^/dav/(?&lt;SITENAME&gt;[^/]+)/&gt;
-  Require ldap-filter (memberOf=cn=%{ldap:%{unescape:%{env:MATCH_SITENAME}},ou=Websites,o=Example)
+&lt;LocationMatch "^/dav/(?&lt;SITENAME&gt;[^/]+)/"&gt;
+  Require ldap-filter
+  "(memberOf=cn=%{ldap:%{unescape:%{env:MATCH_SITENAME}},ou=Websites,o=Example)"
 &lt;/LocationMatch&gt;
 </highlight>
 
@@ -585,8 +603,9 @@ AuthLDAPMaxSubGroupDepth 1
     aux objets sp&eacute;cifi&eacute;s dans le serveur LDAP :</p>
 
 <highlight language="config">
-&lt;LocationMatch ^/dav/(?&lt;SITENAME&gt;[^/]+)/&gt;
-Require ldap-search (cn=%{ldap:%{unescape:%{env:MATCH_SITENAME}} Website)
+&lt;LocationMatch "^/dav/(?&lt;SITENAME&gt;[^/]+)/"&gt;
+Require ldap-search "(cn=%{ldap:%{unescape:%{env:MATCH_SITENAME}}
+Website)"
 &lt;/LocationMatch&gt;
 </highlight>
 

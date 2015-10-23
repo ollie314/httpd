@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -26,7 +28,7 @@
 <div class="toplang">
 <p><span>Available Languages: </span><a href="../en/mod/mod_watchdog.html" title="English">&nbsp;en&nbsp;</a></p>
 </div>
-<table class="module"><tr><th><a href="module-dict.html#Description">Description:</a></th><td>provides infrastructure for other modules to periodically run 
+<table class="module"><tr><th><a href="module-dict.html#Description">Description:</a></th><td>provides infrastructure for other modules to periodically run
     tasks</td></tr>
 <tr><th><a href="module-dict.html#Status">Status:</a></th><td>Base</td></tr>
 <tr><th><a href="module-dict.html#ModuleIdentifier">Module Identifier:</a></th><td>watchdog_module</td></tr>
@@ -34,18 +36,18 @@
 <tr><th><a href="module-dict.html#Compatibility">Compatibility:</a></th><td>Available in Apache 2.3 and later</td></tr></table>
 <h3>Summary</h3>
 
-<p><code class="module"><a href="../mod/mod_watchdog.html">mod_watchdog</a></code> defines programmatic hooks for other modules to 
-periodically run tasks.  These modules can register handlers for 
-<code class="module"><a href="../mod/mod_watchdog.html">mod_watchdog</a></code> hooks.  Currently, the following modules in the 
-Apache distribution use this functionality:</p> 
+<p><code class="module"><a href="../mod/mod_watchdog.html">mod_watchdog</a></code> defines programmatic hooks for other modules to
+periodically run tasks.  These modules can register handlers for
+<code class="module"><a href="../mod/mod_watchdog.html">mod_watchdog</a></code> hooks.  Currently, the following modules in the
+Apache distribution use this functionality:</p>
 <ul>
 <li><code class="module"><a href="../mod/mod_heartbeat.html">mod_heartbeat</a></code></li>
 <li><code class="module"><a href="../mod/mod_heartmonitor.html">mod_heartmonitor</a></code></li>
 </ul>
 <div class="warning">
-To allow a module to use <code class="module"><a href="../mod/mod_watchdog.html">mod_watchdog</a></code> functionality, 
-<code class="module"><a href="../mod/mod_watchdog.html">mod_watchdog</a></code> itself must be statically linked to the server 
-core or, if a dynamic module, be loaded before the calling module. 
+To allow a module to use <code class="module"><a href="../mod/mod_watchdog.html">mod_watchdog</a></code> functionality,
+<code class="module"><a href="../mod/mod_watchdog.html">mod_watchdog</a></code> itself must be statically linked to the server
+core or, if a dynamic module, be loaded before the calling module.
 </div>
 </div>
 <div id="quickview"><h3 class="directives">Directives</h3>
@@ -64,7 +66,7 @@ core or, if a dynamic module, be loaded before the calling module.
 <tr><th><a href="directive-dict.html#Status">Status:</a></th><td>Base</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_watchdog</td></tr>
 </table>
-<p>Sets the interval at which the watchdog_step hook runs.  Default is to run every 
+<p>Sets the interval at which the watchdog_step hook runs.  Default is to run every
 second.</p>
 
 </div>
@@ -89,7 +91,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_watchdog.h
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="fr" xml:lang="fr"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="fr" xml:lang="fr"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -48,7 +50,7 @@
 <li><img alt="" src="./images/down.gif" /> <a href="#other">Autres</a></li>
 <li><img alt="" src="./images/down.gif" /> <a href="#sslrequire">Comparaison avec SSLRequire</a></li>
 <li><img alt="" src="./images/down.gif" /> <a href="#compatibility">Historique de version</a></li>
-</ul><h3>Voir aussi</h3><ul class="seealso"><li><code class="directive"><a href="./mod/core.html#if">If</a></code></li><li><code class="directive"><a href="./mod/core.html#if">&lt;If&gt;</a></code></li><li><code class="directive"><a href="./mod/core.html#elseif">&lt;ElseIf&gt;</a></code></li><li><code class="directive"><a href="./mod/core.html#else">&lt;Else&gt;</a></code></li><li><code class="directive"><a href="./mod/mod_auth_basic.html#authbasicfake">AuthBasicFake</a></code></li><li><code class="directive"><a href="./mod/mod_auth_form.html#authformloginrequiredlocation">AuthFormLoginRequiredLocation</a></code></li><li><code class="directive"><a href="./mod/mod_auth_form.html#authformloginsuccesslocation">AuthFormLoginSuccessLocation</a></code></li><li><code class="directive"><a href="./mod/mod_auth_form.html#authformlogoutlocation">AuthFormLogoutLocation</a></code></li><li><code class="directive"><a href="./mod/mod_rewrite.html#rewritecond">RewriteCond</a></code></li><li><code class="directive"><a href="./mod/mod_setenvif.html#setenvifexpr">SetEnvIfExpr</a></code></li><li><code class="directive"><a href="./mod/mod_headers.html#header">Header</a></code></li><li><code class="directive"><a href="./mod/mod_headers.html#requestheader">RequestHeader</a></code></li><li><code class="directive"><a href="./mod/mod_filter.html#filterprovider">FilterProvider</a></code></li><li><a href="mod/mod_authz_core.html#reqexpr">Require expr</a></li><li><a href="mod/mod_authnz_ldap.html#requser">Require ldap-user</a></li><li><a href="mod/mod_authnz_ldap.html#reqgroup">Require ldap-group</a></li><li><a href="mod/mod_authnz_ldap.html#reqdn">Require ldap-dn</a></li><li><a href="mod/mod_authnz_ldap.html#reqattribute">Require ldap-attribute</a></li><li><a href="mod/mod_authnz_ldap.html#reqfilter">Require ldap-filter</a></li><li><a href="mod/mod_authnz_ldap.html#reqsearch">Require ldap-search</a></li><li><a href="mod/mod_authz_dbd.html#reqgroup">Require dbd-group</a></li><li><a href="mod/mod_authz_dbm.html#reqgroup">Require dbm-group</a></li><li><a href="mod/mod_authz_groupfile.html#reqgroup">Require group</a></li><li><a href="mod/mod_authz_host.html#reqhost">Require host</a></li><li><code class="directive"><a href="./mod/mod_ssl.html#sslrequire">SSLRequire</a></code></li><li><code class="directive"><a href="./mod/mod_log_debug.html#logmessage">LogMessage</a></code></li><li><code class="module"><a href="./mod/mod_include.html">mod_include</a></code></li></ul><ul class="seealso"><li><a href="#comments_section">Commentaires</a></li></ul></div>
+</ul><h3>Voir aussi</h3><ul class="seealso"><li><code class="directive"><a href="./mod/core.html#if">If</a></code></li><li><code class="directive"><a href="./mod/core.html#if">&lt;If&gt;</a></code></li><li><code class="directive"><a href="./mod/core.html#elseif">&lt;ElseIf&gt;</a></code></li><li><code class="directive"><a href="./mod/core.html#else">&lt;Else&gt;</a></code></li><li><code class="directive"><a href="./mod/core.html#errordocument">&lt;ErrorDocument&gt;</a></code></li><li><code class="directive"><a href="./mod/mod_alias.html#alias">Alias</a></code></li><li><code class="directive"><a href="./mod/mod_alias.html#scriptalias">ScriptAlias</a></code></li><li><code class="directive"><a href="./mod/mod_alias.html#redirect">Redirect</a></code></li><li><code class="directive"><a href="./mod/mod_auth_basic.html#authbasicfake">AuthBasicFake</a></code></li><li><code class="directive"><a href="./mod/mod_auth_form.html#authformloginrequiredlocation">AuthFormLoginRequiredLocation</a></code></li><li><code class="directive"><a href="./mod/mod_auth_form.html#authformloginsuccesslocation">AuthFormLoginSuccessLocation</a></code></li><li><code class="directive"><a href="./mod/mod_auth_form.html#authformlogoutlocation">AuthFormLogoutLocation</a></code></li><li><code class="directive"><a href="./mod/mod_authn_core.html#authname">AuthName</a></code></li><li><code class="directive"><a href="./mod/mod_authn_core.html#authtype">AuthType</a></code></li><li><code class="directive"><a href="./mod/mod_rewrite.html#rewritecond">RewriteCond</a></code></li><li><code class="directive"><a href="./mod/mod_setenvif.html#setenvifexpr">SetEnvIfExpr</a></code></li><li><code class="directive"><a href="./mod/mod_headers.html#header">Header</a></code></li><li><code class="directive"><a href="./mod/mod_headers.html#requestheader">RequestHeader</a></code></li><li><code class="directive"><a href="./mod/mod_filter.html#filterprovider">FilterProvider</a></code></li><li><a href="mod/mod_authz_core.html#reqexpr">Require expr</a></li><li><a href="mod/mod_authnz_ldap.html#requser">Require ldap-user</a></li><li><a href="mod/mod_authnz_ldap.html#reqgroup">Require ldap-group</a></li><li><a href="mod/mod_authnz_ldap.html#reqdn">Require ldap-dn</a></li><li><a href="mod/mod_authnz_ldap.html#reqattribute">Require ldap-attribute</a></li><li><a href="mod/mod_authnz_ldap.html#reqfilter">Require ldap-filter</a></li><li><a href="mod/mod_authnz_ldap.html#reqsearch">Require ldap-search</a></li><li><a href="mod/mod_authz_dbd.html#reqgroup">Require dbd-group</a></li><li><a href="mod/mod_authz_dbm.html#reqgroup">Require dbm-group</a></li><li><a href="mod/mod_authz_groupfile.html#reqgroup">Require group</a></li><li><a href="mod/mod_authz_host.html#reqhost">Require host</a></li><li><code class="directive"><a href="./mod/mod_ssl.html#sslrequire">SSLRequire</a></code></li><li><code class="directive"><a href="./mod/mod_log_debug.html#logmessage">LogMessage</a></code></li><li><code class="module"><a href="./mod/mod_include.html">mod_include</a></code></li></ul><ul class="seealso"><li><a href="#comments_section">Commentaires</a></li></ul></div>
 <div class="top"><a href="#page-header"><img alt="top" src="./images/up.gif" /></a></div>
 <div class="section">
 <h2><a name="grammar" id="grammar">Syntaxe en Forme de Backus-Naur</a></h2>
@@ -121,7 +123,7 @@ variable    ::= "<strong>%{</strong>" varname "<strong>}</strong>"
 
 rebackref   ::= "<strong>$</strong>" [0-9]
 
-function     ::= funcname "<strong>(</strong>" word "<strong>)</strong>"
+function     ::= funcname "<strong>(</strong>" wordlist "<strong>)</strong>"
 
 listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pre>
 </blockquote>
@@ -203,8 +205,7 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
         <td>Le nom d'hôte de l'hôte distant</td></tr>
 <tr class="odd"><td><code>REMOTE_USER</code></td>
         <td>Le nom de l'utilisateur authentifié, s'il existe (non
-	disponible à l'intérieur d'un bloc <code class="directive">&lt;If
-	&gt;</code>)</td></tr>
+	disponible à l'intérieur d'un bloc <code class="directive">&lt;If&gt;</code>)</td></tr>
 <tr><td><code>REMOTE_IDENT</code></td>
         <td>Le nom de l'utilisateur défini par <code class="module"><a href="./mod/mod_ident.html">mod_ident</a></code></td></tr>
 <tr class="odd"><td><code>SERVER_NAME</code></td>
@@ -237,8 +238,7 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
 	"<code>basic</code>")</td></tr>
 <tr><td><code>CONTENT_TYPE</code></td>
         <td>Le type de contenu de la réponse (non
-	disponible à l'intérieur d'un bloc <code class="directive">&lt;If
-	&gt;</code>)</td></tr>
+	disponible à l'intérieur d'un bloc <code class="directive">&lt;If&gt;</code>)</td></tr>
 <tr class="odd"><td><code>HANDLER</code></td>
         <td>Le nom du <a href="handler.html">gestionnaire</a> qui a
 	généré la réponse</td></tr>
@@ -250,8 +250,7 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
 	"<code>off</code>" dans le cas contraire</td></tr>
 <tr><td><code>REQUEST_STATUS</code></td>
         <td>Le code d'erreur HTTP de la requête (non
-	disponible à l'intérieur d'un bloc <code class="directive">&lt;If
-	&gt;</code>)</td></tr>
+	disponible à l'intérieur d'un bloc <code class="directive">&lt;If&gt;</code>)</td></tr>
 <tr class="odd"><td><code>REQUEST_LOG_ID</code></td>
         <td>L'identifiant du message d'erreur associé à la requête (voir
 	la directive <code class="directive"><a href="./mod/core.html#errorlogformat">ErrorLogFormat</a></code>)</td></tr>
@@ -458,7 +457,9 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
         <td>Identique à <code>req</code>, mais les noms
 	d'en-tête correspondants ne seront pas ajoutés à l'en-tête Vary</td><td /></tr>
 <tr><td><code>resp</code></td>
-        <td>Lit l'en-tête de réponse HTTP</td><td /></tr>
+        <td>Lit l'en-tête de réponse HTTP (la plupart des
+	en-tête de la réponse ne sont pas encore définis pendant
+	l'exécution de la directive <code class="directive">&lt;If&gt;</code>)</td><td /></tr>
 <tr class="odd"><td><code>reqenv</code></td>
         <td>Recherche une variable d'environnement de requête (on
 	peut aussi utiliser le raccourci <code>v</code>).</td><td /></tr>
@@ -494,14 +495,21 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
 <tr class="odd"><td><code>file</code></td>
         <td>Lit le contenu d'un fichier (fins de lignes incluses, si
 	elles existent)</td><td>oui</td></tr>
-<tr><td><code>filesize</code></td>
+<tr><td><code>filemod</code></td>
+        <td>Renvoie la date de dernière modification d'un fichier (ou 0
+	si le fichier n'existe pas ou n'est pas un fichier
+	régulier)</td><td>oui</td></tr>
+<tr class="odd"><td><code>filesize</code></td>
         <td>Renvoie la taille d'un fichier (ou 0 si le fichier n'existe
 	pas ou ne correspond pas à un fichier
 	régulier)</td><td>oui</td></tr>
-<tr class="odd"><td><code>ldap</code></td>
+<tr><td><code>ldap</code></td>
         <td>Echappe les caractères selon la RFC4514 (Echappement des
 	noms distinctifs LDAP - DN) et la RFC4515 (Echappement des
 	filtres LDAP).</td><td /></tr>
+<tr class="odd"><td><code>replace</code></td>
+        <td>replace(chaîne, "de", "vers") remplace dans la chaîne
+	spécifiée toutes les occurrences de "de" par "vers".</td><td /></tr>
 </table>
 
     <p>Les fonctions marquées comme "restreints" ne sont pas disponibles
@@ -539,7 +547,7 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
 	<pre class="prettyprint lang-config"># Comparer le nom d'hôte avec example.com et rediriger vers
 # www.example.com si le nom d'hôte correspond
 &lt;If "%{HTTP_HOST} == 'example.com'"&gt;
-    Redirect permanent / http://www.example.com/
+    Redirect permanent "/" "http://www.example.com/"
 &lt;/If&gt;
 
 # Forcer le type text/plain si un fichier fait l'objet d'une
@@ -555,9 +563,34 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
 &lt;/Directory&gt;	
 
 # Vérifie si un en-tête HTTP correspond à une des valeurs d'une liste
-&lt;If "%{HTTP:X-example-header} in { 'foo', 'bar', 'baz'}"&gt;
+&lt;If "%{HTTP:X-example-header} in { 'foo', 'bar', 'baz' }"&gt;
     La définition de l'en-tête correspond à une des valeurs recherchées
-&lt;/If&gt;</pre>
+&lt;/If&gt;
+# Recherche la valeur d'une expression rationnelle dans une variable
+# d'environnement, et renvoie la négation du résultat.
+&lt;If "! reqenv('REDIRECT_FOO') =~ /bar/"&gt;
+    La condition est vérifiée
+&lt;/If&gt;
+
+# Vérifie le résultat de la recherche d'une correspondance d'URI dans un
+# contexte de répertoire avec l'option -f
+&lt;Directory "/var/www"&gt;
+    AddEncoding x-gzip gz
+&lt;If "-f '%{REQUEST_FILENAME}.unzipme' &amp;&amp; ! %{HTTP:Accept-Encoding} =~ /gzip/"&gt;
+      SetOutputFilter INFLATE
+&lt;/If&gt;
+&lt;/Directory&gt;
+
+# Exemples de fonctions dans un contexte booléen
+&lt;If "md5('foo') == 'acbd18db4cc2f85cedef654fccc4a4d8'"&gt;
+  Header set checksum-matched true
+&lt;/If&gt;
+&lt;If "md5('foo') == replace('md5:XXXd18db4cc2f85cedef654fccc4a4d8', 'md5:XXX', 'acb')&gt;
+  Header set checksum-matched-2 true
+&lt;/If&gt;
+
+# Function example in string context
+Header set foo-checksum "expr=%{md5:foo}"</pre>
 
 </div><div class="top"><a href="#page-header"><img alt="top" src="./images/up.gif" /></a></div>
 <div class="section">
@@ -631,7 +664,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/expr.html';
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Autorisé sous <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Autorisé sous <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="./mod/">Modules</a> | <a href="./mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="./glossary.html">Glossaire</a> | <a href="./sitemap.html">Plan du site</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

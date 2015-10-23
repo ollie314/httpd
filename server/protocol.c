@@ -67,6 +67,9 @@ APR_HOOK_STRUCT(
     APR_HOOK_LINK(http_scheme)
     APR_HOOK_LINK(default_port)
     APR_HOOK_LINK(note_auth_failure)
+    APR_HOOK_LINK(protocol_propose)
+    APR_HOOK_LINK(protocol_switch)
+    APR_HOOK_LINK(protocol_get)
 )
 
 AP_DECLARE_DATA ap_filter_rec_t *ap_old_write_func = NULL;
@@ -236,7 +239,9 @@ AP_DECLARE(apr_status_t) ap_rgetline_core(char **s, apr_size_t n,
             return rv;
         }
 
-        /* Something horribly wrong happened.  Someone didn't block! */
+        /* Something horribly wrong happened.  Someone didn't block! 
+         * (this also happens at the end of each keepalive connection)
+         */
         if (APR_BRIGADE_EMPTY(bb)) {
             return APR_EGENERAL;
         }
@@ -562,15 +567,10 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
     unsigned int major = 1, minor = 0;   /* Assume HTTP/1.0 if non-"HTTP" protocol */
     char http[5];
     apr_size_t len;
-    int num_blank_lines = 0;
-    int max_blank_lines = r->server->limit_req_fields;
+    int num_blank_lines = DEFAULT_LIMIT_BLANK_LINES;
     core_server_config *conf = ap_get_core_module_config(r->server->module_config);
     int strict = conf->http_conformance & AP_HTTP_CONFORMANCE_STRICT;
     int enforce_strict = !(conf->http_conformance & AP_HTTP_CONFORMANCE_LOGONLY);
-
-    if (max_blank_lines <= 0) {
-        max_blank_lines = DEFAULT_LIMIT_REQUEST_FIELDS;
-    }
 
     /* Read past empty lines until we get a real request line,
      * a read error, the connection closes (EOF), or we timeout.
@@ -606,8 +606,6 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
              */
             if (APR_STATUS_IS_ENOSPC(rv)) {
                 r->status    = HTTP_REQUEST_URI_TOO_LARGE;
-                r->proto_num = HTTP_VERSION(1,0);
-                r->protocol  = apr_pstrdup(r->pool, "HTTP/1.0");
             }
             else if (APR_STATUS_IS_TIMEUP(rv)) {
                 r->status = HTTP_REQUEST_TIME_OUT;
@@ -615,9 +613,11 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
             else if (APR_STATUS_IS_EINVAL(rv)) {
                 r->status = HTTP_BAD_REQUEST;
             }
+            r->proto_num = HTTP_VERSION(1,0);
+            r->protocol  = apr_pstrdup(r->pool, "HTTP/1.0");
             return 0;
         }
-    } while ((len <= 0) && (++num_blank_lines < max_blank_lines));
+    } while ((len <= 0) && (--num_blank_lines >= 0));
 
     if (APLOGrtrace5(r)) {
         ap_log_rerror(APLOG_MARK, APLOG_TRACE5, 0, r,
@@ -631,6 +631,13 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
 
     uri = ap_getword_white(r->pool, &ll);
 
+    if (!*r->method || !*uri) {
+        r->status    = HTTP_BAD_REQUEST;
+        r->proto_num = HTTP_VERSION(1,0);
+        r->protocol  = apr_pstrdup(r->pool, "HTTP/1.0");
+        return 0;
+    }
+
     /* Provide quick information about the request method as soon as known */
 
     r->method_number = ap_method_number_of(r->method);
@@ -639,6 +646,9 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
     }
 
     ap_parse_uri(r, uri);
+    if (r->status != HTTP_OK) {
+        return 0;
+    }
 
     if (ll[0]) {
         r->assbackwards = 0;
@@ -674,6 +684,9 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
             ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02418)
                           "Invalid protocol '%s'", r->protocol);
             if (enforce_strict) {
+                r->proto_num = HTTP_VERSION(1,0);
+                r->protocol  = apr_pstrdup(r->pool, "HTTP/1.0");
+                r->connection->keepalive = AP_CONN_CLOSE;
                 r->status = HTTP_BAD_REQUEST;
                 return 0;
             }
@@ -793,7 +806,7 @@ AP_DECLARE(void) ap_get_mime_headers_core(request_rec *r, apr_bucket_brigade *bb
              */
             if (rv == APR_ENOSPC) {
                 const char *field_escaped;
-                if (field) {
+                if (field && len) {
                     /* ensure ap_escape_html will terminate correctly */
                     field[len - 1] = '\0';
                     field_escaped = ap_escape_html(r->pool, field);
@@ -829,18 +842,21 @@ AP_DECLARE(void) ap_get_mime_headers_core(request_rec *r, apr_bucket_brigade *bb
                 apr_size_t fold_len = last_len + len + 1; /* trailing null */
 
                 if (fold_len >= (apr_size_t)(r->server->limit_req_fieldsize)) {
+                    const char *field_escaped;
+
                     r->status = HTTP_BAD_REQUEST;
                     /* report what we have accumulated so far before the
                      * overflow (last_field) as the field with the problem
                      */
+                    field_escaped = ap_escape_html(r->pool, last_field);
                     apr_table_setn(r->notes, "error-notes",
                                    apr_psprintf(r->pool,
                                                "Size of a request header field "
                                                "after folding "
                                                "exceeds server limit.<br />\n"
                                                "<pre>\n%.*s\n</pre>\n", 
-                                               field_name_len(last_field), 
-                                               ap_escape_html(r->pool, last_field)));
+                                               field_name_len(field_escaped), 
+                                               field_escaped));
                     ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00562)
                                   "Request header exceeds LimitRequestFieldSize "
                                   "after folding: %.*s",
@@ -1530,10 +1546,35 @@ AP_CORE_DECLARE_NONSTD(apr_status_t) ap_content_length_filter(
      * We can only set a C-L in the response header if we haven't already
      * sent any buckets on to the next output filter for this request.
      */
-    if (ctx->data_sent == 0 && eos &&
+    if (ctx->data_sent == 0 && eos) {
+        core_server_config *conf =
+            ap_get_core_module_config(r->server->module_config);
+
+        /* This is a hack, but I can't find anyway around it.  The idea is that
+         * we don't want to send out 0 Content-Lengths if it is a HEAD request.
+         * [Unless the corresponding body (for a GET) would really be empty!]
+         * This happens when modules try to outsmart the server, and return
+         * if they see a HEAD request.  Apache 1.3 handlers were supposed to
+         * just return in that situation, and the core handled the HEAD.  From
+         * 2.0, if a handler returns, then the core sends an EOS bucket down
+         * the filter stack, and this content-length filter computes a length
+         * of zero and we would end up sending a zero C-L to the client.
+         * We can't just remove the this C-L filter, because well behaved 2.0+
+         * handlers will send their data down the stack, and we will compute
+         * a real C-L for the head request. RBB
+         *
+         * Allow modification of this behavior through the
+         * HttpContentLengthHeadZero directive.
+         *
+         * The default (unset) behavior is to squelch the C-L in this case.
+         */
+
         /* don't whack the C-L if it has already been set for a HEAD
          * by something like proxy.  the brigade only has an EOS bucket
-         * in this case, making r->bytes_sent zero.
+         * in this case, making r->bytes_sent zero, and either there is
+         * an existing C-L we want to preserve, or r->sent_bodyct is not
+         * zero (the empty body is being sent) thus we don't want to add
+         * a C-L of zero (the backend did not provide it, neither do we).
          *
          * if r->bytes_sent > 0 we have a (temporary) body whose length may
          * have been changed by a filter.  the C-L header might not have been
@@ -1541,9 +1582,13 @@ AP_CORE_DECLARE_NONSTD(apr_status_t) ap_content_length_filter(
          * such filters update or remove the C-L header, and just use it
          * if present.
          */
-        !(r->header_only && r->bytes_sent == 0 &&
-            apr_table_get(r->headers_out, "Content-Length"))) {
-        ap_set_content_length(r, r->bytes_sent);
+        if (!(r->header_only
+              && !r->bytes_sent
+              && (r->sent_bodyct
+                  || conf->http_cl_head_zero != AP_HTTP_CL_HEAD_ZERO_ENABLE
+                  || apr_table_get(r->headers_out, "Content-Length")))) {
+            ap_set_content_length(r, r->bytes_sent);
+        }
     }
 
     ctx->data_sent = 1;
@@ -1907,6 +1952,207 @@ AP_DECLARE(void) ap_send_interim_response(request_rec *r, int send_headers)
     apr_brigade_destroy(x.bb);
 }
 
+/*
+ * Compare two protocol identifier. Result is similar to strcmp():
+ * 0 gives same precedence, >0 means proto1 is preferred.
+ */
+static int protocol_cmp(const apr_array_header_t *preferences,
+                        const char *proto1,
+                        const char *proto2)
+{
+    if (preferences && preferences->nelts > 0) {
+        int index1 = ap_array_str_index(preferences, proto1, 0);
+        int index2 = ap_array_str_index(preferences, proto2, 0);
+        if (index2 > index1) {
+            return (index1 >= 0) ? 1 : -1;
+        }
+        else if (index1 > index2) {
+            return (index2 >= 0) ? -1 : 1;
+        }
+    }
+    /* both have the same index (mabye -1 or no pref configured) and we compare
+     * the names so that spdy3 gets precedence over spdy2. That makes
+     * the outcome at least deterministic. */
+    return strcmp(proto1, proto2);
+}
+
+AP_DECLARE(const char *) ap_get_protocol(conn_rec *c)
+{
+    const char *protocol = ap_run_protocol_get(c);
+    return protocol? protocol : AP_PROTOCOL_HTTP1;
+}
+
+AP_DECLARE(apr_status_t) ap_get_protocol_upgrades(conn_rec *c, request_rec *r, 
+                                                  server_rec *s, 
+                                                  const apr_array_header_t **pupgrades)
+{
+    apr_pool_t *pool = r? r->pool : c->pool;
+    core_server_config *conf;
+    const char *existing;
+    apr_array_header_t *upgrades = NULL;
+
+    if (!s) {
+        s = (r? r->server : c->base_server);
+    }
+    conf = ap_get_core_module_config(s->module_config);
+    
+    if (conf->protocols->nelts > 0) {
+        existing = ap_get_protocol(c);
+        if (conf->protocols->nelts > 1 
+            || !ap_array_str_contains(conf->protocols, existing)) {
+            /* possibly more than one choice or one, but not the
+             * existing. (TODO: maybe 426 and Upgrade then?) */
+            upgrades = apr_array_make(pool, conf->protocols->nelts + 1, 
+                                      sizeof(char *));
+            for (int i = 0; i < conf->protocols->nelts; ++i) {
+                const char *p = APR_ARRAY_IDX(conf->protocols, i, char *);
+                if (strcmp(existing, p)) {
+                    /* not the one we have and possible, add in this order */
+                    APR_ARRAY_PUSH(upgrades, const char*) = p;
+                }
+            }
+        }
+    }
+    
+    *pupgrades = upgrades;
+    return APR_SUCCESS;
+}
+
+AP_DECLARE(const char *) ap_select_protocol(conn_rec *c, request_rec *r, 
+                                            server_rec *s,
+                                            const apr_array_header_t *choices)
+{
+    apr_pool_t *pool = r? r->pool : c->pool;
+    core_server_config *conf;
+    const char *protocol = NULL, *existing;
+    apr_array_header_t *proposals;
+
+    if (!s) {
+        s = (r? r->server : c->base_server);
+    }
+    conf = ap_get_core_module_config(s->module_config);
+    
+    if (APLOGcdebug(c)) {
+        const char *p = apr_array_pstrcat(pool, conf->protocols, ',');
+        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c, 
+                      "select protocol from %s, choices=%s for server %s", 
+                      p, apr_array_pstrcat(pool, choices, ','),
+                      s->server_hostname);
+    }
+
+    if (conf->protocols->nelts <= 0) {
+        /* nothing configured, by default, we only allow http/1.1 here.
+         * For now...
+         */
+        if (ap_array_str_contains(choices, AP_PROTOCOL_HTTP1)) {
+            return AP_PROTOCOL_HTTP1;
+        }
+        else {
+            return NULL;
+        }
+    }
+
+    proposals = apr_array_make(pool, choices->nelts + 1, sizeof(char *));
+    ap_run_protocol_propose(c, r, s, choices, proposals);
+
+    /* If the existing protocol has not been proposed, but is a choice,
+     * add it to the proposals implicitly.
+     */
+    existing = ap_get_protocol(c);
+    if (!ap_array_str_contains(proposals, existing)
+        && ap_array_str_contains(choices, existing)) {
+        APR_ARRAY_PUSH(proposals, const char*) = existing;
+    }
+
+    if (proposals->nelts > 0) {
+        int i;
+        const apr_array_header_t *prefs = NULL;
+
+        /* Default for protocols_honor_order is 'on' or != 0 */
+        if (conf->protocols_honor_order == 0 && choices->nelts > 0) {
+            prefs = choices;
+        }
+        else {
+            prefs = conf->protocols;
+        }
+
+        /* Select the most preferred protocol */
+        if (APLOGcdebug(c)) {
+            ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c, 
+                          "select protocol, proposals=%s preferences=%s configured=%s", 
+                          apr_array_pstrcat(pool, proposals, ','),
+                          apr_array_pstrcat(pool, prefs, ','),
+                          apr_array_pstrcat(pool, conf->protocols, ','));
+        }
+        for (i = 0; i < proposals->nelts; ++i) {
+            const char *p = APR_ARRAY_IDX(proposals, i, const char *);
+            if (!ap_array_str_contains(conf->protocols, p)) {
+                /* not a configured protocol here */
+                continue;
+            }
+            else if (!protocol 
+                     || (protocol_cmp(prefs, protocol, p) < 0)) {
+                /* none selected yet or this one has preference */
+                protocol = p;
+            }
+        }
+    }
+    if (APLOGcdebug(c)) {
+        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c, "selected protocol=%s", 
+                      protocol? protocol : "(none)");
+    }
+
+    return protocol;
+}
+
+AP_DECLARE(apr_status_t) ap_switch_protocol(conn_rec *c, request_rec *r, 
+                                            server_rec *s,
+                                            const char *protocol)
+{
+    const char *current = ap_get_protocol(c);
+    int rc;
+    
+    if (!strcmp(current, protocol)) {
+        ap_log_cerror(APLOG_MARK, APLOG_WARNING, 0, c, APLOGNO(02906)
+                      "already at it, protocol_switch to %s", 
+                      protocol);
+        return APR_SUCCESS;
+    }
+    
+    rc = ap_run_protocol_switch(c, r, s, protocol);
+    switch (rc) {
+        case DECLINED:
+            ap_log_cerror(APLOG_MARK, APLOG_ERR, 0, c, APLOGNO(02907)
+                          "no implementation for protocol_switch to %s", 
+                          protocol);
+            return APR_ENOTIMPL;
+        case OK:
+        case DONE:
+            return APR_SUCCESS;
+        default:
+            ap_log_cerror(APLOG_MARK, APLOG_ERR, 0, c, APLOGNO(02905)
+                          "unexpected return code %d from protocol_switch to %s"
+                          , rc, protocol);
+            return APR_EOF;
+    }    
+}
+
+AP_DECLARE(int) ap_is_allowed_protocol(conn_rec *c, request_rec *r,
+                                       server_rec *s, const char *protocol)
+{
+    core_server_config *conf;
+
+    if (!s) {
+        s = (r? r->server : c->base_server);
+    }
+    conf = ap_get_core_module_config(s->module_config);
+    
+    if (conf->protocols->nelts > 0) {
+        return ap_array_str_contains(conf->protocols, protocol);
+    }
+    return !strcmp(AP_PROTOCOL_HTTP1, protocol);
+}
+
 
 AP_IMPLEMENT_HOOK_VOID(pre_read_request,
                        (request_rec *r, conn_rec *c),
@@ -1922,3 +2168,14 @@ AP_IMPLEMENT_HOOK_RUN_FIRST(unsigned short,default_port,
 AP_IMPLEMENT_HOOK_RUN_FIRST(int, note_auth_failure,
                             (request_rec *r, const char *auth_type),
                             (r, auth_type), DECLINED)
+AP_IMPLEMENT_HOOK_RUN_ALL(int,protocol_propose,
+                          (conn_rec *c, request_rec *r, server_rec *s,
+                           const apr_array_header_t *offers,
+                           apr_array_header_t *proposals), 
+                          (c, r, s, offers, proposals), OK, DECLINED)
+AP_IMPLEMENT_HOOK_RUN_FIRST(int,protocol_switch,
+                            (conn_rec *c, request_rec *r, server_rec *s,
+                             const char *protocol), 
+                            (c, r, s, protocol), DECLINED)
+AP_IMPLEMENT_HOOK_RUN_FIRST(const char *,protocol_get,
+                            (const conn_rec *c), (c), NULL)

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -260,8 +262,8 @@
     
 
     <p>The policy of the Apache HTTP Server project is to only release Unix sources.
-    Windows source packages made available for download have been supplied by 
-    volunteers and may not be available for every release. You can still build 
+    Windows source packages made available for download have been supplied by
+    volunteers and may not be available for every release. You can still build
     the server on Windows from the Unix source tarball with just a few additional
     steps.</p>
 
@@ -277,9 +279,9 @@
       perl srclib\apr\build\lineends.pl
     </code></p></div>
 
-    <p>You can now build the server with the Visual Studio 6.0 development 
-    environment using the IDE. Command-Line builds of the server are not 
-    possible from Unix sources unless you export .mak files as explained 
+    <p>You can now build the server with the Visual Studio 6.0 development
+    environment using the IDE. Command-Line builds of the server are not
+    possible from Unix sources unless you export .mak files as explained
     below.
     </p>
 
@@ -452,7 +454,7 @@
 <h2><a name="cmake" id="cmake">Building httpd with cmake</a></h2>
   
 
-  <p>The primary documentation for this build mechanism is in the 
+  <p>The primary documentation for this build mechanism is in the
   <code>README.cmake</code> file in the source distribution.  Refer to that file
   for detailed instructions.</p>
 
@@ -465,7 +467,7 @@
   <ul>
     <li>No cmake build for the APR-iconv subproject is available, and the
       APR-util cmake build cannot consume an existing APR-iconv build.  Thus,
-      <code class="module"><a href="../mod/mod_charset_lite.html">mod_charset_lite</a></code> and possibly some third-party modules 
+      <code class="module"><a href="../mod/mod_charset_lite.html">mod_charset_lite</a></code> and possibly some third-party modules
       cannot be used.</li>
     <li>The cmake build for the APR-util subproject does not support most of the
       optional DBM and DBD libraries supported by the included Visual Studio
@@ -495,7 +497,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/platform/win_compi
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

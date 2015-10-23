@@ -984,6 +984,11 @@ static apr_status_t xlate_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
     apr_size_t buffer_size;
     int hit_eos;
 
+    /* just get out of the way of things we don't want. */
+    if (mode != AP_MODE_READBYTES) {
+        return ap_get_brigade(f->next, bb, mode, block, readbytes);
+    }
+
     if (!ctx) {
         /* this is SetInputFilter path; grab the preallocated context,
          * if any; note that if we decided not to do anything in an earlier
@@ -1021,7 +1026,7 @@ static apr_status_t xlate_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
              * Content-Length can't be unset here because that would break
              * being able to read the request body.
              * Processing of chunked request bodies is not impacted by this
-             * filter since the the length was not declared anyway.
+             * filter since the length was not declared anyway.
              */
             ap_log_rerror(APLOG_MARK, APLOG_TRACE1, 0, f->r,
                           "Request body length may change, resulting in "
@@ -1118,10 +1123,17 @@ static void charset_register_hooks(apr_pool_t *p)
 {
     ap_hook_fixups(find_code_page, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_insert_filter(xlate_insert_filter, NULL, NULL, APR_HOOK_REALLY_LAST);
+#if APR_CHARSET_EBCDIC
+    ap_register_output_filter(XLATEOUT_FILTER_NAME, xlate_out_filter, NULL,
+                              AP_FTYPE_RESOURCE+1);
+    ap_register_input_filter(XLATEIN_FILTER_NAME, xlate_in_filter, NULL,
+                             AP_FTYPE_RESOURCE+1);
+#else
     ap_register_output_filter(XLATEOUT_FILTER_NAME, xlate_out_filter, NULL,
                               AP_FTYPE_RESOURCE);
     ap_register_input_filter(XLATEIN_FILTER_NAME, xlate_in_filter, NULL,
                              AP_FTYPE_RESOURCE);
+#endif
 }
 
 AP_DECLARE_MODULE(charset_lite) =

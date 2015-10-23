@@ -127,7 +127,7 @@ AddHandler add-footer .html
       filename extensions.</p>
 
       <highlight language="config">
-&lt;Directory /web/htdocs/asis&gt;
+&lt;Directory "/web/htdocs/asis"&gt;
     SetHandler send-as-is
 &lt;/Directory&gt;
       </highlight>
@@ -156,8 +156,3 @@ AddHandler add-footer .html
     as to not invade the media type name-space.</p>
   </section>
 </manualpage>
-
-
-
-
-

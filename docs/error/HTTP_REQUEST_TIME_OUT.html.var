@@ -44,7 +44,7 @@ Body:----------es--
 <!--#include virtual="include/top.html" -->
 
     El servidor ha cerrado la conexi&oacute;n de red
-    debido a que el navegador no termin&oacute; la solicitud
+    debido a que el navegador no ha finalizado la solicitud
     dentro del tiempo permitido.
 
 <!--#include virtual="include/bottom.html" -->
@@ -128,6 +128,19 @@ Body:----------nl--
 
 <!--#include virtual="include/bottom.html" -->
 ----------nl--
+
+Content-language: nb
+Content-type: text/html; charset=UTF-8
+Body:----------nb--
+<!--#set var="CONTENT_LANGUAGE" value="nb"
+--><!--#set var="TITLE" value="Tidsgrense overskredet!"
+--><!--#include virtual="include/top.html" -->
+
+    Serveren stengte forbindelsen fordi nettleseren ikke avsluttet
+    forespørselen innen tidsgrensen.
+
+<!--#include virtual="include/bottom.html" -->
+----------nb--
 
 Content-language: pl
 Content-type: text/html; charset=UTF-8

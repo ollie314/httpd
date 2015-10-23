@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="es" xml:lang="es"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="es" xml:lang="es"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -148,6 +150,7 @@ delivery to the client</dd>
 headers</dd>
 <dt><a href="mod_heartbeat.html">mod_heartbeat</a></dt><dd>Sends messages with server status to frontend proxy</dd>
 <dt><a href="mod_heartmonitor.html">mod_heartmonitor</a></dt><dd>Centralized monitor for mod_heartbeat origin servers</dd>
+<dt><a href="mod_http2.html">mod_http2</a></dt><dd>Support for the HTTP/2 transport layer</dd>
 <dt><a href="mod_ident.html" id="I" name="I">mod_ident</a></dt><dd>RFC 1413 ident lookups</dd>
 <dt><a href="mod_imagemap.html">mod_imagemap</a></dt><dd>Server-side imagemap processing</dd>
 <dt><a href="mod_include.html">mod_include</a></dt><dd>Server-parsed html documents (Server Side Includes)</dd>
@@ -250,7 +253,7 @@ identifier for each request</dd>
 <dt><a href="mod_version.html" id="V" name="V">mod_version</a></dt><dd>Version dependent configuration</dd>
 <dt><a href="mod_vhost_alias.html">mod_vhost_alias</a></dt><dd>Provides for dynamically configured mass virtual
 hosting</dd>
-<dt><a href="mod_watchdog.html" id="W" name="W">mod_watchdog</a></dt><dd>provides infrastructure for other modules to periodically run 
+<dt><a href="mod_watchdog.html" id="W" name="W">mod_watchdog</a></dt><dd>provides infrastructure for other modules to periodically run
     tasks</dd>
 <dt><a href="mod_xml2enc.html" id="X" name="X">mod_xml2enc</a></dt><dd>Enhanced charset/internationalisation support for libxml2-based
 filter modules</dd>
@@ -265,7 +268,7 @@ filter modules</dd>
 <a href="../tr/mod/" hreflang="tr" rel="alternate" title="Türkçe">&nbsp;tr&nbsp;</a> |
 <a href="../zh-cn/mod/" hreflang="zh-cn" rel="alternate" title="Simplified Chinese">&nbsp;zh-cn&nbsp;</a></p>
 </div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licencia bajo los términos de la <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licencia bajo los términos de la <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Módulos</a> | <a href="../mod/quickreference.html">Directivas</a> | <a href="http://wiki.apache.org/httpd/FAQ">Preguntas Frecuentes</a> | <a href="../glossary.html">Glosario</a> | <a href="../sitemap.html">Mapa de este sitio web</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

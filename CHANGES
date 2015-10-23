@@ -1,36 +1,170 @@
                                                          -*- coding: utf-8 -*-
 Changes with Apache 2.5.0
-  
-  *) SECURITY: CVE-2014-3583 (cve.mitre.org)
-     mod_proxy_fcgi: Fix a potential crash with response headers' size above 
-     8K. [Teguh <chain rop.io>, Yann Ylavic, Jeff Trawick]
 
-  *) mod_proxy_fcgi, mod_authnz_fcgi: stop reading the response and issue an
-     error when parsing or forwarding the response fails. [Yann Ylavic]
+  *) core: add ap_get_protocol_upgrades() to retrieve the list of protocols
+     that a client could possibly upgrade to. Use in first request on a 
+     connection to announce protocol choices.
+     [Stefan Eissing]
 
+  *) mod_http2: reworked deallocation on connection shutdown and worker
+     abort. Separate parent pool for all workers. worker threads are joined
+     on planned worker shutdown.
+     [Yann Ylavic, Stefan Eissing]
+     
+  *) mod_ssl: when receiving requests for other virtual hosts than the handshake
+     server, the SSL parameters are checked for equality. With equal 
+     configuration, requests are passed for processing. Any change will trigger
+     the old behaviour of "421 Misdirected Request".
+     SSL now remembers the cipher suite that was used for the last handshake.
+     This is compared against for any vhost/directory cipher specification. 
+     Detailed examination of renegotiation is only done when these do not
+     match.
+     Renegotiation is 403ed when a master connection is present. Exact reason
+     is given additionally in a request note.
+     [Stefan Eissing]
+     
+  *) core: Limit to ten the number of tolerated empty lines between request,
+     and consume them before the pipelining check to avoid possible response
+     delay when reading the next request without flushing.  [Yann Ylavic]
+
+  *) mod_session: Introduce SessionExpiryUpdateInterval which allows to
+     configure the session/cookie expiry's update interval. PR 57300.
+     [Paul Spangler <paul.spangler ni.com>]
+
+  *) mod_ssl: Extend expression parser registration to support ssl variables
+     in any expression using mod_rewrite syntax "%{SSL:VARNAME}" or function
+     syntax "ssl(VARIABLE)". [Rainer Jung]
+
+  *) core: Extend support for asynchronous write completion from the
+     network filter to any connection or request filter. [Graham Leggett]
+
+  *) mpm_event: Free memory earlier when shutting down processes.
+     [Stefan Fritsch]
+
+  *) mod_ssl: Make the output filter more friendly with deferred write and
+     response pipelining. [Yann Ylavic, Joe Orton]
+
+  *) core/util_script: relax alphanumeric filter of environment variable names
+     on Windows to allow '(' and ')' for passing PROGRAMFILES(X86) et.al.
+     unadulterated in 64 bit versions of Windows. PR 46751.  
+     [John <john leineweb de>]
+
+  *) mod_logio: Fix logging of %^FB (time to first byte) on the first request on
+     an SSL connection.  PR 58454.  
+     [Konstantin J. Chernov <k.j.chernov gmail.com>]
+
+  *) mod_proxy: Fix ProxySourceAddress binding failure with AH00938.
+     PR 56687.  [Arne de Bruijn <apache arbruijn.dds.nl>
+
+  *) mod_proxy: don't recyle backend announced "Connection: close" connections
+     to avoid reusing it should the close be effective after some new request
+     is ready to be sent.  [Yann Ylavic]
+
+  *) mod_auth_digest: remove AuthDigestEnableQueryStringHack which is no
+     more documented since dec 2012 (r1415960). [Christophe Jaillet]
+
+  *) mod_slotmem_shm: Fix slots/SHM files names on restart for systems that
+     can't create new (clear) slots while previous children gracefully stopping
+     still use the old ones (e.g. Windows, OS2). mod_proxy_balancer failed to
+     restart whenever the number of configured balancers/members changed during
+     restart.  PR 58024.  [Yann Ylavic]
+
+  *) mod_autoindex: Allow autoindexes when neither mod_dir nor mod_mime are
+     loaded. [Eric Covener]
+
+  *) mod_charset_lite: On EBCDIC platforms, make sure mod_charset_lite runs
+     after other resource-level filters. [Eric Covener]
+
+  *) mod_dir: Responses that go through "FallbackResource" might appear to
+     hang due to unterminated chunked encoding. PR58292. [Eric Covener]
+
+  *) mod_socache_memcache: Add the 'MemcacheConnTTL' directive to control how 
+     long to keep idle connections with the memcache server(s).
+     Change default value from 600 usec (!) to 15 sec. PR 58091
+     [Christophe Jaillet]
+
+  *) mod_rewrite:  Allow cookies set by mod_rewrite to contain ':' by accepting
+     ';' as an alternate separator.  PR47241. 
+     [<bugzilla schermesser com>, Eric Covener]
+
+  *) apxs: Add HTTPD_VERSION and HTTPD_MMN to the variables available with 
+     apxs -q. PR58202. [Daniel Shahaf <danielsh apache.org>]
+
+  *) mod_h2: added donated http/2 implementation to build system. Similar
+     configuration options to mod_ssl. [Stefan Eissing]
+
+  *) mod_authz_dbd: Avoid a crash when lacking correct DB access permissions.
+     PR 57868. [Jose Kahan <jose w3.org>, Yann Ylavic]
+
+  *) mod_alias: Limit Redirect expressions to directory (Location) context
+     and redirect statuses (implicit or explicit).
+     [Yann Ylavic, Ruediger Pluem]
+
+  *) mod_substitute: Fix configuraton merge order.
+     PR 57641 [<Marc.Stern approach.be>]
+
+  *) mod_ssl: When SSLVerify is disabled (NONE), don't force a renegotiation if
+     the SSLVerifyDepth applied with the default/handshaken vhost differs from
+     the one applicable with the finally selected vhost.  [Yann Ylavic]
+     
+  *) mod_ssl: add ALPN support by allowing other modules to register callbacks
+     for negotiation of the application layer protocol.  PR 52210.
+     [Matthew Steele <mdsteele google com>, Joe Orton, Jim Jagielski,
+      Stefan Eissing <stefan eissing org>, Rainer Jung, Ruediger Pluem,
+      Kaspar Brand]
+
+  *) http: Don't remove the Content-Length of zero from a HEAD response if
+     it comes from an origin server, module or script.  [Yann Ylavic]
+
+  *) core/util_script: make REDIRECT_URL a full URL.  PR 57785. [Nick Kew]
+
+  *) http: Add support for RFC2324/RFC7168. [Graham Leggett]
+
+  *) mod_proxy: Fix a race condition that caused a failed worker to be retried
+     before the retry period is over. [Ruediger Pluem]
+
+  *) mod_rewrite: Add support for starting External Rewriting Programs
+     as non-root user on UNIX systems by specifying username and group name
+     as third argument of RewriteMap directive. [Jan Kaluza]
+
+  *) mod_authn_core: Add expression support to AuthName and AuthType.
+     [Graham Leggett]
+
+  *) suexec: Filter out the HTTP_PROXY environment variable because it is
+     treated as alias for http_proxy by some programs. [Stefan Fritsch]
+
+  *) mod_proxy_http: Don't establish or reuse a backend connection before pre-
+     fetching the request body, so to minimize the delay between it is supposed
+     to be alive and the first bytes sent: this is a best effort to prevent the
+     backend from closing because of idle or keepalive timeout in the meantime.
+     Also, handle a new "proxy-flushall" environment variable which allows to
+     flush any forwarded body data immediately. PR 56541+37920. [Yann Ylavic]
+
+  *) core: Define and UnDefine are no longer permitted in
+     directory context. Previously they would always be evaulated
+     as the configuration was read without regard for the directory
+     context. [Eric Covener]
+
+  *) config: For directives that do not expect any arguments, enforce
+     that none are specified in the configuration file. 
+     [Joachim Zobel <jzobel heute-morgen.de>, Eric Covener]
+
+  *) mod_rewrite: Improve 'bad flag delimeters' startup error by showing
+     how the input was tokenized.  PR 56528. [Edward Lu <Chaosed0 gmail.com>]
+
+  *) mod_proxy: Don't put non balancer-member workers in error state by
+     default for connection or 500/503 errors, and honor status=+I for
+     any error.  PR 48388.  [Yann Ylavic]
+
+  *) mod_socache_memcache: Pass expiration time through to memcached. PR 55445.
+     [Faidon Liambotis <paravoid debian.org>, Joe Orton]
+
+  *) ap_expr: Add filemod function for checking file modification dates
+     [Daniel Gruno]
+     
   *) mod_authnz_ldap: Resolve crashes with LDAP authz and non-LDAP authn since 
      r1608202. [Eric Covener]
  
-  *) core: Support custom ErrorDocuments for HTTP 501 and 414 status codes.
-     PR 57167 [Edward Lu <Chaosed0 gmail.com>]
-
-  *) mod_proxy_connect: Don't issue AH02447 on sockets hangups, let the read
-     determine whether it is a normal close or a real error. PR 57168. [Yann
-     Ylavic]
-
-  *) mod_proxy_wstunnel: abort backend connection on polling error to avoid
-     further processing.  [Yann Ylavic]
-
-  *) mod_buffer: Forward flushed input data immediatly and avoid (unlikely)
-     access to freed memory. [Yann Ylavic, Christophe Jaillet]
-
-  *) mod_proxy: Use the correct server name for SNI in case the backend
-     SSL connection itself is established via a proxy server.
-     PR 57139 [Szabolcs Gyurko <szabolcs gyurko.org>]
-
-  *) mod_ssl: Do not crash when looking up SSL related variables during
-     expression evaluation on non SSL connections. PR 57070 [Ruediger Pluem]
-
   *) core: Ensure that httpd exits with an error status when the MPM fails
      to run.  [Yann Ylavic]
 
@@ -59,28 +193,6 @@ Changes with Apache 2.5.0
   
   *) mod_authnz_ldap: Return LDAP connections to the pool before the handler
      is run, instead of waiting until the end of the request. [Eric Covener]
-
-  *) mod_ldap: Be more conservative with the last-used time for
-     LDAPConnectionPoolTTL. PR54587 [Eric Covener]
-
-  *) mod_deflate: Don't fail when flushing inflated data to the user-agent
-     and that coincides with the end of stream ("Zlib error flushing inflate
-     buffer"). PR 56196. [Christoph Fausak <christoph fausak glueckkanja.com>]
-
-  *) mod_proxy: Don't limit the size of the connectable Unix Domain Socket
-     paths. [Christophe Jaillet, Yann Ylavic]
-
-  *) mod_ssl: dump SSL IO/state for the write side of the connection(s),
-     like reads (level TRACE4). [Yann Ylavic]
-
-  *) mod_proxy: Shutdown (eg. close notify) the backend connection before
-     closing. [Yann Ylavic] 
-
-  *) mpm_event[opt]: Send the SSL close notify alert when the KeepAliveTimeout
-     expires. PR54998. [Yann Ylavic] 
-
-  *) mod_ssl: Ensure that the SSL close notify alert is flushed to the client.
-     PR54998. [Tim Kosse <tim.kosse filezilla-project.org>, Yann Ylavic] 
 
   *) mod_log_config: Add GlobalLog to allow a globally defined log to
      be inherited by virtual hosts that define a CustomLog.
@@ -122,10 +234,6 @@ Changes with Apache 2.5.0
 
   *) Add module mod_ssl_ct, which provides an implementation of Certificate
      Transparency (RFC 6962) for httpd.  [Jeff Trawick]
-
-  *) mod_proxy: Preserve original request headers even if they differ
-     from the ones to be forwarded to the backend. PR 45387.
-     [Yann Ylavic]
 
   *) mod_remoteip: Prevent an external proxy from presenting an internal
      proxy. PR 55962. [Mike Rumph]
@@ -201,9 +309,6 @@ Changes with Apache 2.5.0
 
   *) ldap: Support ldaps when using the Microsoft LDAP SDK.
      PR 54626. [Jean-Frederic Clere]
-
-  *) mod_proxy: Add ap_connection_reusable() for checking if a connection
-     is reusable as of this point in processing.  [Jeff Trawick]
 
   *) mod_authnz_ldap: Change default value of AuthLDAPMaxSubGroupDepth to 0
      to avoid performance problems when subgroups aren't in use. [Eric Covener]

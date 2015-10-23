@@ -237,7 +237,7 @@
 
       <highlight language="config">
 LogFormat "%h %l %u %t \"%r\" %&gt;s %b" common
-CustomLog logs/access_log common
+CustomLog "logs/access_log" common
       </highlight>
 
       <p>This defines the <em>nickname</em> <code>common</code> and
@@ -383,7 +383,7 @@ CustomLog logs/access_log common
 
       <highlight language="config">
 LogFormat "%h %l %u %t \"%r\" %&gt;s %b \"%{Referer}i\" \"%{User-agent}i\"" combined
-CustomLog log/access_log combined
+CustomLog "log/access_log" combined
       </highlight>
 
       <p>This format is exactly the same as the Common Log Format,
@@ -436,9 +436,9 @@ CustomLog log/access_log combined
 
       <highlight language="config">
 LogFormat "%h %l %u %t \"%r\" %&gt;s %b" common
-CustomLog logs/access_log common
-CustomLog logs/referer_log "%{Referer}i -&gt; %U"
-CustomLog logs/agent_log "%{User-agent}i"
+CustomLog "logs/access_log" common
+CustomLog "logs/referer_log" "%{Referer}i -&gt; %U"
+CustomLog "logs/agent_log" "%{User-agent}i"
       </highlight>
 
       <p>This example also shows that it is not necessary to define a
@@ -469,7 +469,7 @@ SetEnvIf Remote_Addr "127\.0\.0\.1" dontlog
 # Mark requests for the robots.txt file
 SetEnvIf Request_URI "^/robots\.txt$" dontlog
 # Log what remains
-CustomLog logs/access_log common env=!dontlog
+CustomLog "logs/access_log" common env=!dontlog
       </highlight>
 
       <p>As another example, consider logging requests from
@@ -477,9 +477,9 @@ CustomLog logs/access_log common env=!dontlog
       different log file.</p>
 
       <highlight language="config">
-        SetEnvIf Accept-Language "en" english<br />
-        CustomLog logs/english_log common env=english<br />
-        CustomLog logs/non_english_log common env=!english
+SetEnvIf Accept-Language "en" english<br />
+CustomLog "logs/english_log" common env=english<br />
+CustomLog "logs/non_english_log" common env=!english
       </highlight>
 
       <p>In a caching scenario one would want to know about
@@ -489,7 +489,7 @@ CustomLog logs/access_log common env=!dontlog
       <highlight language="config">
 SetEnv CACHE_MISS 1
 LogFormat "%h %l %u %t "%r " %>s %b %{CACHE_MISS}e" common-cache
-CustomLog logs/access_log common-cache
+CustomLog "logs/access_log" common-cache
       </highlight>
 
       <p><module>mod_cache</module> will run before
@@ -586,17 +586,13 @@ LogFormat "%!200,304,302{Referer}i" refererlog
     can use:</p>
 
     <highlight language="config">
-      CustomLog "|/usr/local/apache/bin/rotatelogs /var/log/access_log 86400" common
+CustomLog "|/usr/local/apache/bin/rotatelogs /var/log/access_log 86400" common
     </highlight>
 
     <p>Notice that quotes are used to enclose the entire command
     that will be called for the pipe. Although these examples are
     for the access log, the same technique can be used for the
     error log.</p>
-
-    <p>A similar but much more flexible log rotation program
-    called <a href="http://www.cronolog.org/">cronolog</a>
-    is available at an external site.</p>
 
     <p>As with conditional logging, piped logs are a very powerful
     tool, but they should not be used where a simpler solution like
@@ -618,6 +614,18 @@ CustomLog "|$/usr/local/apache/bin/rotatelogs   /var/log/access_log 86400" commo
     For compatibility reasons with Apache 2.2 the notation
     "<code>||</code>" is also supported and equivalent to using
     "<code>|</code>".</p>
+
+    <note><title>Windows note</title>
+    <p>Note that on Windows, you may run into problems when running many piped
+    logger processes, especially when HTTPD is running as a service. This is
+    caused by running out of desktop heap space. The desktop heap space given
+    to each service is specified by the third argument to the
+    <code>SharedSection</code> parameter in the
+    HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SessionManager\SubSystems\Windows
+    registry value. <strong>Change this value with care</strong>; the normal
+    caveats for changing the Windows registry apply, but you might also exhaust
+    the desktop heap pool if the number is adjusted too high.</p>
+    </note>
   </section>
 
   <section id="virtualhost">
@@ -656,7 +664,7 @@ CustomLog "|$/usr/local/apache/bin/rotatelogs   /var/log/access_log 86400" commo
 
     <highlight language="config">
 LogFormat "%v %l %u %t \"%r\" %&gt;s %b" comonvhost
-CustomLog logs/access_log comonvhost
+CustomLog "logs/access_log" comonvhost
     </highlight>
 
     <p>The <code>%v</code> is used to log the name of the virtual

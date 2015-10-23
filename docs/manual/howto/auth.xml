@@ -127,7 +127,9 @@ module from each group.</p>
     an <directive module="core">AllowOverride</directive> directive like the
     following:</p>
 
-    <highlight language="config">AllowOverride AuthConfig</highlight>
+    <highlight language="config">
+AllowOverride AuthConfig
+    </highlight>
 
     <p>Or, if you are just going to put the directives directly in
     your main server configuration file, you will of course need to
@@ -197,14 +199,14 @@ module from each group.</p>
     following directives, either placed in the file
     <code>/usr/local/apache/htdocs/secret/.htaccess</code>, or
     placed in <code>httpd.conf</code> inside a &lt;Directory
-    /usr/local/apache/htdocs/secret&gt; section.</p>
+    "/usr/local/apache/htdocs/secret"&gt; section.</p>
 
     <highlight language="config">
 AuthType Basic
 AuthName "Restricted Files"
 # (Following line optional)
 AuthBasicProvider file
-AuthUserFile /usr/local/apache/passwd/passwords
+AuthUserFile "/usr/local/apache/passwd/passwords"
 Require user rbowen
     </highlight>
 
@@ -309,8 +311,8 @@ AuthType Basic
 AuthName "By Invitation Only"
 # Optional line:
 AuthBasicProvider file
-AuthUserFile /usr/local/apache/passwd/passwords
-AuthGroupFile /usr/local/apache/passwd/groups
+AuthUserFile "/usr/local/apache/passwd/passwords"
+AuthGroupFile "/usr/local/apache/passwd/groups"
 Require group GroupName
     </highlight>
 
@@ -322,7 +324,9 @@ Require group GroupName
     specific. Rather than creating a group file, you can just use
     the following directive:</p>
 
-    <highlight language="config">Require valid-user</highlight>
+    <highlight language="config">
+Require valid-user
+    </highlight>
 
     <p>Using that rather than the <code>Require user rbowen</code>
     line will allow anyone in that is listed in the password file,
@@ -370,11 +374,11 @@ Require group GroupName
     <p>To select a dbm file rather than a text file, for example:</p>
 
     <highlight language="config">
-&lt;Directory /www/docs/private&gt;
+&lt;Directory "/www/docs/private"&gt;
     AuthName "Private"
     AuthType Basic
     AuthBasicProvider dbm
-    AuthDBMUserFile /www/passwords/passwd.dbm
+    AuthDBMUserFile "/www/passwords/passwd.dbm"
     Require valid-user
 &lt;/Directory&gt;
     </highlight>
@@ -393,11 +397,11 @@ Require group GroupName
     file and LDAP based authentication providers are being used.</p>
 
     <highlight language="config">
-&lt;Directory /www/docs/private&gt;
+&lt;Directory "/www/docs/private"&gt;
     AuthName "Private"
     AuthType Basic
     AuthBasicProvider file ldap
-    AuthUserFile /usr/local/apache/passwd/passwords
+    AuthUserFile "/usr/local/apache/passwd/passwords"
     AuthLDAPURL ldap://ldaphost/o=yourorg
     Require valid-user
 &lt;/Directory&gt;
@@ -417,13 +421,13 @@ Require group GroupName
     authorization as well as LDAP group authorization is being used.</p>
 
     <highlight language="config">
-&lt;Directory /www/docs/private&gt;
+&lt;Directory "/www/docs/private"&gt;
     AuthName "Private"
     AuthType Basic
     AuthBasicProvider file
-    AuthUserFile /usr/local/apache/passwd/passwords
+    AuthUserFile "/usr/local/apache/passwd/passwords"
     AuthLDAPURL ldap://ldaphost/o=yourorg
-    AuthGroupFile /usr/local/apache/passwd/groups
+    AuthGroupFile "/usr/local/apache/passwd/groups"
     Require group GroupName
     Require ldap-group cn=mygroup,o=yourorg
 &lt;/Directory&gt;
@@ -503,12 +507,16 @@ Require group GroupName
         that will be called during the authorization stage of the request
         processing. For example:</p>
 
-        <highlight language="config">Require ip <var>address</var></highlight>
+        <highlight language="config">
+Require ip <var>address</var>
+        </highlight>
 
         <p>where <var>address</var> is an IP address (or a partial IP
         address) or:</p>
 
-        <highlight language="config">Require host <var>domain_name</var></highlight>
+        <highlight language="config">
+Require host <var>domain_name</var>
+        </highlight>
 
         <p>where <var>domain_name</var> is a fully qualified domain name
         (or a partial domain name); you may provide multiple addresses or
@@ -597,4 +605,3 @@ Require group GroupName
 </section>
 
 </manualpage>
-

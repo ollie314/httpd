@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -134,7 +136,7 @@ Negotiation</a></li>
     defines a file suffix as <code>type-map</code>; this is best done
     with</p>
 
-<pre class="prettyprint lang-config">AddHandler type-map .var</pre>
+    <pre class="prettyprint lang-config">AddHandler type-map .var</pre>
 
 
     <p>in the server configuration file.</p>
@@ -232,7 +234,7 @@ Negotiation</a></li>
     named by the <code class="directive"><a href="./mod/mod_dir.html#directoryindex">DirectoryIndex</a></code> directive, if the
     server is trying to index a directory. If the configuration files
     specify</p>
-<pre class="prettyprint lang-config">DirectoryIndex index</pre>
+    <pre class="prettyprint lang-config">DirectoryIndex index</pre>
 
     <p>then the server will arbitrate between <code>index.html</code>
     and <code>index.html3</code> if both are present. If neither
@@ -700,7 +702,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/content-negotiatio
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="./mod/">Modules</a> | <a href="./mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="./glossary.html">Glossary</a> | <a href="./sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -31,7 +33,7 @@
 <tr><th><a href="module-dict.html#Status">Status:</a></th><td>Extension</td></tr>
 <tr><th><a href="module-dict.html#ModuleIdentifier">Module Identifier:</a></th><td>proxy_wstunnel_module</td></tr>
 <tr><th><a href="module-dict.html#SourceFile">Source File:</a></th><td>mod_proxy_wstunnel.c</td></tr>
-<tr><th><a href="module-dict.html#Compatibility">Compatibility:</a></th><td>Available for unix in version 2.4.5 and later</td></tr></table>
+<tr><th><a href="module-dict.html#Compatibility">Compatibility:</a></th><td>Available in httpd 2.4.5 and later</td></tr></table>
 <h3>Summary</h3>
 
     <p>This module <em>requires</em> the service of <code class="module"><a href="../mod/mod_proxy.html">mod_proxy</a></code>. It provides support for the tunnelling of web
@@ -43,8 +45,8 @@ Connection: Upgrade</pre>
 
 
 
-    <div class="example"><h3>Proxying requests to websockets server</h3><pre class="prettyprint lang-config">ProxyPass /ws2/  ws://echo.websocket.org/
-ProxyPass /wss2/ wss://echo.websocket.org/</pre>
+    <div class="example"><h3>Proxying requests to websockets server</h3><pre class="prettyprint lang-config">ProxyPass "/ws2/"  "ws://echo.websocket.org/"
+ProxyPass "/wss2/" "wss://echo.websocket.org/"</pre>
 </div>
 
 </div>
@@ -68,10 +70,10 @@ ProxyPass /wss2/ wss://echo.websocket.org/</pre>
 <tr><th><a href="directive-dict.html#Status">Status:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_proxy_wstunnel</td></tr>
 </table>
-    <p>This directive instructs the server to try to create an asynchronous tunnel. 
-    If the current MPM does not support the necessary features, a synchronous 
+    <p>This directive instructs the server to try to create an asynchronous tunnel.
+    If the current MPM does not support the necessary features, a synchronous
     tunnel is used.</p>
-    <div class="note"><h3>Note</h3><p>Async support is experimental and subject 
+    <div class="note"><h3>Note</h3><p>Async support is experimental and subject
     to change.</p></div>
 
 </div>
@@ -85,10 +87,10 @@ ProxyPass /wss2/ wss://echo.websocket.org/</pre>
 <tr><th><a href="directive-dict.html#Status">Status:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_proxy_wstunnel</td></tr>
 </table>
-    <p>If <code class="directive">ProxyWebsocketAsync</code> is enabled, this directive 
+    <p>If <code class="directive">ProxyWebsocketAsync</code> is enabled, this directive
     controls how long the server synchronously waits for more data.</p>
 
-    <div class="note"><h3>Note</h3><p>Async support is experimental and subject 
+    <div class="note"><h3>Note</h3><p>Async support is experimental and subject
     to change. </p></div>
 
 
@@ -103,7 +105,7 @@ ProxyPass /wss2/ wss://echo.websocket.org/</pre>
 <tr><th><a href="directive-dict.html#Status">Status:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_proxy_wstunnel</td></tr>
 </table>
-    <p>This directive imposes a maximum amount of time for the tunnel to be 
+    <p>This directive imposes a maximum amount of time for the tunnel to be
     left open while idle.</p>
 
 </div>
@@ -128,7 +130,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_proxy_wstu
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

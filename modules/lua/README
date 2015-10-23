@@ -1,7 +1,8 @@
 -*- mode:org -*-
 * Requirements:
 ** lua 5.1, 5.2 ( http://www.lua.org/ ) or LuaJIT 2.x ( http://www.luajit.org/ )
-** Apache HTTPD 2.3 ( http://httpd.apache.org/ ) or higher
+** Does NOT work with Lua 5.3 yet
+** Apache HTTPD 2.4 ( http://httpd.apache.org/ ) or higher
 
 * Documentation
   See docs/README
@@ -9,13 +10,6 @@
 * Building
   For now, see docs/building-from-subversion.txt
 
-* To Consider
-  Allow definition of lua_State instances associated with arbitrary
-  pool using the pool's user_data constuct. There would, here, be two
-  types, pooled and singleton. On the other hand, singleton would work
-  fine for almost all cases -- the exception being a process or server
-  pool, and then we could stay singleton anyway and lock around it.
-  
 
 * Task List
 ** TODO Use r->file to determine file, doing rewriting in translate_name   

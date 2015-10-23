@@ -89,11 +89,12 @@
 #define DOTEXE ""
 #endif
 
-#define STATUS_VAR                "SSL_CT_PEER_STATUS"
+#define CLIENT_STATUS_VAR         "SSL_CT_CLIENT_STATUS"
+#define PROXY_STATUS_VAR          "SSL_CT_PROXY_STATUS"
 #define STATUS_VAR_AWARE_VAL      "peer-aware"
 #define STATUS_VAR_UNAWARE_VAL    "peer-unaware"
 
-#define PROXY_SCT_SOURCES_VAR     "SSL_PROXY_SCT_SOURCES"
+#define PROXY_SCT_SOURCES_VAR     "SSL_CT_PROXY_SCT_SOURCES"
 
 #define DAEMON_NAME         "SCT maintenance daemon"
 #define DAEMON_THREAD_NAME  DAEMON_NAME " thread"
@@ -129,6 +130,8 @@ typedef struct ct_server_config {
 
 typedef struct ct_conn_config {
     int peer_ct_aware;
+    int client_handshake;
+    int proxy_handshake;
     /* proxy mode only */
     cert_chain *certs;
     int server_cert_has_sct_list;
@@ -174,6 +177,9 @@ static apr_global_mutex_t *ssl_ct_sct_update;
 
 static int refresh_all_scts(server_rec *s_main, apr_pool_t *p,
                             apr_array_header_t *log_config);
+
+static ct_server_config *copy_ct_server_config(apr_pool_t *p,
+                                               ct_server_config *base);
 
 static apr_thread_t *service_thread;
 
@@ -1963,9 +1969,10 @@ static int ocsp_resp_cb(SSL *ssl, void *arg)
     rd = br->tbsResponseData;
 
     for (i = 0; i < sk_OCSP_SINGLERESP_num(rd->responses); i++) { /* UNDOC */
+        const unsigned char *p;
         X509_EXTENSION *ext;
         int idx;
-        ASN1_OCTET_STRING *oct;
+        ASN1_OCTET_STRING *oct1, *oct2;
 
         single = sk_OCSP_SINGLERESP_value(rd->responses, i); /* UNDOC */
         if (!single) {
@@ -1979,19 +1986,23 @@ static int ocsp_resp_cb(SSL *ssl, void *arg)
             continue;
         }
 
-        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c,
+        ap_log_cerror(APLOG_MARK, APLOG_TRACE2, 0, c,
                       "index of NID_ct_cert_scts: %d", idx);
 
         exts = single->singleExtensions;
 
         ext = sk_X509_EXTENSION_value(exts, idx); /* UNDOC */
-        oct = X509_EXTENSION_get_data(ext); /* UNDOC */
+        oct1 = X509_EXTENSION_get_data(ext); /* UNDOC */
 
-        conncfg->ocsp_has_sct_list = 1;
-        conncfg->peer_ct_aware = 1;
-        conncfg->ocsp_sct_list_size = oct->length - 2;
-        conncfg->ocsp_sct_list = apr_pmemdup(c->pool, oct->data + 2,
-                                             conncfg->ocsp_sct_list_size);
+        p = oct1->data;
+        if ((oct2 = d2i_ASN1_OCTET_STRING(NULL, &p, oct1->length)) != NULL) {
+            conncfg->ocsp_has_sct_list = 1;
+            conncfg->peer_ct_aware = 1;
+            conncfg->ocsp_sct_list_size = oct2->length;
+            conncfg->ocsp_sct_list = apr_pmemdup(c->pool, oct2->data,
+                                                 conncfg->ocsp_sct_list_size);
+            ASN1_OCTET_STRING_free(oct2);
+        }
     }
 
     OCSP_RESPONSE_free(rsp); /* UNDOC */
@@ -2329,8 +2340,17 @@ static void tlsext_cb(SSL *ssl, int client_server, int type,
     }
 }
 
-static int ssl_ct_pre_handshake(conn_rec *c, SSL *ssl)
+static int ssl_ct_pre_handshake(conn_rec *c, SSL *ssl, int is_proxy)
 {
+    ct_conn_config *conncfg = get_conn_config(c);
+
+    if (is_proxy) {
+        conncfg->proxy_handshake = 1;
+    }
+    else {
+        conncfg->client_handshake = 1;
+    }
+
     ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c, "client connected (pre-handshake)");
 
     SSL_set_tlsext_status_type(ssl, TLSEXT_STATUSTYPE_ocsp); /* UNDOC */
@@ -2351,6 +2371,23 @@ static int ssl_ct_init_server(server_rec *s, apr_pool_t *p, int is_proxy,
     ct_callback_info *cbi = apr_pcalloc(p, sizeof *cbi);
     ct_server_config *sconf = ap_get_module_config(s->module_config,
                                                    &ssl_ct_module);
+
+    if (s != ap_server_conf) {
+        ct_server_config *main_conf = 
+            ap_get_module_config(ap_server_conf->module_config,
+                                 &ssl_ct_module);
+
+        if (sconf == main_conf) {
+            /* There weren't any directives for this module in the vhost,
+             * so core httpd gave us the global scope's module config.
+             * We need to be able to represent some mod_ssl-related
+             * config (certs) that are generally configured in the vhost,
+             * so we have to create a vhost-specific module config.
+             */
+            sconf = copy_ct_server_config(p, main_conf);
+            ap_set_module_config(s->module_config, &ssl_ct_module, sconf);
+        }
+    }
 
     cbi->s = s;
 
@@ -2398,11 +2435,13 @@ static int ssl_ct_post_read_request(request_rec *r)
     ct_conn_config *conncfg =
       ap_get_module_config(r->connection->conn_config, &ssl_ct_module);
 
-    if (conncfg && conncfg->peer_ct_aware) {
-        apr_table_set(r->subprocess_env, STATUS_VAR, STATUS_VAR_AWARE_VAL);
-    }
-    else {
-        apr_table_set(r->subprocess_env, STATUS_VAR, STATUS_VAR_UNAWARE_VAL);
+    if (conncfg) {
+        if (conncfg->client_handshake) {
+            apr_table_set(r->subprocess_env, CLIENT_STATUS_VAR,
+                          conncfg->peer_ct_aware ?
+                              STATUS_VAR_AWARE_VAL : STATUS_VAR_UNAWARE_VAL);
+        }
+        /* else no SSL on this client connection */
     }
 
     return DECLINED;
@@ -2594,6 +2633,9 @@ static void *merge_ct_server_config(apr_pool_t *p, void *basev, void *virtv)
 
     conf = (ct_server_config *)apr_pmemdup(p, virt, sizeof(ct_server_config));
 
+    /* copy non-per-vhost fields from base (other than a few that aren't
+     * referenced from per-vhost config)
+     */
     conf->sct_storage = base->sct_storage;
     conf->audit_storage = base->audit_storage;
     conf->ct_exe = base->ct_exe;
@@ -2611,6 +2653,18 @@ static void *merge_ct_server_config(apr_pool_t *p, void *basev, void *virtv)
     return conf;
 }
 
+static ct_server_config *copy_ct_server_config(apr_pool_t *p,
+                                               ct_server_config *base)
+{
+    /* make a copy of the existing server config and initialize anything
+     * that is per-vhost
+     */
+    ct_server_config *sconf = 
+        (ct_server_config *)apr_pmemdup(p, base, sizeof(ct_server_config));
+    sconf->server_cert_info = NULL;
+    return sconf;
+}
+
 static int ssl_ct_detach_backend(request_rec *r,
                                  proxy_conn_rec *backend)
 {
@@ -2626,29 +2680,30 @@ static int ssl_ct_detach_backend(request_rec *r,
                       conncfg->serverhello_has_sct_list,
                       conncfg->ocsp_has_sct_list);
 
-        apr_table_set(r->subprocess_env, STATUS_VAR,
-                      conncfg->peer_ct_aware ? STATUS_VAR_AWARE_VAL : STATUS_VAR_UNAWARE_VAL);
+        if (conncfg->proxy_handshake) {
+            apr_table_set(r->subprocess_env, PROXY_STATUS_VAR,
+                          conncfg->peer_ct_aware ?
+                              STATUS_VAR_AWARE_VAL : STATUS_VAR_UNAWARE_VAL);
 
-        list = apr_pstrcat(r->pool,
-                           conncfg->server_cert_has_sct_list ? "certext," : "",
-                           conncfg->serverhello_has_sct_list ? "tlsext," : "",
-                           conncfg->ocsp_has_sct_list ? "ocsp" : "",
-                           NULL);
-        if (*list) {
-            last = list + strlen(list) - 1;
-            if (*last == ',') {
-                *last = '\0';
+            list = apr_pstrcat(r->pool,
+                               conncfg->server_cert_has_sct_list ? "certext," : "",
+                               conncfg->serverhello_has_sct_list ? "tlsext," : "",
+                               conncfg->ocsp_has_sct_list ? "ocsp" : "",
+                               NULL);
+            if (*list) {
+                last = list + strlen(list) - 1;
+                if (*last == ',') {
+                    *last = '\0';
+                }
             }
-        }
 
-        apr_table_set(r->subprocess_env, PROXY_SCT_SOURCES_VAR, list);
+            apr_table_set(r->subprocess_env, PROXY_SCT_SOURCES_VAR, list);
+        }
     }
     else {
-        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r,
-                      "No backend connection available in "
-                      "ssl_ct_detach_backend(); assuming peer unaware");
-        apr_table_set(r->subprocess_env, STATUS_VAR,
-                      STATUS_VAR_UNAWARE_VAL);
+        /* why here?  some odd error path? */
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                      "No backend connection available in ssl_ct_detach_backend()");
     }
 
     return OK;

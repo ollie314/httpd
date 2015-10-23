@@ -216,6 +216,15 @@
     <tr><td><code>%T</code></td>
         <td>The time taken to serve the request, in seconds.</td></tr>
 
+    <tr><td><code>%{<var>UNIT</var>}T</code></td>
+        <td>The time taken to serve the request, in a time unit given by
+        <code>UNIT</code>. Valid units are <code>ms</code> for milliseconds,
+        <code>us</code> for microseconds, and <code>s</code> for seconds.
+        Using <code>s</code> gives the same result as <code>%T</code>
+        without any format; using <code>us</code> gives the same result
+        as <code>%D</code>. Combining <code>%T</code> with a unit is
+        available in 2.4.13 and later.</td></tr>
+
     <tr><td><code>%u</code></td>
         <td>Remote user if the request was authenticated. May be bogus if return status
         (<code>%s</code>) is 401 (unauthorized).</td></tr>
@@ -253,8 +262,9 @@
         You need to enable <module>mod_logio</module> to use this.</td></tr>
 
     <tr><td><code>%O</code></td>
-        <td>Bytes sent, including headers. Cannot be zero. You need to
-        enable <module>mod_logio</module> to use this.</td></tr>
+        <td>Bytes sent, including headers. May be zero in rare cases
+        such as when a request is aborted before a response is sent.
+        You need to enable <module>mod_logio</module> to use this.</td></tr>
 
     <tr><td><code>%S</code></td>
         <td>Bytes transferred (received and sent), including request and headers,
@@ -343,9 +353,9 @@
 
       <note>
       <p>Note: The '^' character at the start of three-character formats
-      has no significance, but it must be the first character of any newly 
-      added three-character format to avoid potential conflicts with log 
-      formats that use literals adjacent to a format specifier, such as 
+      has no significance, but it must be the first character of any newly
+      added three-character format to avoid potential conflicts with log
+      formats that use literals adjacent to a format specifier, such as
       "%Dus".</p>
       </note>
 
@@ -417,7 +427,7 @@
 <directivesynopsis>
 <name>CustomLog</name>
 <description>Sets filename and format of log file</description>
-<syntax>CustomLog  <var>file</var>|<var>pipe</var>
+<syntax>CustomLog  <var>file</var>|<var>pipe</var>|<var>provider</var>
 <var>format</var>|<var>nickname</var>
 [env=[!]<var>environment-variable</var>|
 expr=<var>expression</var>]</syntax>
@@ -456,6 +466,20 @@ expr=<var>expression</var>]</syntax>
         may allow the use of back slashes. In general it is a good idea to always
         use forward slashes throughout the configuration files.</p>
       </note></dd>
+      <dt><var>provider</var></dt>
+      <dd>Modules implementing ErrorLog providers can also be used as a target
+      for CustomLog messages. To use ErrorLog provider as a target,
+      "provider:argument" syntax must be used. You can for example use
+      <module>mod_journald</module> or <module>mod_syslog</module>
+      as a provider:
+    <highlight language="config">
+# CustomLog logging to journald
+CustomLog "journald" "%h %l %u %t \"%r\" %&gt;s %b"
+
+# CustomLog logging to syslog with "user" facility
+CustomLog "syslog:user" "%h %l %u %t \"%r\" %&gt;s %b"
+    </highlight>
+      </dd>
     </dl>
 
     <p>The second argument specifies what will be written to the
@@ -470,10 +494,10 @@ expr=<var>expression</var>]</syntax>
     <highlight language="config">
 # CustomLog with format nickname
 LogFormat "%h %l %u %t \"%r\" %&gt;s %b" common
-CustomLog logs/access_log common
+CustomLog "logs/access_log" common
 
 # CustomLog with explicit format string
-CustomLog logs/access_log "%h %l %u %t \"%r\" %&gt;s %b"
+CustomLog "logs/access_log" "%h %l %u %t \"%r\" %&gt;s %b"
     </highlight>
 
     <p>The third argument is optional and controls whether or
@@ -495,8 +519,8 @@ CustomLog logs/access_log "%h %l %u %t \"%r\" %&gt;s %b"
 
     <highlight language="config">
 SetEnvIf Request_URI \.gif$ gif-image
-CustomLog gif-requests.log common env=gif-image
-CustomLog nongif-requests.log common env=!gif-image
+CustomLog "gif-requests.log" common env=gif-image
+CustomLog "nongif-requests.log" common env=!gif-image
     </highlight>
 
     <p>Or, to reproduce the behavior of the old RefererIgnore
@@ -504,7 +528,7 @@ CustomLog nongif-requests.log common env=!gif-image
 
     <highlight language="config">
 SetEnvIf Referer example\.com localreferer
-CustomLog referer.log referer env=!localreferer
+CustomLog "referer.log" referer env=!localreferer
     </highlight>
 </usage>
 </directivesynopsis>
@@ -553,7 +577,7 @@ CustomLog referer.log referer env=!localreferer
       LogFormat "%v %h %l %u %t \"%r\" %&gt;s %b" vhost_common
       </highlight>
     </example>
-    
+
 </usage>
 </directivesynopsis>
 
@@ -577,7 +601,7 @@ CustomLog referer.log referer env=!localreferer
     <example><title>Example</title>
     <highlight language="config">
 LogFormat "%h %l %u %t \"%r\" %&gt;s %b \"%{Referer}i\" \"%{User-agent}i\""
-TransferLog logs/access_log
+TransferLog "logs/access_log"
       </highlight>
     </example>
 </usage>

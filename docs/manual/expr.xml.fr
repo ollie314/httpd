@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="ISO-8859-1" ?>
 <!DOCTYPE manualpage SYSTEM "./style/manualpage.dtd">
 <?xml-stylesheet type="text/xsl" href="./style/manual.fr.xsl"?>
-<!-- English Revision : 1636189 -->
+<!-- English Revision: 1673945 -->
 <!-- French translation : Lucien GENTIS -->
 <!-- Reviewed by : Vincent Deffontaines -->
 
@@ -47,10 +47,16 @@
 <seealso><directive module="core" type="section">If</directive></seealso>
 <seealso><directive module="core" type="section">ElseIf</directive></seealso>
 <seealso><directive module="core" type="section">Else</directive></seealso>
+<seealso><directive module="core" type="section">ErrorDocument</directive></seealso>
+<seealso><directive module="mod_alias">Alias</directive></seealso>
+<seealso><directive module="mod_alias">ScriptAlias</directive></seealso>
+<seealso><directive module="mod_alias">Redirect</directive></seealso>
 <seealso><directive module="mod_auth_basic">AuthBasicFake</directive></seealso>
 <seealso><directive module="mod_auth_form">AuthFormLoginRequiredLocation</directive></seealso>
 <seealso><directive module="mod_auth_form">AuthFormLoginSuccessLocation</directive></seealso>
 <seealso><directive module="mod_auth_form">AuthFormLogoutLocation</directive></seealso>
+<seealso><directive module="mod_authn_core">AuthName</directive></seealso>
+<seealso><directive module="mod_authn_core">AuthType</directive></seealso>
 <seealso><directive module="mod_rewrite">RewriteCond</directive></seealso>
 <seealso><directive module="mod_setenvif">SetEnvIfExpr</directive></seealso>
 <seealso><directive module="mod_headers">Header</directive></seealso>
@@ -143,7 +149,7 @@ variable    ::= "<strong>%{</strong>" varname "<strong>}</strong>"
 
 rebackref   ::= "<strong>$</strong>" [0-9]
 
-function     ::= funcname "<strong>(</strong>" word "<strong>)</strong>"
+function     ::= funcname "<strong>(</strong>" wordlist "<strong>)</strong>"
 
 listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"
 </pre>
@@ -234,8 +240,7 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"
         <td>Le nom d'h&ocirc;te de l'h&ocirc;te distant</td></tr>
     <tr><td><code>REMOTE_USER</code></td>
         <td>Le nom de l'utilisateur authentifi&eacute;, s'il existe (non
-	disponible &agrave; l'int&eacute;rieur d'un bloc <directive>&lt;If
-	&gt;</directive>)</td></tr>
+	disponible &agrave; l'int&eacute;rieur d'un bloc <directive>&lt;If&gt;</directive>)</td></tr>
     <tr><td><code>REMOTE_IDENT</code></td>
         <td>Le nom de l'utilisateur d&eacute;fini par <module>mod_ident</module></td></tr>
     <tr><td><code>SERVER_NAME</code></td>
@@ -272,8 +277,7 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"
 	"<code>basic</code>")</td></tr>
     <tr><td><code>CONTENT_TYPE</code></td>
         <td>Le type de contenu de la r&eacute;ponse (non
-	disponible &agrave; l'int&eacute;rieur d'un bloc <directive>&lt;If
-	&gt;</directive>)</td></tr>
+	disponible &agrave; l'int&eacute;rieur d'un bloc <directive>&lt;If&gt;</directive>)</td></tr>
     <tr><td><code>HANDLER</code></td>
         <td>Le nom du <a href="handler.html">gestionnaire</a> qui a
 	g&eacute;n&eacute;r&eacute; la r&eacute;ponse</td></tr>
@@ -285,8 +289,7 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"
 	"<code>off</code>" dans le cas contraire</td></tr>
     <tr><td><code>REQUEST_STATUS</code></td>
         <td>Le code d'erreur HTTP de la requ&ecirc;te (non
-	disponible &agrave; l'int&eacute;rieur d'un bloc <directive>&lt;If
-	&gt;</directive>)</td></tr>
+	disponible &agrave; l'int&eacute;rieur d'un bloc <directive>&lt;If&gt;</directive>)</td></tr>
     <tr><td><code>REQUEST_LOG_ID</code></td>
         <td>L'identifiant du message d'erreur associ&eacute; &agrave; la requ&ecirc;te (voir
 	la directive <directive
@@ -511,7 +514,9 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"
         <td>Identique &agrave; <code>req</code>, mais les noms
 	d'en-t&ecirc;te correspondants ne seront pas ajout&eacute;s &agrave; l'en-t&ecirc;te Vary</td><td></td></tr>
     <tr><td><code>resp</code></td>
-        <td>Lit l'en-t&ecirc;te de r&eacute;ponse HTTP</td><td></td></tr>
+        <td>Lit l'en-t&ecirc;te de r&eacute;ponse HTTP (la plupart des
+	en-t&ecirc;te de la r&eacute;ponse ne sont pas encore d&eacute;finis pendant
+	l'ex&eacute;cution de la directive <directive>&lt;If&gt;</directive>)</td><td></td></tr>
     <tr><td><code>reqenv</code></td>
         <td>Recherche une variable d'environnement de requ&ecirc;te (on
 	peut aussi utiliser le raccourci <code>v</code>).</td><td></td></tr>
@@ -547,6 +552,10 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"
     <tr><td><code>file</code></td>
         <td>Lit le contenu d'un fichier (fins de lignes incluses, si
 	elles existent)</td><td>oui</td></tr>
+    <tr><td><code>filemod</code></td>
+        <td>Renvoie la date de derni&egrave;re modification d'un fichier (ou 0
+	si le fichier n'existe pas ou n'est pas un fichier
+	r&eacute;gulier)</td><td>oui</td></tr>
     <tr><td><code>filesize</code></td>
         <td>Renvoie la taille d'un fichier (ou 0 si le fichier n'existe
 	pas ou ne correspond pas &agrave; un fichier
@@ -555,6 +564,9 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"
         <td>Echappe les caract&egrave;res selon la RFC4514 (Echappement des
 	noms distinctifs LDAP - DN) et la RFC4515 (Echappement des
 	filtres LDAP).</td><td></td></tr>
+    <tr><td><code>replace</code></td>
+        <td>replace(cha&icirc;ne, "de", "vers") remplace dans la cha&icirc;ne
+	sp&eacute;cifi&eacute;e toutes les occurrences de "de" par "vers".</td><td></td></tr>
 
     </table>
 
@@ -594,7 +606,7 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"
 # Comparer le nom d'h&ocirc;te avec example.com et rediriger vers
 # www.example.com si le nom d'h&ocirc;te correspond
 &lt;If "%{HTTP_HOST} == 'example.com'"&gt;
-    Redirect permanent / http://www.example.com/
+    Redirect permanent "/" "http://www.example.com/"
 &lt;/If&gt;
 
 # Forcer le type text/plain si un fichier fait l'objet d'une
@@ -610,9 +622,35 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"
 &lt;/Directory&gt;	
 
 # V&eacute;rifie si un en-t&ecirc;te HTTP correspond &agrave; une des valeurs d'une liste
-&lt;If "%{HTTP:X-example-header} in { 'foo', 'bar', 'baz'}"&gt;
+&lt;If "%{HTTP:X-example-header} in { 'foo', 'bar', 'baz' }"&gt;
     La d&eacute;finition de l'en-t&ecirc;te correspond &agrave; une des valeurs recherch&eacute;es
 &lt;/If&gt;
+# Recherche la valeur d'une expression rationnelle dans une variable
+# d'environnement, et renvoie la n&eacute;gation du r&eacute;sultat.
+&lt;If "! reqenv('REDIRECT_FOO') =~ /bar/"&gt;
+    La condition est v&eacute;rifi&eacute;e
+&lt;/If&gt;
+
+# V&eacute;rifie le r&eacute;sultat de la recherche d'une correspondance d'URI dans un
+# contexte de r&eacute;pertoire avec l'option -f
+&lt;Directory "/var/www"&gt;
+    AddEncoding x-gzip gz
+&lt;If "-f '%{REQUEST_FILENAME}.unzipme' &amp;&amp; ! %{HTTP:Accept-Encoding} =~ /gzip/"&gt;
+      SetOutputFilter INFLATE
+&lt;/If&gt;
+&lt;/Directory&gt;
+
+# Exemples de fonctions dans un contexte bool&eacute;en
+&lt;If "md5('foo') == 'acbd18db4cc2f85cedef654fccc4a4d8'"&gt;
+  Header set checksum-matched true
+&lt;/If&gt;
+&lt;If "md5('foo') == replace('md5:XXXd18db4cc2f85cedef654fccc4a4d8', 'md5:XXX', 'acb')&gt;
+  Header set checksum-matched-2 true
+&lt;/If&gt;
+
+# Function example in string context
+Header set foo-checksum "expr=%{md5:foo}"
+
 	</highlight>
 </section>
 

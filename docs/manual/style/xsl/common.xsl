@@ -103,13 +103,10 @@
 <!-- ==================================================================== -->
 <xsl:template name="head">
 <head>
-    <!-- the meta element is necessary for offline handling like CHM -->
-    <xsl:choose>
-    <xsl:when test="$is-chm or $is-zip">
-        <meta http-equiv="Content-Type"
-                 content="text/html; charset={$output-encoding}" />
-    </xsl:when>
-    <xsl:otherwise>
+    &lf;
+    <meta http-equiv="Content-Type"
+          content="text/html; charset={$output-encoding}" />&lf;
+    <xsl:if test="not($is-chm or $is-zip)">
         <xsl:comment>
             &lf;
             <xsl:text>        </xsl:text>
@@ -125,9 +122,8 @@
             <xsl:text>XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX</xsl:text>
             &lf;
             <xsl:text>      </xsl:text>
-        </xsl:comment>
-    </xsl:otherwise>
-    </xsl:choose>&lf;
+        </xsl:comment>&lf;
+    </xsl:if>
 
     <title>
         <xsl:choose>
@@ -421,7 +417,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/]]></xsl:text>&httpd.com
 </xsl:choose>
 <div id="footer">&lf;
     <p class="apache">
-        <xsl:text>Copyright 2014 The Apache Software Foundation.</xsl:text><br />
+        <xsl:text>Copyright 2015 The Apache Software Foundation.</xsl:text><br />
         <xsl:if test="normalize-space($message[@id='before-license'])">
             <xsl:value-of select="$message[@id='before-license']"/>
             <xsl:text> </xsl:text>

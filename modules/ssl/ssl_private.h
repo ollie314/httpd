@@ -57,7 +57,7 @@
 /* The #ifdef macros are only defined AFTER including the above
  * therefore we cannot include these system files at the top  :-(
  */
-#ifdef APR_HAVE_STDLIB_H
+#if APR_HAVE_STDLIB_H
 #include <stdlib.h>
 #endif
 #if APR_HAVE_SYS_TIME_H
@@ -176,15 +176,15 @@
 #endif
 #endif
 
-/* Next Protocol Negotiation */
-#if !defined(OPENSSL_NO_NEXTPROTONEG) && defined(OPENSSL_NPN_NEGOTIATED)
-#define HAVE_TLS_NPN
-#endif
-
 /* Secure Remote Password */
 #if !defined(OPENSSL_NO_SRP) && defined(SSL_CTRL_SET_TLS_EXT_SRP_USERNAME_CB)
 #define HAVE_SRP
 #include <openssl/srp.h>
+#endif
+
+/* ALPN Protocol Negotiation */
+#if defined(TLSEXT_TYPE_application_layer_protocol_negotiation)
+#define HAVE_TLS_ALPN
 #endif
 
 #endif /* !defined(OPENSSL_NO_TLSEXT) && defined(SSL_set_tlsext_host_name) */
@@ -287,16 +287,27 @@ typedef int ssl_opt_t;
  * Define the SSL Protocol options
  */
 #define SSL_PROTOCOL_NONE  (0)
-#define SSL_PROTOCOL_SSLV2 (1<<0)
+#ifndef OPENSSL_NO_SSL3
 #define SSL_PROTOCOL_SSLV3 (1<<1)
+#endif
 #define SSL_PROTOCOL_TLSV1 (1<<2)
+#ifndef OPENSSL_NO_SSL3
+#define SSL_PROTOCOL_BASIC (SSL_PROTOCOL_SSLV3|SSL_PROTOCOL_TLSV1)
+#else
+#define SSL_PROTOCOL_BASIC (SSL_PROTOCOL_TLSV1)
+#endif
 #ifdef HAVE_TLSV1_X
 #define SSL_PROTOCOL_TLSV1_1 (1<<3)
 #define SSL_PROTOCOL_TLSV1_2 (1<<4)
-#define SSL_PROTOCOL_ALL   (SSL_PROTOCOL_SSLV3|SSL_PROTOCOL_TLSV1| \
+#define SSL_PROTOCOL_ALL   (SSL_PROTOCOL_BASIC| \
                             SSL_PROTOCOL_TLSV1_1|SSL_PROTOCOL_TLSV1_2)
 #else
-#define SSL_PROTOCOL_ALL   (SSL_PROTOCOL_SSLV3|SSL_PROTOCOL_TLSV1)
+#define SSL_PROTOCOL_ALL   (SSL_PROTOCOL_BASIC)
+#endif
+#ifndef OPENSSL_NO_SSL3
+#define SSL_PROTOCOL_DEFAULT (SSL_PROTOCOL_ALL & ~SSL_PROTOCOL_SSLV3)
+#else
+#define SSL_PROTOCOL_DEFAULT (SSL_PROTOCOL_ALL)
 #endif
 typedef int ssl_proto_t;
 
@@ -438,13 +449,9 @@ typedef struct {
                      * connection */
     } reneg_state;
 
-#ifdef HAVE_TLS_NPN
-    /* Poor man's inter-module optional hooks for NPN. */
-    apr_array_header_t *npn_advertfns; /* list of ssl_npn_advertise_protos callbacks */
-    apr_array_header_t *npn_negofns; /* list of ssl_npn_proto_negotiated callbacks. */
-#endif
-
     server_rec *server;
+    
+    const char *cipher_suite; /* cipher suite used in last reneg */
 } SSLConnRec;
 
 /* BIG FAT WARNING: SSLModConfigRec has unusual memory lifetime: it is
@@ -505,7 +512,8 @@ typedef struct {
 #ifdef HAVE_OCSP_STAPLING
     const ap_socache_provider_t *stapling_cache;
     ap_socache_instance_t *stapling_cache_context;
-    apr_global_mutex_t   *stapling_mutex;
+    apr_global_mutex_t   *stapling_cache_mutex;
+    apr_global_mutex_t   *stapling_refresh_mutex;
 #endif
 } SSLModConfigRec;
 
@@ -577,6 +585,7 @@ typedef struct {
 #endif
 
     ssl_proto_t  protocol;
+    int protocol_set;
 
     /** config for handling encrypted keys */
     ssl_pphrase_t pphrase_dialog_type;
@@ -648,6 +657,7 @@ struct SSLSrvConfigRec {
 #ifndef OPENSSL_NO_COMP
     BOOL             compression;
 #endif
+    BOOL             session_tickets;
 };
 
 /**
@@ -702,6 +712,7 @@ const char  *ssl_cmd_SSLCARevocationFile(cmd_parms *, void *, const char *);
 const char  *ssl_cmd_SSLCARevocationCheck(cmd_parms *, void *, const char *);
 const char  *ssl_cmd_SSLHonorCipherOrder(cmd_parms *cmd, void *dcfg, int flag);
 const char  *ssl_cmd_SSLCompression(cmd_parms *, void *, int flag);
+const char  *ssl_cmd_SSLSessionTickets(cmd_parms *, void *, int flag);
 const char  *ssl_cmd_SSLVerifyClient(cmd_parms *, void *, const char *);
 const char  *ssl_cmd_SSLVerifyDepth(cmd_parms *, void *, const char *);
 const char  *ssl_cmd_SSLSessionCache(cmd_parms *, void *, const char *);
@@ -794,7 +805,12 @@ int          ssl_callback_ServerNameIndication(SSL *, int *, modssl_ctx_t *);
 int         ssl_callback_SessionTicket(SSL *, unsigned char *, unsigned char *,
                                        EVP_CIPHER_CTX *, HMAC_CTX *, int);
 #endif
-int ssl_callback_AdvertiseNextProtos(SSL *ssl, const unsigned char **data, unsigned int *len, void *arg);
+
+#ifdef HAVE_TLS_ALPN
+int ssl_callback_alpn_select(SSL *ssl, const unsigned char **out,
+                             unsigned char *outlen, const unsigned char *in,
+                             unsigned int inlen, void *arg);
+#endif
 
 /**  Session Cache Support  */
 apr_status_t ssl_scache_init(server_rec *, apr_pool_t *);
@@ -850,6 +866,8 @@ BOOL         ssl_util_path_check(ssl_pathcheck_t, const char *, apr_pool_t *);
 void         ssl_util_thread_setup(apr_pool_t *);
 int          ssl_init_ssl_connection(conn_rec *c, request_rec *r);
 
+BOOL         ssl_util_vhost_matches(const char *servername, server_rec *s);
+
 /**  Pass Phrase Support  */
 apr_status_t ssl_load_encrypted_pkey(server_rec *, apr_pool_t *, int,
                                      const char *, apr_array_header_t **);
@@ -880,7 +898,8 @@ int          ssl_stapling_mutex_reinit(server_rec *, apr_pool_t *);
 
 /* mutex type names for Mutex directive */
 #define SSL_CACHE_MUTEX_TYPE    "ssl-cache"
-#define SSL_STAPLING_MUTEX_TYPE "ssl-stapling"
+#define SSL_STAPLING_CACHE_MUTEX_TYPE "ssl-stapling"
+#define SSL_STAPLING_REFRESH_MUTEX_TYPE "ssl-stapling-refresh"
 
 apr_status_t ssl_die(server_rec *);
 
@@ -921,6 +940,10 @@ void         ssl_var_log_config_register(apr_pool_t *p);
 /* Extract SSL_*_DN_* variables into table 't' from SSL object 'ssl',
  * allocating from 'p': */
 void modssl_var_extract_dns(apr_table_t *t, SSL *ssl, apr_pool_t *p);
+
+/* Extract SSL_*_SAN_* variables (subjectAltName entries) into table 't'
+ * from SSL object 'ssl', allocating from 'p'. */
+void modssl_var_extract_san_entries(apr_table_t *t, SSL *ssl, apr_pool_t *p);
 
 #ifndef OPENSSL_NO_OCSP
 /* Perform OCSP validation of the current cert in the given context.

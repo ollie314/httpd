@@ -146,60 +146,61 @@ static const char* really_last_key = "rewrite_really_last";
 #define REDIRECT_ENVVAR_SCRIPT_URL "REDIRECT_" ENVVAR_SCRIPT_URL
 #define ENVVAR_SCRIPT_URI "SCRIPT_URI"
 
-#define CONDFLAG_NONE               1<<0
-#define CONDFLAG_NOCASE             1<<1
-#define CONDFLAG_NOTMATCH           1<<2
-#define CONDFLAG_ORNEXT             1<<3
-#define CONDFLAG_NOVARY             1<<4
+#define CONDFLAG_NONE               (1<<0)
+#define CONDFLAG_NOCASE             (1<<1)
+#define CONDFLAG_NOTMATCH           (1<<2)
+#define CONDFLAG_ORNEXT             (1<<3)
+#define CONDFLAG_NOVARY             (1<<4)
 
-#define RULEFLAG_NONE               1<<0
-#define RULEFLAG_FORCEREDIRECT      1<<1
-#define RULEFLAG_LASTRULE           1<<2
-#define RULEFLAG_NEWROUND           1<<3
-#define RULEFLAG_CHAIN              1<<4
-#define RULEFLAG_IGNOREONSUBREQ     1<<5
-#define RULEFLAG_NOTMATCH           1<<6
-#define RULEFLAG_PROXY              1<<7
-#define RULEFLAG_PASSTHROUGH        1<<8
-#define RULEFLAG_QSAPPEND           1<<9
-#define RULEFLAG_NOCASE             1<<10
-#define RULEFLAG_NOESCAPE           1<<11
-#define RULEFLAG_NOSUB              1<<12
-#define RULEFLAG_STATUS             1<<13
-#define RULEFLAG_ESCAPEBACKREF      1<<14
-#define RULEFLAG_DISCARDPATHINFO    1<<15
-#define RULEFLAG_QSDISCARD          1<<16
-#define RULEFLAG_END                1<<17
-#define RULEFLAG_ESCAPENOPLUS       1<<18
+#define RULEFLAG_NONE               (1<<0)
+#define RULEFLAG_FORCEREDIRECT      (1<<1)
+#define RULEFLAG_LASTRULE           (1<<2)
+#define RULEFLAG_NEWROUND           (1<<3)
+#define RULEFLAG_CHAIN              (1<<4)
+#define RULEFLAG_IGNOREONSUBREQ     (1<<5)
+#define RULEFLAG_NOTMATCH           (1<<6)
+#define RULEFLAG_PROXY              (1<<7)
+#define RULEFLAG_PASSTHROUGH        (1<<8)
+#define RULEFLAG_QSAPPEND           (1<<9)
+#define RULEFLAG_NOCASE             (1<<10)
+#define RULEFLAG_NOESCAPE           (1<<11)
+#define RULEFLAG_NOSUB              (1<<12)
+#define RULEFLAG_STATUS             (1<<13)
+#define RULEFLAG_ESCAPEBACKREF      (1<<14)
+#define RULEFLAG_DISCARDPATHINFO    (1<<15)
+#define RULEFLAG_QSDISCARD          (1<<16)
+#define RULEFLAG_END                (1<<17)
+#define RULEFLAG_ESCAPENOPLUS       (1<<18)
 
 /* return code of the rewrite rule
  * the result may be escaped - or not
  */
-#define ACTION_NORMAL               1<<0
-#define ACTION_NOESCAPE             1<<1
-#define ACTION_STATUS               1<<2
+#define ACTION_NORMAL               (1<<0)
+#define ACTION_NOESCAPE             (1<<1)
+#define ACTION_STATUS               (1<<2)
 
 
-#define MAPTYPE_TXT                 1<<0
-#define MAPTYPE_DBM                 1<<1
-#define MAPTYPE_PRG                 1<<2
-#define MAPTYPE_INT                 1<<3
-#define MAPTYPE_RND                 1<<4
-#define MAPTYPE_DBD                 1<<5
-#define MAPTYPE_DBD_CACHE           1<<6
+#define MAPTYPE_TXT                 (1<<0)
+#define MAPTYPE_DBM                 (1<<1)
+#define MAPTYPE_PRG                 (1<<2)
+#define MAPTYPE_INT                 (1<<3)
+#define MAPTYPE_RND                 (1<<4)
+#define MAPTYPE_DBD                 (1<<5)
+#define MAPTYPE_DBD_CACHE           (1<<6)
 
-#define ENGINE_DISABLED             1<<0
-#define ENGINE_ENABLED              1<<1
+#define ENGINE_DISABLED             (1<<0)
+#define ENGINE_ENABLED              (1<<1)
 
-#define OPTION_NONE                 1<<0
-#define OPTION_INHERIT              1<<1
-#define OPTION_INHERIT_BEFORE       1<<2
-#define OPTION_NOSLASH              1<<3
-#define OPTION_ANYURI               1<<4
-#define OPTION_MERGEBASE            1<<5
-#define OPTION_INHERIT_DOWN         1<<6
-#define OPTION_INHERIT_DOWN_BEFORE  1<<7
-#define OPTION_IGNORE_INHERIT       1<<8
+#define OPTION_NONE                 (1<<0)
+#define OPTION_INHERIT              (1<<1)
+#define OPTION_INHERIT_BEFORE       (1<<2)
+#define OPTION_NOSLASH              (1<<3)
+#define OPTION_ANYURI               (1<<4)
+#define OPTION_MERGEBASE            (1<<5)
+#define OPTION_INHERIT_DOWN         (1<<6)
+#define OPTION_INHERIT_DOWN_BEFORE  (1<<7)
+#define OPTION_IGNORE_INHERIT       (1<<8)
+#define OPTION_IGNORE_CONTEXT_INFO  (1<<9)
 
 #ifndef RAND_MAX
 #define RAND_MAX 32767
@@ -266,6 +267,8 @@ typedef struct {
     const char *dbdq;              /* SQL SELECT statement for rewritemap */
     const char *checkfile2;        /* filename to check for map existence
                                       NULL if only one file               */
+    const char *user;              /* run RewriteMap program as this user */
+    const char *group;             /* run RewriteMap program as this group */
 } rewritemap_entry;
 
 /* special pattern types for RewriteCond */
@@ -935,7 +938,7 @@ static int prefix_stat(const char *path, apr_pool_t *pool)
 /*
  * substitute the prefix path 'match' in 'input' with 'subst' (RewriteBase)
  */
-static char *subst_prefix_path(request_rec *r, char *input, char *match,
+static char *subst_prefix_path(request_rec *r, char *input, const char *match,
                                const char *subst)
 {
     apr_size_t len = strlen(match);
@@ -1170,6 +1173,7 @@ static void rewrite_child_errfn(apr_pool_t *p, apr_status_t err,
 
 static apr_status_t rewritemap_program_child(apr_pool_t *p,
                                              const char *progname, char **argv,
+                                             const char *user, const char *group,
                                              apr_file_t **fpout,
                                              apr_file_t **fpin)
 {
@@ -1182,6 +1186,8 @@ static apr_status_t rewritemap_program_child(apr_pool_t *p,
                                                   APR_FULL_BLOCK, APR_NO_PIPE))
         && APR_SUCCESS == (rc=apr_procattr_dir_set(procattr,
                                              ap_make_dirstr_parent(p, argv[0])))
+        && (!user || APR_SUCCESS == (rc=apr_procattr_user_set(procattr, user, "")))
+        && (!group || APR_SUCCESS == (rc=apr_procattr_group_set(procattr, group)))
         && APR_SUCCESS == (rc=apr_procattr_cmdtype_set(procattr, APR_PROGRAM))
         && APR_SUCCESS == (rc=apr_procattr_child_errfn_set(procattr,
                                                            rewrite_child_errfn))
@@ -1239,6 +1245,7 @@ static apr_status_t run_rewritemap_programs(server_rec *s, apr_pool_t *p)
         }
 
         rc = rewritemap_program_child(p, map->argv[0], map->argv,
+                                      map->user, map->group,
                                       &fpout, &fpin);
         if (rc != APR_SUCCESS || fpin == NULL || fpout == NULL) {
             ap_log_error(APLOG_MARK, APLOG_ERR, rc, s, APLOGNO(00654)
@@ -1360,9 +1367,16 @@ static char *lookup_map_dbd(request_rec *r, char *key, const char *label)
     const char *errmsg;
     apr_dbd_results_t *res = NULL;
     apr_dbd_row_t *row = NULL;
-    const char *ret = NULL;
+    char *ret = NULL;
     int n = 0;
     ap_dbd_t *db = dbd_acquire(r);
+    
+    if (db == NULL) {
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(02963)
+                      "rewritemap: No db handle available! "
+                      "Check your database access");
+        return NULL;
+   }
 
     stmt = apr_hash_get(db->prepared, label, APR_HASH_KEY_STRING);
 
@@ -1377,12 +1391,14 @@ static char *lookup_map_dbd(request_rec *r, char *key, const char *label)
     while ((rv = apr_dbd_get_row(db->driver, r->pool, res, &row, -1)) == 0) {
         ++n;
         if (ret == NULL) {
-            ret = apr_dbd_get_entry(db->driver, row, 0);
+            ret = apr_pstrdup(r->pool,
+                              apr_dbd_get_entry(db->driver, row, 0));
         }
         else {
             /* randomise crudely amongst multiple results */
             if ((double)rand() < (double)RAND_MAX/(double)n) {
-                ret = apr_dbd_get_entry(db->driver, row, 0);
+                ret = apr_pstrdup(r->pool,
+                                  apr_dbd_get_entry(db->driver, row, 0));
             }
         }
     }
@@ -1395,11 +1411,11 @@ static char *lookup_map_dbd(request_rec *r, char *key, const char *label)
     case 0:
         return NULL;
     case 1:
-        return apr_pstrdup(r->pool, ret);
+        return ret;
     default:
         /* what's a fair rewritelog level for this? */
         rewritelog((r, 3, NULL, "Multiple values found for %s", key));
-        return apr_pstrdup(r->pool, ret);
+        return ret;
     }
 }
 
@@ -2501,10 +2517,18 @@ static void add_cookie(request_rec *r, char *s)
 
     char *tok_cntx;
     char *cookie;
+    /* long-standing default, but can't use ':' in a cookie */
+    const char *sep = ":"; 
 
-    var = apr_strtok(s, ":", &tok_cntx);
-    val = apr_strtok(NULL, ":", &tok_cntx);
-    domain = apr_strtok(NULL, ":", &tok_cntx);
+    /* opt-in to ; separator if first character is a ; */
+    if (s && *s == ';') { 
+        sep = ";"; 
+        s++;
+    }
+
+    var = apr_strtok(s, sep, &tok_cntx);
+    val = apr_strtok(NULL, sep, &tok_cntx);
+    domain = apr_strtok(NULL, sep, &tok_cntx);
 
     if (var && val && domain) {
         request_rec *rmain = r;
@@ -2520,10 +2544,10 @@ static void add_cookie(request_rec *r, char *s)
         if (!data) {
             char *exp_time = NULL;
 
-            expires = apr_strtok(NULL, ":", &tok_cntx);
-            path = expires ? apr_strtok(NULL, ":", &tok_cntx) : NULL;
-            secure = path ? apr_strtok(NULL, ":", &tok_cntx) : NULL;
-            httponly = secure ? apr_strtok(NULL, ":", &tok_cntx) : NULL;
+            expires = apr_strtok(NULL, sep, &tok_cntx);
+            path = expires ? apr_strtok(NULL, sep, &tok_cntx) : NULL;
+            secure = path ? apr_strtok(NULL, sep, &tok_cntx) : NULL;
+            httponly = secure ? apr_strtok(NULL, sep, &tok_cntx) : NULL;
 
             if (expires) {
                 apr_time_exp_t tms;
@@ -2679,7 +2703,7 @@ static apr_status_t rewritelock_remove(void *data)
  * XXX: what an inclined parser. Seems we have to leave it so
  *      for backwards compat. *sigh*
  */
-static int parseargline(char *str, char **a1, char **a2, char **a3)
+static char *parseargline(apr_pool_t *p, char *str, char **a1, char **a2, char **a3)
 {
     char quote;
 
@@ -2704,7 +2728,7 @@ static int parseargline(char *str, char **a1, char **a2, char **a3)
     }
 
     if (!*str) {
-        return 1;
+        return "bad argument line: at least two arguments required";
     }
     *str++ = '\0';
 
@@ -2730,7 +2754,7 @@ static int parseargline(char *str, char **a1, char **a2, char **a3)
 
     if (!*str) {
         *a3 = NULL; /* 3rd argument is optional */
-        return 0;
+        return NULL;
     }
     *str++ = '\0';
 
@@ -2740,7 +2764,7 @@ static int parseargline(char *str, char **a1, char **a2, char **a3)
 
     if (!*str) {
         *a3 = NULL; /* 3rd argument is still optional */
-        return 0;
+        return NULL;
     }
 
     /*
@@ -2759,7 +2783,17 @@ static int parseargline(char *str, char **a1, char **a2, char **a3)
     }
     *str = '\0';
 
-    return 0;
+    if (**a3 != '[') {
+        return apr_psprintf(p, "bad flag delimiters: third argument must begin "
+               "with '[' but found '%c' - too many arguments or rogue "
+               "whitespace?", **a3);
+    }
+    else if ((*a3)[strlen(*a3)-1] != ']') {
+        return apr_psprintf(p, "bad flag delimiters: third argument must end "
+                "with ']' but found '%c' - unintended whitespace within the "
+                "flags definition?", (*a3)[strlen(*a3)-1]);
+    }
+    return NULL;
 }
 
 static void *config_server_create(apr_pool_t *p, server_rec *s)
@@ -2974,6 +3008,9 @@ static const char *cmd_rewriteoptions(cmd_parms *cmd,
         else if (!strcasecmp(w, "mergebase")) {
             options |= OPTION_MERGEBASE;
         }
+        else if (!strcasecmp(w, "ignorecontextinfo")) {
+            options |= OPTION_IGNORE_CONTEXT_INFO;
+        }
         else {
             return apr_pstrcat(cmd->pool, "RewriteOptions: unknown option '",
                                w, "'", NULL);
@@ -3004,7 +3041,7 @@ static const char *cmd_rewriteoptions(cmd_parms *cmd,
 }
 
 static const char *cmd_rewritemap(cmd_parms *cmd, void *dconf, const char *a1,
-                                  const char *a2)
+                                  const char *a2, const char *a3)
 {
     rewrite_server_conf *sconf;
     rewritemap_entry *newmap;
@@ -3110,6 +3147,11 @@ static const char *cmd_rewritemap(cmd_parms *cmd, void *dconf, const char *a1,
 
         newmap->type      = MAPTYPE_PRG;
         newmap->checkfile = newmap->argv[0];
+        if (a3) {
+            char *tok_cntx;
+            newmap->user = apr_strtok(apr_pstrdup(cmd->pool, a3), ":", &tok_cntx);
+            newmap->group = apr_strtok(NULL, ":", &tok_cntx);
+        }
     }
     else if (strncasecmp(a2, "int:", 4) == 0) {
         newmap->type      = MAPTYPE_INT;
@@ -3181,6 +3223,7 @@ static const char *cmd_parseflagfield(apr_pool_t *p, void *cfg, char *key,
     const char *err;
 
     endp = key + strlen(key) - 1;
+    /* This should have been checked before, but just in case... */
     if (*key != '[' || *endp != ']') {
         return "bad flag delimiters";
     }
@@ -3258,9 +3301,7 @@ static const char *cmd_rewritecond(cmd_parms *cmd, void *in_dconf,
     rewrite_server_conf *sconf;
     rewritecond_entry *newcond;
     ap_regex_t *regexp;
-    char *a1;
-    char *a2;
-    char *a3;
+    char *a1 = NULL, *a2 = NULL, *a3 = NULL;
     const char *err;
 
     sconf = ap_get_module_config(cmd->server->module_config, &rewrite_module);
@@ -3278,9 +3319,10 @@ static const char *cmd_rewritecond(cmd_parms *cmd, void *in_dconf,
      * of the argument line. So we can use a1 .. a3 without
      * copying them again.
      */
-    if (parseargline(str, &a1, &a2, &a3)) {
-        return apr_pstrcat(cmd->pool, "RewriteCond: bad argument line '", str,
-                           "'", NULL);
+    if ((err = parseargline(cmd->pool, str, &a1, &a2, &a3))) {
+        return apr_psprintf(cmd->pool, "RewriteCond: %s "
+                "(TestString=%s, CondPattern=%s, flags=%s)",
+                err, a1, a2, a3);
     }
 
     /* arg1: the input string */
@@ -3683,9 +3725,7 @@ static const char *cmd_rewriterule(cmd_parms *cmd, void *in_dconf,
     rewrite_server_conf *sconf;
     rewriterule_entry *newrule;
     ap_regex_t *regexp;
-    char *a1;
-    char *a2;
-    char *a3;
+    char *a1 = NULL, *a2 = NULL, *a3 = NULL;
     const char *err;
 
     sconf = ap_get_module_config(cmd->server->module_config, &rewrite_module);
@@ -3699,9 +3739,10 @@ static const char *cmd_rewriterule(cmd_parms *cmd, void *in_dconf,
     }
 
     /*  parse the argument line ourself */
-    if (parseargline(str, &a1, &a2, &a3)) {
-        return apr_pstrcat(cmd->pool, "RewriteRule: bad argument line '", str,
-                           "'", NULL);
+    if ((err = parseargline(cmd->pool, str, &a1, &a2, &a3))) {
+        return apr_psprintf(cmd->pool, "RewriteRule: %s "
+                "(pattern='%s', substitution='%s', flags='%s')",
+                err, a1, a2, a3);
     }
 
     /* arg3: optional flags field */
@@ -5006,6 +5047,7 @@ static int hook_fixup(request_rec *r)
             return n;
         }
         else {
+            const char *tmpfilename = NULL;
             /* it was finally rewritten to a local path */
 
             /* if someone used the PASSTHROUGH flag in per-dir
@@ -5038,6 +5080,8 @@ static int hook_fixup(request_rec *r)
                             " URL: %s [IGNORING REWRITE]", r->filename));
                 return OK;
             }
+
+            tmpfilename = r->filename;
 
             /* if there is a valid base-URL then substitute
              * the per-dir prefix with this base-URL if the
@@ -5072,6 +5116,27 @@ static int hook_fixup(request_rec *r)
                                     r->filename+l));
 
                         r->filename = apr_pstrdup(r->pool, r->filename+l);
+                    }
+                }
+            }
+
+            /* No base URL, or r->filename wasn't still under dconf->directory
+             * or, r->filename wasn't still under the document root. 
+             * If there's a context document root AND a context prefix, and 
+             * the context document root is a prefix of r->filename, replace.
+             * This allows a relative substitution on a path found by mod_userdir 
+             * or mod_alias without baking in a RewriteBase.
+             */
+            if (tmpfilename == r->filename && 
+                !(dconf->options & OPTION_IGNORE_CONTEXT_INFO)) { 
+                if ((ccp = ap_context_document_root(r)) != NULL) { 
+                    const char *prefix = ap_context_prefix(r);
+                    if (prefix != NULL) { 
+                        rewritelog((r, 2, dconf->directory, "trying to replace "
+                                    "context docroot %s with context prefix %s",
+                                    ccp, prefix));
+                        r->filename = subst_prefix_path(r, r->filename,
+                                ccp, prefix);
                     }
                 }
             }
@@ -5164,8 +5229,8 @@ static const command_rec command_table[] = {
                      "an input string and a to be applied regexp-pattern"),
     AP_INIT_RAW_ARGS("RewriteRule",     cmd_rewriterule,     NULL, OR_FILEINFO,
                      "an URL-applied regexp-pattern and a substitution URL"),
-    AP_INIT_TAKE2(   "RewriteMap",      cmd_rewritemap,      NULL, RSRC_CONF,
-                     "a mapname and a filename"),
+    AP_INIT_TAKE23(   "RewriteMap",      cmd_rewritemap,      NULL, RSRC_CONF,
+                     "a mapname and a filename and options"),
     { NULL }
 };
 

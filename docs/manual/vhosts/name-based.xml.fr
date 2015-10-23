@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='ISO-8859-1' ?>
 <!DOCTYPE manualpage SYSTEM "../style/manualpage.dtd">
 <?xml-stylesheet type="text/xsl" href="../style/manual.fr.xsl"?>
-<!-- English Revision: 1618965 -->
+<!-- English Revision: 1673945 -->
 <!-- French translation by alain B, review by Vincent Deffontaines
 	updated by Lucien GENTIS -->
 
@@ -92,6 +92,13 @@ virtuel basé sur le nom approprié</title>
     >module="core">ServerAlias</directive> avec le nom de serveur
     présent dans la requête.</p>
 
+    <p>Si vous ne définissez pas de directive <directive
+    module="core">ServerName</directive> pour un serveur virtuel à base
+    de nom, le serveur utilisera par défaut le nom de domaine
+    entièrement qualifié (FQDN) déduit du nom d'hôte système. Cette
+    configuration sans nom de serveur explicite peut conduire à des
+    erreurs de choix du serveur virtuel à utiliser et est déconseillée.</p>
+
     <section id="defaultvhost"><title>Le serveur virtuel à base de nom
     par défaut pour une paire adresse IP/port</title>
     <p>Si aucune directive ServerName ou ServerAlias ne correspond dans
@@ -176,12 +183,12 @@ virtuel basé sur le nom approprié</title>
     # serveur par défaut pour *:80
     ServerName www.example.com
     ServerAlias example.com
-    DocumentRoot /www/domain
+    DocumentRoot "/www/domain"
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost *:80&gt;
     ServerName other.example.com
-    DocumentRoot /www/otherdomain
+    DocumentRoot "/www/otherdomain"
 &lt;/VirtualHost&gt;
     </highlight>
 

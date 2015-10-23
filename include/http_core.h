@@ -497,12 +497,7 @@ typedef struct {
     overrides_t override;
     allow_options_t override_opts;
 
-    /* Custom response config. These can contain text or a URL to redirect to.
-     * if response_code_strings is NULL then there are none in the config,
-     * if it's not null then it's allocated to sizeof(char*)*RESPONSE_CODES.
-     * This lets us do quick merges in merge_core_dir_configs().
-     */
-
+    /* Used to be the custom response config. No longer used. */
     char **response_code_strings; /* from ErrorDocument, not from
                                    * ap_custom_response() */
 
@@ -619,10 +614,25 @@ typedef struct {
 
     unsigned int allow_encoded_slashes_set : 1;
     unsigned int decode_encoded_slashes_set : 1;
-    unsigned int d_is_directory : 1;
 
     /** Named back references */
     apr_array_header_t *refs;
+
+#define AP_CGI_PASS_AUTH_OFF     (0)
+#define AP_CGI_PASS_AUTH_ON      (1)
+#define AP_CGI_PASS_AUTH_UNSET   (2)
+    /** CGIPassAuth: Whether HTTP authorization headers will be passed to
+     * scripts as CGI variables; affects all modules calling
+     * ap_add_common_vars(), as well as any others using this field as 
+     * advice
+     */
+    unsigned int cgi_pass_auth : 2;
+
+    /** Custom response config with expression support. The hash table
+     * contains compiled expressions keyed against the custom response
+     * code.
+     */
+    apr_hash_t *response_code_exprs;
 
 } core_dir_config;
 
@@ -697,6 +707,12 @@ typedef struct {
 #define AP_HTTP_EXPECT_STRICT_ENABLE   1
 #define AP_HTTP_EXPECT_STRICT_DISABLE  2
     int http_expect_strict;
+
+
+    apr_array_header_t *protocols;
+    int protocols_honor_order;
+    int async_filter;
+    int async_filter_set:1;
 } core_server_config;
 
 /* for AddOutputFiltersByType in core.c */
@@ -778,6 +794,7 @@ AP_DECLARE_DATA extern ap_filter_rec_t *ap_subreq_core_filter_handle;
 AP_DECLARE_DATA extern ap_filter_rec_t *ap_core_output_filter_handle;
 AP_DECLARE_DATA extern ap_filter_rec_t *ap_content_length_filter_handle;
 AP_DECLARE_DATA extern ap_filter_rec_t *ap_core_input_filter_handle;
+AP_DECLARE_DATA extern ap_filter_rec_t *ap_request_core_filter_handle;
 
 /**
  * This hook provdes a way for modules to provide metrics/statistics about

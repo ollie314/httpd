@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -48,23 +50,23 @@ hosting</td></tr>
       /cgi-bin/script.pl</code> to <code>
       /usr/local/apache2/cgi-bin/script.pl</code> in all cases:</p>
 
-      <pre class="prettyprint lang-config">ScriptAlias /cgi-bin/ /usr/local/apache2/cgi-bin/
-VirtualScriptAlias /never/found/%0/cgi-bin/</pre>
+      <pre class="prettyprint lang-config">ScriptAlias "/cgi-bin/" "/usr/local/apache2/cgi-bin/"
+VirtualScriptAlias "/never/found/%0/cgi-bin/"</pre>
 
     </div>
 </div>
-<div id="quickview"><h3 class="directives">Directives</h3>
+<div id="quickview"><h3>Topics</h3>
+<ul id="topics">
+<li><img alt="" src="../images/down.gif" /> <a href="#interpol">Directory Name Interpolation</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#examples">Examples</a></li>
+</ul><h3 class="directives">Directives</h3>
 <ul id="toc">
 <li><img alt="" src="../images/down.gif" /> <a href="#virtualdocumentroot">VirtualDocumentRoot</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#virtualdocumentrootip">VirtualDocumentRootIP</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#virtualscriptalias">VirtualScriptAlias</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#virtualscriptaliasip">VirtualScriptAliasIP</a></li>
 </ul>
-<h3>Topics</h3>
-<ul id="topics">
-<li><img alt="" src="../images/down.gif" /> <a href="#interpol">Directory Name Interpolation</a></li>
-<li><img alt="" src="../images/down.gif" /> <a href="#examples">Examples</a></li>
-</ul><h3>See also</h3>
+<h3>See also</h3>
 <ul class="seealso">
 <li><code class="directive"><a href="../mod/core.html#usecanonicalname">UseCanonicalName</a></code></li>
 <li><a href="../vhosts/mass.html">Dynamically configured mass
@@ -143,7 +145,7 @@ VirtualScriptAlias /never/found/%0/cgi-bin/</pre>
     following directives in your server configuration file:</p>
 
     <pre class="prettyprint lang-config">UseCanonicalName    Off
-VirtualDocumentRoot /usr/local/apache/vhosts/%0</pre>
+VirtualDocumentRoot "/usr/local/apache/vhosts/%0"</pre>
 
 
     <p>A request for
@@ -158,7 +160,7 @@ VirtualDocumentRoot /usr/local/apache/vhosts/%0</pre>
     following in your configuration file:</p>
 
     <pre class="prettyprint lang-config">UseCanonicalName    Off
-VirtualDocumentRoot /usr/local/apache/vhosts/%3+/%2.1/%2.2/%2.3/%2</pre>
+VirtualDocumentRoot "/usr/local/apache/vhosts/%3+/%2.1/%2.2/%2.3/%2"</pre>
 
 
     <p>A request for
@@ -169,7 +171,7 @@ VirtualDocumentRoot /usr/local/apache/vhosts/%3+/%2.1/%2.2/%2.3/%2</pre>
     <p>A more even spread of files can be achieved by hashing from the
     end of the name, for example: </p>
 
-<pre class="prettyprint lang-config">VirtualDocumentRoot /usr/local/apache/vhosts/%3+/%2.-1/%2.-2/%2.-3/%2</pre>
+<pre class="prettyprint lang-config">VirtualDocumentRoot "/usr/local/apache/vhosts/%3+/%2.-1/%2.-2/%2.-3/%2"</pre>
 
 
     <p>The example request would come from
@@ -177,21 +179,21 @@ VirtualDocumentRoot /usr/local/apache/vhosts/%3+/%2.1/%2.2/%2.3/%2</pre>
 
     <p>Alternatively you might use: </p>
 
-<pre class="prettyprint lang-config">VirtualDocumentRoot /usr/local/apache/vhosts/%3+/%2.1/%2.2/%2.3/%2.4+</pre>
+<pre class="prettyprint lang-config">VirtualDocumentRoot "/usr/local/apache/vhosts/%3+/%2.1/%2.2/%2.3/%2.4+"</pre>
 
 
     <p>The example request would come from
     <code>/usr/local/apache/vhosts/example.com/d/o/m/ain/directory/file.html</code>.</p>
 
-<p> A very common request by users is the ability to point multiple domains to multiple 
-document roots without having to worry about the length or number of parts of the 
+<p> A very common request by users is the ability to point multiple domains to multiple
+document roots without having to worry about the length or number of parts of the
 hostname being requested. If the requested hostname is <code>sub.www.domain.example.com</code>
  instead of simply <code>www.domain.example.com</code>, then using %3+ will result in the document
 root being <code>/usr/local/apache/vhosts/domain.example.com/...</code> instead of the
-intended <code>example.com</code> directory. In such cases, it can be beneficial to use 
-the combination <code>%-2.0.%-1.0</code>, which will always yield the domain name and the 
-tld, for example <code>example.com</code> regardless of the number of subdomains appended 
-to the hostname. As such, one can make a configuration that will direct all first, second 
+intended <code>example.com</code> directory. In such cases, it can be beneficial to use
+the combination <code>%-2.0.%-1.0</code>, which will always yield the domain name and the
+tld, for example <code>example.com</code> regardless of the number of subdomains appended
+to the hostname. As such, one can make a configuration that will direct all first, second
 or third level subdomains to the same directory:
 </p>
 <pre class="prettyprint lang-config">VirtualDocumentRoot "/usr/local/apache/vhosts/%-2.0.%-1.0"</pre>
@@ -205,8 +207,8 @@ or <code>example.com</code> will all point to <code>/usr/local/apache/vhosts/exa
     your configuration file:</p>
 
     <pre class="prettyprint lang-config">UseCanonicalName DNS
-VirtualDocumentRootIP /usr/local/apache/vhosts/%1/%2/%3/%4/docs
-VirtualScriptAliasIP  /usr/local/apache/vhosts/%1/%2/%3/%4/cgi-bin</pre>
+VirtualDocumentRootIP "/usr/local/apache/vhosts/%1/%2/%3/%4/docs"
+VirtualScriptAliasIP  "/usr/local/apache/vhosts/%1/%2/%3/%4/cgi-bin"</pre>
 
 
     <p>A request for
@@ -224,7 +226,7 @@ VirtualScriptAliasIP  /usr/local/apache/vhosts/%1/%2/%3/%4/cgi-bin</pre>
     a <code>%</code> directive, you can work around the problem in
     the following way:</p>
 
-<pre class="prettyprint lang-config">VirtualDocumentRoot /usr/local/apache/vhosts/%2.0.%3.0</pre>
+    <pre class="prettyprint lang-config">VirtualDocumentRoot "/usr/local/apache/vhosts/%2.0.%3.0"</pre>
 
 
     <p>A request for
@@ -258,10 +260,10 @@ for a given virtual host</td></tr>
     cannot be used in the same context as <code class="directive"><a href="#virtualdocumentrootip">VirtualDocumentRootIP</a></code>.</p>
 
 <div class="warning"><h3>Note</h3>
-<code class="directive">VirtualDocumentRoot</code> will override any <code class="directive"><a href="../mod/core.html#documentroot">DocumentRoot</a></code> directives you may have put in the same 
-context or child contexts. Putting a <code class="directive">VirtualDocumentRoot</code> 
-in the global server scope will effectively override <code class="directive"><a href="../mod/core.html#documentroot">DocumentRoot</a></code> directives in any virtual hosts defined later 
-on, unless you set <code class="directive">VirtualDocumentRoot</code> to <code>None</code> 
+<code class="directive">VirtualDocumentRoot</code> will override any <code class="directive"><a href="../mod/core.html#documentroot">DocumentRoot</a></code> directives you may have put in the same
+context or child contexts. Putting a <code class="directive">VirtualDocumentRoot</code>
+in the global server scope will effectively override <code class="directive"><a href="../mod/core.html#documentroot">DocumentRoot</a></code> directives in any virtual hosts defined later
+on, unless you set <code class="directive">VirtualDocumentRoot</code> to <code>None</code>
 in each virtual host.
 </div>
 
@@ -348,7 +350,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_vhost_alia
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

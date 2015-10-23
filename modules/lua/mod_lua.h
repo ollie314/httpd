@@ -43,6 +43,10 @@
 
 /* Allow for Lua 5.2 backwards compatibility */
 #define LUA_COMPAT_ALL
+/* Allow for Lua 5.3 backwards compatibility */
+#define LUA_COMPAT_5_2
+#define LUA_COMPAT_5_1
+#define LUA_COMPAT_MODULE
 
 #include "lua.h"
 #include "lauxlib.h"

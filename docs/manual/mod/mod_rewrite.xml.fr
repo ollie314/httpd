@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE modulesynopsis SYSTEM "../style/modulesynopsis.dtd">
 <?xml-stylesheet type="text/xsl" href="../style/manual.fr.xsl"?>
-<!-- English Revision : 1601532 -->
+<!-- English Revision: 1706989 -->
 <!-- French translation : Lucien GENTIS -->
 <!-- Reviewed by : Vincent Deffontaines -->
 
@@ -294,6 +294,20 @@ pour le moteur de r&eacute;&eacute;criture</description>
       depuis la version 2.4.4 du serveur HTTP Apache.</p>
       </dd>
 
+      <dt><code>IgnoreContextInfo</code></dt>
+      <dd>
+
+      <p>Lors d'une
+      substitution relative dans un contexte de r&eacute;pertoire (htaccess),
+      et si la directive <directive
+      module="mod_rewrite">RewriteBase</directive> n'a pas &eacute;t&eacute; d&eacute;finie,
+      ce module utilise des informations en provenance d'une extension
+      d'URL et du contexte du syst&egrave;me de fichiers pour transformer la
+      sustitution relative en URL. Par exemple, les modules
+      <module>mod_userdir</module> et <module>mod_alias</module>
+      utilisent ces informations de contexte &eacute;tendu.</p>
+      </dd>
+
       </dl>
 </usage>
 
@@ -303,8 +317,7 @@ pour le moteur de r&eacute;&eacute;criture</description>
 <name>RewriteMap</name>
 <description>D&eacute;finit une fonction de mise en correspondance pour la
 recherche de mots-cl&eacute;s</description>
-<syntax>RewriteMap <em>nom de la correspondance</em> <em>type de
-correspondance</em>:<em>source de la correspondance</em>
+<syntax>RewriteMap <em>MapName</em> <em>MapType</em>:<em>MapSource</em> <em>MapTypeOptions</em>
 </syntax>
 <contextlist><context>server config</context><context>virtual host</context>
 </contextlist>
@@ -318,24 +331,21 @@ correspondance</em>:<em>source de la correspondance</em>
       La source utilis&eacute;e pour cette recherche peut &ecirc;tre de plusieurs
       types.</p>
 
-      <p><a id="mapfunc" name="mapfunc"><em>nom de la
-      correspondance</em></a> est le nom de la table de correspondance
+      <p><a id="mapfunc" name="mapfunc"><em>MapName</em></a> est le nom de la table de correspondance
       et servira &agrave; sp&eacute;cifier une fonction de mise en correspondance
       pour les cha&icirc;nes de substitution d'une r&egrave;gle de r&eacute;&eacute;criture selon
       une des constructions suivantes :</p>
 
       <p class="indent">
-        <strong><code>${</code> <em>nom de la
-      correspondance</em> <code>:</code>
+        <strong><code>${</code> <em>MapName</em> <code>:</code>
         <em>mot-cl&eacute;</em> <code>}</code><br />
-         <code>${</code> <em>nom de la
-      correspondance</em> <code>:</code>
+         <code>${</code> <em>MapName</em> <code>:</code>
         <em>mot-cl&eacute;</em> <code>|</code> <em>valeur par d&eacute;faut</em>
         <code>}</code></strong>
       </p>
 
       <p>Lorsqu'une telle construction est rencontr&eacute;e, la table de
-      correspondance <em>Nom de la correspondance</em> est consult&eacute;e
+      correspondance <em>MapName</em> est consult&eacute;e
       et la cl&eacute; <em>mot-cl&eacute;</em> recherch&eacute;e. Si la cl&eacute; est trouv&eacute;e, la
       construction est remplac&eacute;e par
       la <em>valeur de remplacement</em>. Si la cl&eacute; n'est pas trouv&eacute;e,
@@ -349,18 +359,23 @@ correspondance</em>:<em>source de la correspondance</em>
       <directive>RewriteMap</directive> comme suit </p>
 
       <highlight language="config">
-      RewriteMap map-exemple txt:/chemin/vers/fichier/map.txt
+      RewriteMap map-exemple "txt:/chemin/vers/fichier/map.txt"
       </highlight>
 
       <p>Vous pourrez ensuite utiliser cette table dans une
       directive <directive>RewriteRule</directive> comme suit :</p>
 
       <highlight language="config">
-      RewriteRule ^/ex/(.*) ${map-exemple:$1}
+      RewriteRule "^/ex/(.*)" "${map-exemple:$1}"
       </highlight>
 
+      <p>La signification de l'argument <em>MapTypeOptions</em> d&eacute;pend du <em>MapType</em>
+      sp&eacute;cifi&eacute;. Veuillez vous r&eacute;f&eacute;rer au document <a
+      href="../rewrite/rewritemap.html">Utiliser RewriteMap</a> pour
+      plus de d&eacute;tails.</p>
+
       <p>Les combinaisons suivantes pour <em>type de correspondance</em>
-      et <em>source de la correspondance</em>
+      et <em>MapSource</em>
       peuvent &ecirc;tre utilis&eacute;es :</p>
 
 <dl>
@@ -423,8 +438,9 @@ r&eacute;pertoire</description>
       r&eacute;pertoire (htaccess), sauf si au moins une de ces conditions est
       v&eacute;rifi&eacute;e :</p>
       <ul>
-          <li>La requ&ecirc;te initiale, ainsi que la substitution, sont dans
-	  la <directive module="core">DocumentRoot</directive> (c'est &agrave;
+          <li>La requ&ecirc;te initiale, ainsi que la substitution, se
+	  situent par raport &agrave; la valeur de la directive
+	  <directive module="core">DocumentRoot</directive> (c'est &agrave;
 	  dire que pour y acc&eacute;der, il n'est pas n&eacute;cessaire d'utiliser
 	  une directive telle qu'<directive
 	  module="mod_alias">Alias</directive>).</li>
@@ -432,6 +448,11 @@ r&eacute;pertoire</description>
 	  contenant la <directive>RewriteRule</directive>, suffix&eacute; par
 	  la substitution relative est aussi valide en tant qu'URL sur
 	  le serveur (ce qui est rare).</li>
+	  <li>A partir de la version 2.4.11 du serveur HTTP Apache,
+	  cette directive peut &ecirc;tre omise lorsque la requ&ecirc;te est mise en
+	  correspondance avec le syst&egrave;me de fichiers via la directive
+	  <directive module="mod_alias">Alias</directive> ou le module
+	  <module>mod_userdir</module>.</li>
       </ul>
 
 <p>Dans l'exemple ci-dessous, la directive
@@ -442,14 +463,15 @@ de configuration aurait conduit le serveur &agrave; rechercher un r&eacute;perto
 "opt" &agrave; la racine des documents.</p>
 
 <highlight language="config">
-DocumentRoot /var/www/example.com
-Alias /myapp /opt/myapp-1.2.3
-&lt;Directory /opt/myapp-1.2.3&gt;
+DocumentRoot "/var/www/example.com"
+AliasMatch "^/myapp" "/opt/myapp-1.2.3"
+&lt;Directory "/opt/myapp-1.2.3"&gt;
  RewriteEngine On
-    RewriteBase /myapp/
-    RewriteRule ^index\.html$  welcome.html
+    RewriteBase "/myapp/"
+    RewriteRule "^index\.html$"  "welcome.html"
 &lt;/Directory&gt;
 </highlight>
+
 </usage>
 
 </directivesynopsis>
@@ -493,8 +515,8 @@ la r&eacute;&eacute;criture soit effectu&eacute;e
 	  </strong> : ce sont des r&eacute;f&eacute;rences arri&egrave;res de la forme
 	  <strong><code>%N</code></strong> (0 &lt;= N &lt;= 9). %1 &agrave; %9
 	  permettent d'acc&eacute;der aux parties regroup&eacute;es (entre
-	  parenth&egrave;ses) du mod&egrave;le, issues de la <code>RewriteRule</code>
-	  concern&eacute;e par le jeu de conditions <code>RewriteCond</code>
+	  parenth&egrave;ses) du mod&egrave;le, issues de la derni&egrave;re
+	  condition <code>RewriteCond</code> satisfaite du jeu de conditions <code>RewriteCond</code>
 	  courant. %0 donne acc&egrave;s &agrave; l'ensemble de la cha&icirc;ne
 	  correspondant au mod&egrave;le.</li>
         <li>
@@ -741,7 +763,10 @@ la r&eacute;&eacute;criture soit effectu&eacute;e
 	d'environnement SSL</a> . Si <module>mod_ssl</module> n'est pas
 	charg&eacute;, cette variable contiendra toujours une cha&icirc;ne vide.
 	Exemple : <code>%{SSL:SSL_CIPHER_USEKEYSIZE}</code> pourra
-	contenir la valeur <code>128</code>.</li>
+	contenir la valeur <code>128</code>. Ces variables sont
+	disponibles m&ecirc;me si l'option <code>StdEnvVars</code> de la
+	directive <directive module="mod_ssl">SSLOptions</directive> n'a
+	pas &eacute;t&eacute; d&eacute;finie.</li>
 
 	<li>
         On peut utiliser <code>%{HTTP:en-t&ecirc;te}</code>, o&ugrave;
@@ -990,7 +1015,7 @@ la r&eacute;&eacute;criture soit effectu&eacute;e
 
            <highlight language="config">
            RewriteCond expr "! %{HTTP_REFERER} -strmatch '*://%{HTTP_HOST}/*'"<br />
-           RewriteRule ^/images - [F]
+           RewriteRule "^/images" "-" [F]
            </highlight>
         </li>
 
@@ -1020,9 +1045,9 @@ la r&eacute;&eacute;criture soit effectu&eacute;e
 	  lieu du AND implicite. Exemple typique :
 
 <highlight language="config">
-RewriteCond %{REMOTE_HOST}  ^host1  [OR]
-RewriteCond %{REMOTE_HOST}  ^host2  [OR]
-RewriteCond %{REMOTE_HOST}  ^host3
+RewriteCond "%{REMOTE_HOST}"  "^host1"  [OR]
+RewriteCond "%{REMOTE_HOST}"  "^host2"  [OR]
+RewriteCond "%{REMOTE_HOST}"  "^host3"
 RewriteRule ...r&egrave;gles concernant tous ces h&ocirc;tes...
 </highlight>
 
@@ -1051,10 +1076,10 @@ RewriteRule ...r&egrave;gles concernant tous ces h&ocirc;tes...
        pouvez utiliser ce qui suit : </p>
 
 <highlight language="config">
-RewriteCond  %{HTTP_USER_AGENT}  (iPhone|Blackberry|Android)
-RewriteRule  ^/$                 /homepage.mobile.html  [L]
+RewriteCond  "%{HTTP_USER_AGENT}"  "(iPhone|Blackberry|Android)"
+RewriteRule  "^/$"               "/homepage.mobile.html"  [L]
 
-RewriteRule  ^/$                 /homepage.std.html  [L]
+RewriteRule  "^/$"                 "/homepage.std.html"  [L]
 </highlight>
 
         <p>Explications : si vous utilisez un navigateur
@@ -1091,10 +1116,10 @@ RewriteRule  ^/$                 /homepage.std.html  [L]
       <a id="regexp" name="regexp">expression rationnelle</a>
       compatible perl. Dans la premi&egrave;re r&egrave;gle de r&eacute;&eacute;criture,
       l'expression est compar&eacute;e au (%-decoded)
-      <a href="directive-dict.html#Syntax">chemin de l'URL</a> (ou au
-      <a href="directive-dict.html#Syntax">chemin fichier</a>, en
-      fonction du contexte) de la
-      requ&ecirc;te. Les expressions suivantes sont compar&eacute;es &agrave; la sortie de
+      <a href="directive-dict.html#Syntax">chemin de l'URL</a> de la
+      requ&ecirc;te, ou, dans un contexte de r&eacute;pertoire (voir
+      ci-dessous), au chemin de l'URL relativement &agrave; ce contexte de
+      r&eacute;pertoire. Les expressions suivantes sont compar&eacute;es &agrave; la sortie de
       la derni&egrave;re r&egrave;gle de r&eacute;&eacute;criture qui
       correspondait.</p>
 
@@ -1163,8 +1188,11 @@ signifie que la comparaison s'effectue avec une cha&icirc;ne qui ne comporte
 <li>Bien que les r&egrave;gles de r&eacute;&eacute;criture soient permises du point de vue de
 la syntaxe dans les sections <directive type="section"
 module="core">Location</directive> et <directive type="section"
-module="core">Files</directive>, elles n'y sont pas prises en compte, et
-n'y sont &agrave; priori d'aucune utilit&eacute;.</li>
+module="core">Files</directive> (y compris leurs versions sous forme
+d'expression rationnelle), elles n'y sont pas prises en compte, et
+n'y sont &agrave; priori d'aucune utilit&eacute;. Les substitutions
+relatives sont une fonctionnalit&eacute; qui n'est, elle non-plus pas support&eacute;e
+dans ce genre de contexte.</li>
 </ul>
 </note>
 
@@ -1567,7 +1595,7 @@ redondant)</td>
       <p><strong>Dans une configuration de niveau r&eacute;pertoire pour
       <code>/chemin</code><br />
        (<code>/chemin/physique/vers/chemin/.htacccess</code>, avec
-      <code>RewriteBase /chemin</code>)<br />
+      <code>RewriteBase "/chemin"</code>)<br />
        pour la requ&ecirc;te ``<code>GET
       /chemin/chemin-local/infochemin</code>'':</strong><br />
      </p>

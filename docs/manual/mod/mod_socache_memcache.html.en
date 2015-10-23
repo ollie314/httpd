@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -38,26 +40,61 @@
     high-performance, distributed memory object caching system.
     </p>
 
- 
-    <p>This shared object cache provider's "create" method requires a 
+
+    <p>This shared object cache provider's "create" method requires a
        comma separated list of memcached host/port specifications. If using
-       this provider via another modules configuration (such as 
+       this provider via another modules configuration (such as
        <code class="directive"><a href="../mod/mod_ssl.html#sslsessioncache">SSLSessionCache</a></code>), provide
        the list of servers as the optional "arg" parameter.</p>
 
      <pre class="prettyprint lang-config">SSLSessionCache memcache:memcache.example.com:12345,memcache2.example.com:12345</pre>
 
-      
+
     <p>Details of other shared object cache providers can be found
     <a href="../socache.html">here</a>.
     </p>
 
 </div>
 <div id="quickview"><h3 class="directives">Directives</h3>
-<p>This module provides no
-            directives.</p>
+<ul id="toc">
+<li><img alt="" src="../images/down.gif" /> <a href="#memcacheconnttl">MemcacheConnTTL</a></li>
+</ul>
 <ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
 
+<div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
+<div class="directive-section"><h2><a name="MemcacheConnTTL" id="MemcacheConnTTL">MemcacheConnTTL</a> <a name="memcacheconnttl" id="memcacheconnttl">Directive</a></h2>
+<table class="directive">
+<tr><th><a href="directive-dict.html#Description">Description:</a></th><td>Keepalive time for idle connections</td></tr>
+<tr><th><a href="directive-dict.html#Syntax">Syntax:</a></th><td><code>MemcacheConnTTL <em>num[units]</em></code></td></tr>
+<tr><th><a href="directive-dict.html#Default">Default:</a></th><td><code>MemcacheConnTTL 15s</code></td></tr>
+<tr><th><a href="directive-dict.html#Context">Context:</a></th><td>server config, virtual host</td></tr>
+<tr><th><a href="directive-dict.html#Status">Status:</a></th><td>Extension</td></tr>
+<tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_socache_memcache</td></tr>
+<tr><th><a href="directive-dict.html#Compatibility">Compatibility:</a></th><td>Available in Apache 2.4.17 and later</td></tr>
+</table>
+
+    <p>Set the time to keep idle connections with the memcache server(s)
+    alive (threaded platforms only).</p>
+    
+    <p>Valid values for <code class="directive">MemcacheConnTTL</code> are times
+    up to one hour. 0 means no timeout.</p>
+
+    <div class="note"><p>This timeout defaults to units of seconds, but accepts
+    suffixes for milliseconds (ms), seconds (s), minutes (min), and hours (h).
+    </p></div>
+
+    <p>Before Apache 2.4.17, this timeout was hardcoded and its value was 600 usec.
+    So, the closest configuration to match the legacy behaviour is to set
+    <code class="directive">MemcacheConnTTL</code> to 1ms.</p>
+
+    <div class="example"><pre class="prettyprint lang-config"># Set a timeout of 10 minutes
+MemcacheConnTTL 10min
+# Set a timeout of 60 seconds
+MemcacheConnTTL 60</pre>
+</div>
+
+
+</div>
 </div>
 <div class="bottomlang">
 <p><span>Available Languages: </span><a href="../en/mod/mod_socache_memcache.html" title="English">&nbsp;en&nbsp;</a></p>
@@ -79,7 +116,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_socache_me
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

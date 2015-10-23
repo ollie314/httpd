@@ -149,6 +149,18 @@ AP_DECLARE(int) ap_run_sub_req(request_rec *r);
  */
 AP_DECLARE(void) ap_destroy_sub_req(request_rec *r);
 
+/**
+ * An output filter to ensure that we avoid passing morphing buckets to
+ * connection filters and in so doing defeat async write completion when
+ * they are set aside. This should be inserted at the end of a request
+ * filter stack.
+ * @param f The current filter
+ * @param bb The brigade to filter
+ * @return status code
+ */
+AP_CORE_DECLARE_NONSTD(apr_status_t) ap_request_core_filter(ap_filter_t *f,
+                                                            apr_bucket_brigade *bb);
+
 /*
  * Then there's the case that you want some other request to be served
  * as the top-level request INSTEAD of what the client requested directly.
@@ -185,6 +197,9 @@ AP_DECLARE(void) ap_internal_fast_redirect(request_rec *sub_req, request_rec *r)
  * is required for the current request
  * @param r The current request
  * @return 1 if authentication is required, 0 otherwise
+ * @bug Behavior changed in 2.4.x refactoring, API no longer usable
+ * @deprecated @see ap_some_authn_required()
+ *
  */
 AP_DECLARE(int) ap_some_auth_required(request_rec *r);
 
@@ -313,7 +328,7 @@ AP_DECLARE(void) ap_allow_standard_methods(request_rec *r, int reset, ...);
  * the response to the client
  * @param r The current request
  */
-void ap_process_request(request_rec *r);
+AP_DECLARE(void) ap_process_request(request_rec *r);
 
 /* For post-processing after a handler has finished with a request.
  * (Commonly used after it was suspended)
@@ -542,6 +557,16 @@ AP_DECLARE_HOOK(void,insert_filter,(request_rec *r))
 AP_DECLARE_HOOK(int,post_perdir_config,(request_rec *r))
 
 /**
+ * This hook allows a module to force authn to be required when
+ * processing a request.
+ * This hook should be registered with ap_hook_force_authn().
+ * @param r The current request
+ * @return OK (force authn), DECLINED (let later modules decide)
+ * @ingroup hooks
+ */
+AP_DECLARE_HOOK(int,force_authn,(request_rec *r))
+
+/**
  * This hook allows modules to handle/emulate the apr_stat() calls
  * needed for directory walk.
  * @param finfo where to put the stat data
@@ -586,6 +611,17 @@ AP_DECLARE(apr_bucket *) ap_bucket_eor_make(apr_bucket *b, request_rec *r);
  */
 AP_DECLARE(apr_bucket *) ap_bucket_eor_create(apr_bucket_alloc_t *list,
                                               request_rec *r);
+
+/**
+ * Can be used within any handler to determine if any authentication
+ * is required for the current request.  Note that if used with an
+ * access_checker hook, an access_checker_ex hook or an authz provider; the
+ * caller should take steps to avoid a loop since this function is
+ * implemented by calling these hooks.
+ * @param r The current request
+ * @return TRUE if authentication is required, FALSE otherwise
+ */
+AP_DECLARE(int) ap_some_authn_required(request_rec *r);
 
 #ifdef __cplusplus
 }

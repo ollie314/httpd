@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -77,11 +79,11 @@ and URL matching.</p>
     for /foo/bar/baz is being processed, an expression like ^bar/baz$ would
     match.</p>
 
-    <p> If a substitution is made in per-directory context, a new internal 
-    subrequest is issued with the new URL, which restarts processing of the 
-    request phases. If the substitution is a relative path, the <code class="directive"><a href="../mod/mod_rewrite.html#rewritebase">RewriteBase</a></code> directive 
+    <p> If a substitution is made in per-directory context, a new internal
+    subrequest is issued with the new URL, which restarts processing of the
+    request phases. If the substitution is a relative path, the <code class="directive"><a href="../mod/mod_rewrite.html#rewritebase">RewriteBase</a></code> directive
     determines the URL-path prefix prepended to the substitution.
-    In per-directory context, care must be taken to 
+    In per-directory context, care must be taken to
     create rules which will eventually (in some future "round" of per-directory
     rewrite processing) not perform a substitution to avoid looping.
     (See <a href="http://wiki.apache.org/httpd/RewriteLooping">RewriteLooping</a>
@@ -103,23 +105,23 @@ and URL matching.</p>
 
         <tr>
             <td>VirtualHost section</td>
-            <td>RewriteRule ^/images/(.+)\.jpg /images/$1.gif</td>
+            <td>RewriteRule "^/images/(.+)\.jpg" "/images/$1.gif"</td>
         </tr>
 
         <tr>
             <td>.htaccess file in document root</td>
-            <td>RewriteRule ^images/(.+)\.jpg images/$1.gif</td>
+            <td>RewriteRule "^images/(.+)\.jpg" "images/$1.gif"</td>
         </tr>
 
         <tr>
             <td>.htaccess file in images directory</td>
-            <td>RewriteRule ^(.+)\.jpg $1.gif</td>
+            <td>RewriteRule "^(.+)\.jpg" "$1.gif"</td>
         </tr>
 
     </table>
 
     <p>For even more insight into how mod_rewrite manipulates URLs in
-    different contexts, you should consult the <a href="../mod/mod_rewrite.html#logging">log entries</a> made during 
+    different contexts, you should consult the <a href="../mod/mod_rewrite.html#logging">log entries</a> made during
     rewriting.</p>
 
 </div><div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
@@ -194,7 +196,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/rewrite/tech.html'
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

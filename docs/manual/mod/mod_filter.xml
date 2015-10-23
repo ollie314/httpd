@@ -193,7 +193,7 @@ FilterProtocol downsample "change=yes"
 FilterProvider repack jpeg_pack "%{CONTENT_TYPE} = 'image/jpeg'"
 FilterProvider repack gif_pack "%{CONTENT_TYPE} = 'image/gif'"
 FilterProvider repack png_pack "%{CONTENT_TYPE} = 'image/png'"
-&lt;Location /image-filter&gt;
+&lt;Location "/image-filter"&gt;
     FilterChain unpack downsample repack
 &lt;/Location&gt;
     </highlight>
@@ -281,7 +281,7 @@ being moved to <module>mod_filter</module> in version 2.3.7</compatibility>
     filter.</p>
 
     <highlight language="config">
-&lt;Location /cgi-bin/&gt;
+&lt;Location "/cgi-bin/"&gt;
     Options Includes
     AddOutputFilterByType INCLUDES;DEFLATE text/html
 &lt;/Location&gt;
@@ -404,10 +404,10 @@ for a complete reference and examples.</seealso>
     With two arguments it applies to a <var>filter-name</var> whenever the
     filter runs <em>any</em> provider.</p>
 
-    <p>Flags specified with this directive are merged with the flags 
-    that underlying providers may have registerd with 
+    <p>Flags specified with this directive are merged with the flags
+    that underlying providers may have registerd with
     <module>mod_filter</module>. For example, a filter may internally specify
-    the equivalent of <code>change=yes</code>, but a particular 
+    the equivalent of <code>change=yes</code>, but a particular
     configuration of the module can override with <code>change=no</code>.
     </p>
 
@@ -415,7 +415,7 @@ for a complete reference and examples.</seealso>
 
     <dl>
     <dt><code>change=yes|no</code></dt>
-    <dd>Specifies whether the filter changes the content, including possibly 
+    <dd>Specifies whether the filter changes the content, including possibly
     the content length.  The "no" argument is supported in 2.4.7 and later.</dd>
 
     <dt><code>change=1:1</code></dt>
@@ -474,4 +474,3 @@ for a complete reference and examples.</seealso>
 </directivesynopsis>
 
 </modulesynopsis>
-

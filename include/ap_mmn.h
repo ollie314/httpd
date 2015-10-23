@@ -452,7 +452,7 @@
  * 20140207.4 (2.5.0-dev)  add ap_mpm_register_socket_callback_timeout
  * 20140207.5 (2.5.0-dev)  Add ap_mpm_resume_suspended(), AP_MPMQ_CAN_SUSPEND to
  *                         ap_mpm_query(), and suspended_baton to conn_rec
- * 20140207.6 (2.5.0-dev)  Added ap_log_common().
+ * 20140207.6 (2.5.0-dev)  Added ap_log_mpm_common().
  * 20140207.7 (2.5.0-dev)  Added ap_force_set_tz().
  * 20140207.8 (2.5.0-dev)  Added ap_shutdown_conn().
  * 20140611.0 (2.5.0-dev)  Add ap_mpm_socket_callback_fn_t.
@@ -473,14 +473,36 @@
  * 20140627.8 (2.5.0-dev)  Add ap_set_listencbratio(), ap_close_listeners_ex(),
  *                         ap_duplicate_listeners(), ap_num_listen_buckets and
  *                         ap_have_so_reuseport to ap_listen.h.
+ * 20140627.9 (2.5.0-dev)  Add cgi_pass_auth and AP_CGI_PASS_AUTH_* to 
+ *                         core_dir_config
+ * 20140627.10 (2.5.0-dev) Add ap_proxy_de_socketfy to mod_proxy.h
+ * 20150121.0 (2.5.0-dev)  Revert field addition from core_dir_config; r1653666
+ * 20150121.1 (2.5.0-dev)  Add cmd_parms_struct.parent to http_config.h
+ * 20150121.2 (2.5.0-dev)  Add response_code_exprs to http_core.h
+ * 20150222.0 (2.5.0-dev)  ssl pre_handshake hook now indicates proxy|client
+ * 20150222.1 (2.5.0-dev)  Add keep_alive_timeout_set to server_rec
+ * 20150222.2 (2.5.0-dev)  Add response code 418 as per RFC2324/RFC7168
+ * 20150222.3 (2.5.0-dev)  Add ap_some_authn_required, ap_force_authn hook.
+ *                         Deprecate broken ap_some_auth_required.
+ * 20150222.4 (2.5.0-dev)  Add protocols and protocols_honor_order to
+ *                         core_server_config. Add hooks protocol_propose
+ *                         protocol_switch and protocol_get. Add
+ *                         ap_select_protocol(), ap_switch_protocol(),
+ *                         ap_get_protocol(). Add HTTP_MISDIRECTED_REQUEST.
+ * 20150222.5 (2.5.0-dev)  Add ap_request_core_filter(),
+ *                         ap_filter_setaside_brigade(),
+ *                         ap_filter_reinstate_brigade() and
+ *                         ap_filter_should_yield(). Add empty and filters to
+ *                         conn_rec.
+ * 20150222.6 (2.5.0-dev)  Add async_filter to conn_rec.
  */
 
 #define MODULE_MAGIC_COOKIE 0x41503235UL /* "AP25" */
 
 #ifndef MODULE_MAGIC_NUMBER_MAJOR
-#define MODULE_MAGIC_NUMBER_MAJOR 20140627
+#define MODULE_MAGIC_NUMBER_MAJOR 20150222
 #endif
-#define MODULE_MAGIC_NUMBER_MINOR 8                 /* 0...n */
+#define MODULE_MAGIC_NUMBER_MINOR 6                 /* 0...n */
 
 /**
  * Determine if the server's current MODULE_MAGIC_NUMBER is at least a

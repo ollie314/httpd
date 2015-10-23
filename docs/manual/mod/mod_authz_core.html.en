@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -44,7 +46,12 @@
     also allows for advanced logic to be applied to the
     authorization processing.</p>
 </div>
-<div id="quickview"><h3 class="directives">Directives</h3>
+<div id="quickview"><h3>Topics</h3>
+<ul id="topics">
+<li><img alt="" src="../images/down.gif" /> <a href="#logic">Authorization Containers</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#requiredirectives">The Require Directives</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#authzalias">Creating Authorization Provider Aliases</a></li>
+</ul><h3 class="directives">Directives</h3>
 <ul id="toc">
 <li><img alt="" src="../images/down.gif" /> <a href="#authmerging">AuthMerging</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#authzprovideralias">&lt;AuthzProviderAlias&gt;</a></li>
@@ -54,12 +61,7 @@
 <li><img alt="" src="../images/down.gif" /> <a href="#requireany">&lt;RequireAny&gt;</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#requirenone">&lt;RequireNone&gt;</a></li>
 </ul>
-<h3>Topics</h3>
-<ul id="topics">
-<li><img alt="" src="../images/down.gif" /> <a href="#logic">Authorization Containers</a></li>
-<li><img alt="" src="../images/down.gif" /> <a href="#requiredirectives">The Require Directives</a></li>
-<li><img alt="" src="../images/down.gif" /> <a href="#authzalias">Creating Authorization Provider Aliases</a></li>
-</ul><ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
+<ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="section">
 <h2><a name="logic" id="logic">Authorization Containers</a></h2>
@@ -83,13 +85,13 @@
     not belong to either the <code>temps</code> group or the
     LDAP group <code>Temporary Employees</code>.</p>
 
-    <pre class="prettyprint lang-config">&lt;Directory /www/mydocs&gt;
+    <pre class="prettyprint lang-config">&lt;Directory "/www/mydocs"&gt;
     &lt;RequireAll&gt;
         &lt;RequireAny&gt;
             Require user superadmin
             &lt;RequireAll&gt;
                 Require group admins
-                Require ldap-group cn=Administrators,o=Airius
+                Require ldap-group "cn=Administrators,o=Airius"
                 &lt;RequireAny&gt;
                     Require group sales
                     Require ldap-attribute dept="sales"
@@ -98,7 +100,7 @@
         &lt;/RequireAny&gt;
         &lt;RequireNone&gt;
             Require group temps
-            Require ldap-group cn=Temporary Employees,o=Airius
+            Require ldap-group "cn=Temporary Employees,o=Airius"
         &lt;/RequireNone&gt;
     &lt;/RequireAll&gt;
 &lt;/Directory&gt;</pre>
@@ -125,8 +127,8 @@
     <code>User-Agent</code> (browser type), <code>Referer</code>, or
     other HTTP request header fields.</p>
 
-    <pre class="prettyprint lang-config">SetEnvIf User-Agent ^KnockKnock/2\.0 let_me_in
-&lt;Directory /docroot&gt;
+    <pre class="prettyprint lang-config">SetEnvIf User-Agent "^KnockKnock/2\.0" let_me_in
+&lt;Directory "/docroot"&gt;
     Require env let_me_in
 &lt;/Directory&gt;</pre>
 
@@ -135,12 +137,12 @@
     with <code>KnockKnock/2.0</code> will be allowed access, and all
     others will be denied.</p>
 
-    <p>When the server looks up a path via an internal 
-    <a class="glossarylink" href="../glossary.html#subrequest" title="see glossary">subrequest</a> such as looking 
-    for a <code class="directive"><a href="../mod/mod_dir.html#directoryindex">DirectoryIndex</a></code> 
+    <p>When the server looks up a path via an internal
+    <a class="glossarylink" href="../glossary.html#subrequest" title="see glossary">subrequest</a> such as looking
+    for a <code class="directive"><a href="../mod/mod_dir.html#directoryindex">DirectoryIndex</a></code>
     or generating a directory listing with <code class="module"><a href="../mod/mod_autoindex.html">mod_autoindex</a></code>,
-    per-request environment variables are <em>not</em> inherited in the 
-    subrequest. Additionally, 
+    per-request environment variables are <em>not</em> inherited in the
+    subrequest. Additionally,
     <code class="directive"><a href="../mod/mod_setenvif.html#setenvif">SetEnvIf</a></code> directives
     are not separately evaluated in the subrequest due to the API phases
     <code class="module"><a href="../mod/mod_setenvif.html">mod_setenvif</a></code> takes action in.</p>
@@ -196,6 +198,15 @@
     <pre class="prettyprint lang-config">Require expr %{TIME_HOUR} -ge 9 &amp;&amp; %{TIME_HOUR} -le 17</pre>
 
 
+    <pre class="prettyprint lang-config">&lt;RequireAll&gt;
+    Require expr "!(%{QUERY_STRING} =~ /secret/)"
+    Require expr "%{REQUEST_URI} in { '/example.cgi', '/other.cgi' }"
+&lt;/RequireAll&gt;</pre>
+
+
+    <pre class="prettyprint lang-config">Require expr "!(%{QUERY_STRING} =~ /secret/) &amp;&amp; %{REQUEST_URI} in { '/example.cgi', '/other.cgi' }"</pre>
+
+
   <p>The syntax is described in the <a href="../expr.html">ap_expr</a>
   documentation.</p>
 
@@ -226,20 +237,20 @@
         multiple ldap hosts:
         </p>
 
-        <pre class="prettyprint lang-config">&lt;AuthzProviderAlias ldap-group ldap-group-alias1 cn=my-group,o=ctx&gt;
-    AuthLDAPBindDN cn=youruser,o=ctx
+        <pre class="prettyprint lang-config">&lt;AuthzProviderAlias ldap-group ldap-group-alias1 "cn=my-group,o=ctx"&gt;
+    AuthLDAPBindDN "cn=youruser,o=ctx"
     AuthLDAPBindPassword yourpassword
-    AuthLDAPURL ldap://ldap.host/o=ctx
+    AuthLDAPURL "ldap://ldap.host/o=ctx"
 &lt;/AuthzProviderAlias&gt;
 
-&lt;AuthzProviderAlias ldap-group ldap-group-alias2 cn=my-other-group,o=dev&gt;
-    AuthLDAPBindDN cn=yourotheruser,o=dev
+&lt;AuthzProviderAlias ldap-group ldap-group-alias2 "cn=my-other-group,o=dev"&gt;
+    AuthLDAPBindDN "cn=yourotheruser,o=dev"
     AuthLDAPBindPassword yourotherpassword
-    AuthLDAPURL ldap://other.ldap.host/o=dev?cn
+    AuthLDAPURL "ldap://other.ldap.host/o=dev?cn"
 &lt;/AuthzProviderAlias&gt;
 
-Alias /secure /webpages/secure
-&lt;Directory /webpages/secure&gt;
+Alias "/secure" "/webpages/secure"
+&lt;Directory "/webpages/secure"&gt;
     Require all granted
 
     AuthBasicProvider file
@@ -303,20 +314,20 @@ sections.</td></tr>
     preceding sections.  Thus only users belong to the group
     <code>gamma</code> may access <code>/www/docs/ab/gamma</code>.</div>
 
-    <pre class="prettyprint lang-config">&lt;Directory /www/docs&gt;
+    <pre class="prettyprint lang-config">&lt;Directory "/www/docs"&gt;
     AuthType Basic
     AuthName Documents
     AuthBasicProvider file
-    AuthUserFile /usr/local/apache/passwd/passwords
+    AuthUserFile "/usr/local/apache/passwd/passwords"
     Require group alpha
 &lt;/Directory&gt;
 
-&lt;Directory /www/docs/ab&gt;
+&lt;Directory "/www/docs/ab"&gt;
     AuthMerging Or
     Require group beta
 &lt;/Directory&gt;
 
-&lt;Directory /www/docs/ab/gamma&gt;
+&lt;Directory "/www/docs/ab/gamma"&gt;
     Require group gamma
 &lt;/Directory&gt;</pre>
 
@@ -445,8 +456,8 @@ an authorization provider.</td></tr>
     <pre class="prettyprint lang-config">AuthType Basic
 AuthName "Restricted Resource"
 AuthBasicProvider file
-AuthUserFile /web/users
-AuthGroupFile /web/groups
+AuthUserFile "/web/users"
+AuthGroupFile "/web/groups"
 Require group admin</pre>
 
 
@@ -470,7 +481,7 @@ Require group admin</pre>
     and <code>beta</code> groups are authorized, except for those who
     are also in the <code>reject</code> group.</p>
 
-    <pre class="prettyprint lang-config">&lt;Directory /www/docs&gt;
+    <pre class="prettyprint lang-config">&lt;Directory "/www/docs"&gt;
     &lt;RequireAll&gt;
         Require group alpha beta
         Require not group reject
@@ -645,7 +656,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_authz_core
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

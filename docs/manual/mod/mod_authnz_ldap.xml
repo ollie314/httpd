@@ -67,8 +67,8 @@ for HTTP Basic authentication.</description>
 <section id="contents"><title>Contents</title>
 
     <ul>
-      <li>
-        <a href="#operation">Operation</a>
+      <li> <a href="#gcaveats">General caveats</a> </li>
+      <li> <a href="#operation">Operation</a>
 
         <ul>
           <li><a href="#authenphase">The Authentication
@@ -107,6 +107,16 @@ for HTTP Basic authentication.</description>
         </ul>
       </li>
     </ul>
+</section>
+
+<section id="gcaveats"><title>General caveats</title>
+<p> This module caches authentication and authorization results based
+on the configuration of <module>mod_ldap</module>. Changes
+made to the backing LDAP server will not be immediately reflected on the
+HTTP Server, including but not limited to user lockouts/revocations, 
+password changes, or changes to group memberships.  Consult the directives 
+in <module>mod_ldap</module> for details of the cache tunables.
+</p>
 </section>
 
 <section id="operation"><title>Operation</title>
@@ -364,7 +374,9 @@ Require ldap-user "Joe Manager"
     <p>If the <code>uid</code> attribute was used instead of the
     <code>cn</code> attribute in the URL above, the above three lines
     could be condensed to</p>
-<highlight language="config">Require ldap-user bjenson fuser jmanager</highlight>
+<highlight language="config">
+Require ldap-user bjenson fuser jmanager
+</highlight>
 </section>
 
 <section id="reqgroup"><title>Require ldap-group</title>
@@ -383,7 +395,9 @@ uniqueMember: cn=Fred User, o=Example
 
     <p>The following directive would grant access to both Fred and
     Barbara:</p>
-<highlight language="config">Require ldap-group cn=Administrators, o=Example</highlight>
+<highlight language="config">
+Require ldap-group cn=Administrators, o=Example
+</highlight>
 
     <p>Members can also be found within sub-groups of a specified LDAP group
     if <directive module="mod_authnz_ldap">AuthLDAPMaxSubGroupDepth</directive>
@@ -419,11 +433,11 @@ uniqueMember: cn=Elliot Rhodes, o=Example
 </pre></example>
 
     <p>The following directives would allow access for Bob Ellis, Tom Jackson,
-    Barbara Jensen, Fred User, Allan Jefferson, and Paul Tilley but would not
+    Barbara Jenson, Fred User, Allan Jefferson, and Paul Tilley but would not
     allow access for Jim Swenson, or Elliot Rhodes (since they are at a
     sub-group depth of 2):</p>
 <highlight language="config">
-Require ldap-group cn=Employees, o-Example
+Require ldap-group cn=Employees, o=Example
 AuthLDAPMaxSubGroupDepth 1
 </highlight>
 
@@ -448,7 +462,9 @@ AuthLDAPMaxSubGroupDepth 1
 
     <p>The following directive would grant access to a specific
     DN:</p>
-<highlight language="config">Require ldap-dn cn=Barbara Jenson, o=Example</highlight>
+<highlight language="config">
+Require ldap-dn cn=Barbara Jenson, o=Example
+</highlight>
 
     <p>Behavior of this directive is modified by the <directive
     module="mod_authnz_ldap">AuthLDAPCompareDNOnServer</directive>
@@ -465,7 +481,9 @@ AuthLDAPMaxSubGroupDepth 1
     <p>The following directive would grant access to anyone with
     the attribute employeeType = active</p>
 
-    <highlight language="config">Require ldap-attribute employeeType=active</highlight>
+    <highlight language="config">
+Require ldap-attribute "employeeType=active"
+</highlight>
 
     <p>Multiple attribute/value pairs can be specified on the same line
     separated by spaces or they can be specified in multiple
@@ -478,7 +496,9 @@ AuthLDAPMaxSubGroupDepth 1
     <p>The following directive would grant access to anyone with
     the city attribute equal to "San Jose" or status equal to "Active"</p>
 
-    <highlight language="config">Require ldap-attribute city="San Jose" status=active</highlight>
+    <highlight language="config">
+Require ldap-attribute city="San Jose" "status=active"
+</highlight>
 
 </section>
 
@@ -492,7 +512,9 @@ AuthLDAPMaxSubGroupDepth 1
     <p>The following directive would grant access to anyone having a cell phone
     and is in the marketing department</p>
 
-    <highlight language="config">Require ldap-filter &amp;(cell=*)(department=marketing)</highlight>
+    <highlight language="config">
+Require ldap-filter "&amp;(cell=*)(department=marketing)"
+</highlight>
 
     <p>The difference between the <code>Require ldap-filter</code> directive and the
     <code>Require ldap-attribute</code> directive is that <code>ldap-filter</code>
@@ -507,8 +529,8 @@ AuthLDAPMaxSubGroupDepth 1
     LDAP injection. The ldap function can be used for this purpose.</p>
 
 <highlight language="config">
-&lt;LocationMatch ^/dav/(?&lt;SITENAME&gt;[^/]+)/&gt;
-  Require ldap-filter (memberOf=cn=%{ldap:%{unescape:%{env:MATCH_SITENAME}},ou=Websites,o=Example)
+&lt;LocationMatch "^/dav/(?&lt;SITENAME&gt;[^/]+)/"&gt;
+  Require ldap-filter "(memberOf=cn=%{ldap:%{unescape:%{env:MATCH_SITENAME}},ou=Websites,o=Example)"
 &lt;/LocationMatch&gt;
 </highlight>
 
@@ -525,8 +547,8 @@ AuthLDAPMaxSubGroupDepth 1
     LDAP server:</p>
 
 <highlight language="config">
-&lt;LocationMatch ^/dav/(?&lt;SITENAME&gt;[^/]+)/&gt;
-Require ldap-search (cn=%{ldap:%{unescape:%{env:MATCH_SITENAME}} Website)
+&lt;LocationMatch "^/dav/(?&lt;SITENAME&gt;[^/]+)/"&gt;
+Require ldap-search "(cn=%{ldap:%{unescape:%{env:MATCH_SITENAME}} Website)"
 &lt;/LocationMatch&gt;
 </highlight>
 
@@ -554,7 +576,8 @@ Require valid-user
         The next example is the same as above; but with the fields
         that have useful defaults omitted. Also, note the use of a
         redundant LDAP server.
-<highlight language="config">AuthLDAPURL "ldap://ldap1.example.com ldap2.example.com/ou=People, o=Example"
+<highlight language="config">
+AuthLDAPURL "ldap://ldap1.example.com ldap2.example.com/ou=People, o=Example"
 Require valid-user
 </highlight>
       </li>
@@ -904,7 +927,7 @@ to perform a DN lookup</description>
 <usage>
     <p>If <directive module="mod_authnz_ldap">AuthLDAPInitialBindAsUser</directive> is set to
        <em>ON</em>, the basic authentication username will be transformed according to the
-       regular expression and substituion arguments.</p>
+       regular expression and substitution arguments.</p>
 
     <p> The regular expression argument is compared against the current basic authentication username.
         The substitution argument may contain backreferences, but has no other variable interpolation.</p>
@@ -914,8 +937,12 @@ to perform a DN lookup</description>
         <directive module="mod_authnz_ldap">AuthLDAPBindDN</directive>.
     </p>
 
-    <highlight language="config"> AuthLDAPInitialBindPattern (.+) $1@example.com </highlight>
-    <highlight language="config"> AuthLDAPInitialBindPattern (.+) cn=$1,dc=example,dc=com</highlight>
+    <highlight language="config">
+AuthLDAPInitialBindPattern (.+) $1@example.com
+    </highlight>
+    <highlight language="config">
+AuthLDAPInitialBindPattern (.+) cn=$1,dc=example,dc=com
+    </highlight>
 
     <note><title>Not available with authorization-only</title>
         This directive can only be used if this module authenticates the user, and
@@ -1145,8 +1172,8 @@ evaluated before the user search is discontinued.</description>
    <note><title>Nested groups performance</title>
    <p> When <directive>AuthLDAPSubGroupAttribute</directive> overlaps with
    <directive>AuthLDAPGroupAttribute</directive> (as it does by default and
-   as required by common LDAP schemas), uncached searching for subgroups in 
-   large groups can be very slow. If you use large, non-nested groups, keep 
+   as required by common LDAP schemas), uncached searching for subgroups in
+   large groups can be very slow. If you use large, non-nested groups, keep
    <directive>AuthLDAPMaxSubGroupDepth</directive> set to zero.</p>
    </note>
 
@@ -1174,7 +1201,7 @@ query to set the REMOTE_USER environment variable</description>
     directive is useful should you want people to log into a website
     using an email address, but a backend application expects the
     username as a userid.</p>
-    <p> This directive only has effect when this module is used for 
+    <p> This directive only has effect when this module is used for
     authentication.</p>
 </usage>
 </directivesynopsis>
@@ -1295,7 +1322,9 @@ objects that are groups during sub-group processing.</description>
     to use. The syntax of the URL is</p>
 <example>ldap://host:port/basedn?attribute?scope?filter</example>
     <p>If you want to specify more than one LDAP URL that Apache should try in turn, the syntax is:</p>
-<highlight language="config">AuthLDAPUrl "ldap://ldap1.example.com ldap2.example.com/dc=..."</highlight>
+<highlight language="config">
+AuthLDAPUrl "ldap://ldap1.example.com ldap2.example.com/dc=..."
+</highlight>
 <p><em><strong>Caveat: </strong>If you specify multiple servers, you need to enclose the entire URL string in quotes;
 otherwise you will get an error: "AuthLDAPURL takes one argument, URL to define LDAP connection.." </em>
 You can of course use search parameters on each of these.</p>

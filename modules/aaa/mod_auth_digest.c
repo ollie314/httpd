@@ -249,9 +249,18 @@ static int initialize_tables(server_rec *s, apr_pool_t *ctx)
     client_shm_filename = ap_runtime_dir_relative(ctx, "authdigest_shm");
     client_shm_filename = ap_append_pid(ctx, client_shm_filename, ".");
 
-    /* Now create that segment */
-    sts = apr_shm_create(&client_shm, shmem_size,
-                        client_shm_filename, ctx);
+    /* Use anonymous shm by default, fall back on name-based. */
+    sts = apr_shm_create(&client_shm, shmem_size, NULL, ctx);
+    if (APR_STATUS_IS_ENOTIMPL(sts)) {
+        /* For a name-based segment, remove it first in case of a
+         * previous unclean shutdown. */
+        apr_shm_remove(client_shm_filename, ctx);
+
+        /* Now create that segment */
+        sts = apr_shm_create(&client_shm, shmem_size,
+                            client_shm_filename, ctx);
+    }
+
     if (APR_SUCCESS != sts) {
         ap_log_error(APLOG_MARK, APLOG_ERR, sts, s, APLOGNO(01762)
                      "Failed to create shared memory segment on file %s",
@@ -1618,32 +1627,6 @@ static int authenticate_digest_user(request_rec *r)
 
         if (d_uri.query) {
             ap_unescape_url(d_uri.query);
-        }
-        else if (r_uri.query) {
-            /* MSIE compatibility hack.  MSIE has some RFC issues - doesn't
-             * include the query string in the uri Authorization component
-             * or when computing the response component.  the second part
-             * works out ok, since we can hash the header and get the same
-             * result.  however, the uri from the request line won't match
-             * the uri Authorization component since the header lacks the
-             * query string, leaving us incompatable with a (broken) MSIE.
-             *
-             * the workaround is to fake a query string match if in the proper
-             * environment - BrowserMatch MSIE, for example.  the cool thing
-             * is that if MSIE ever fixes itself the simple match ought to
-             * work and this code won't be reached anyway, even if the
-             * environment is set.
-             */
-
-            if (apr_table_get(r->subprocess_env,
-                              "AuthDigestEnableQueryStringHack")) {
-
-                ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(01784)
-                              "applying AuthDigestEnableQueryStringHack "
-                              "to uri <%s>", resp->raw_request_uri);
-
-               d_uri.query = r_uri.query;
-            }
         }
 
         if (r->method_number == M_CONNECT) {

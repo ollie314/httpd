@@ -73,19 +73,22 @@ static void update_r_in_filters(ap_filter_t *f,
     }
 }
 
-AP_DECLARE(void) ap_die(int type, request_rec *r)
+static void ap_die_r(int type, request_rec *r, int recursive_error)
 {
-    int error_index = ap_index_of_response(type);
-    char *custom_response = ap_response_code_string(r, error_index);
-    int recursive_error = 0;
+    char *custom_response;
     request_rec *r_1st_err = r;
 
-    if (type == AP_FILTER_ERROR) {
+    if (type == OK || type == DONE) {
+        ap_finalize_request_protocol(r);
+        return;
+    }
+
+    if (!ap_is_HTTP_VALID_RESPONSE(type)) {
         ap_filter_t *next;
 
         /*
          * Check if we still have the ap_http_header_filter in place. If
-         * this is the case we should not ignore AP_FILTER_ERROR here because
+         * this is the case we should not ignore the error here because
          * it means that we have not sent any response at all and never
          * will. This is bad. Sent an internal server error instead.
          */
@@ -99,18 +102,19 @@ AP_DECLARE(void) ap_die(int type, request_rec *r)
          * next->frec == ap_http_header_filter
          */
         if (next) {
-            ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(01579)
-                          "Custom error page caused AP_FILTER_ERROR");
+            if (type != AP_FILTER_ERROR) {
+                ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(01579)
+                              "Invalid response status %i", type);
+            }
+            else {
+                ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02831)
+                              "Response from AP_FILTER_ERROR");
+            }
             type = HTTP_INTERNAL_SERVER_ERROR;
         }
         else {
             return;
         }
-    }
-
-    if (type == DONE) {
-        ap_finalize_request_protocol(r);
-        return;
     }
 
     /*
@@ -119,9 +123,7 @@ AP_DECLARE(void) ap_die(int type, request_rec *r)
      * error condition, we just report on the original error, and give up on
      * any attempt to handle the other thing "intelligently"...
      */
-    if (r->status != HTTP_OK) {
-        recursive_error = type;
-
+    if (recursive_error != HTTP_OK) {
         while (r_1st_err->prev && (r_1st_err->prev->status != HTTP_OK))
             r_1st_err = r_1st_err->prev;  /* Get back to original error */
 
@@ -140,6 +142,11 @@ AP_DECLARE(void) ap_die(int type, request_rec *r)
         }
 
         custom_response = NULL; /* Do NOT retry the custom thing! */
+    }
+    else {
+        int error_index = ap_index_of_response(type);
+        custom_response = ap_response_code_string(r, error_index);
+        recursive_error = 0;
     }
 
     r->status = type;
@@ -216,25 +223,98 @@ AP_DECLARE(void) ap_die(int type, request_rec *r)
     ap_send_error_response(r_1st_err, recursive_error);
 }
 
-static void check_pipeline(conn_rec *c)
+AP_DECLARE(void) ap_die(int type, request_rec *r)
 {
-    if (c->keepalive != AP_CONN_CLOSE) {
-        apr_status_t rv;
-        apr_bucket_brigade *bb = apr_brigade_create(c->pool, c->bucket_alloc);
+    ap_die_r(type, r, r->status);
+}
 
-        rv = ap_get_brigade(c->input_filters, bb, AP_MODE_SPECULATIVE,
-                            APR_NONBLOCK_READ, 1);
-        if (rv != APR_SUCCESS || APR_BRIGADE_EMPTY(bb)) {
-            /*
-             * Error or empty brigade: There is no data present in the input
-             * filter
+static void check_pipeline(conn_rec *c, apr_bucket_brigade *bb)
+{
+    c->data_in_input_filters = 0;
+    if (c->keepalive != AP_CONN_CLOSE && !c->aborted) {
+        apr_status_t rv;
+        int num_blank_lines = DEFAULT_LIMIT_BLANK_LINES;
+        ap_input_mode_t mode = AP_MODE_SPECULATIVE;
+        apr_size_t len, cr = 0;
+        char buf[2];
+
+        do {
+            apr_brigade_cleanup(bb);
+            rv = ap_get_brigade(c->input_filters, bb, mode,
+                                APR_NONBLOCK_READ, cr + 1);
+            if (rv != APR_SUCCESS || APR_BRIGADE_EMPTY(bb)) {
+                /*
+                 * Error or empty brigade: There is no data present in the input
+                 * filter
+                 */
+                if (mode == AP_MODE_READBYTES) {
+                    /* Unexpected error, stop with this connection */
+                    ap_log_cerror(APLOG_MARK, APLOG_ERR, rv, c, APLOGNO(02967)
+                                  "Can't consume pipelined empty lines");
+                    c->keepalive = AP_CONN_CLOSE;
+                }
+                return;
+            }
+
+            /* Ignore trailing blank lines (which must not be interpreted as
+             * pipelined requests) up to the limit, otherwise we would block
+             * on the next read without flushing data, and hence possibly delay
+             * pending response(s) until the next/real request comes in or the
+             * keepalive timeout expires.
              */
-            c->data_in_input_filters = 0;
-        }
-        else {
-            c->data_in_input_filters = 1;
-        }
-        apr_brigade_destroy(bb);
+            len = cr + 1;
+            rv = apr_brigade_flatten(bb, buf, &len);
+            if (rv != APR_SUCCESS || len != cr + 1) {
+                int level;
+                if (mode == AP_MODE_READBYTES) {
+                    /* Unexpected error, stop with this connection */
+                    c->keepalive = AP_CONN_CLOSE;
+                    level = APLOG_ERR;
+                }
+                else {
+                    /* Let outside (non-speculative/blocking) read determine
+                     * where this possible failure comes from (metadata,
+                     * morphed EOF socket => empty bucket? debug only here).
+                     */
+                    c->data_in_input_filters = 1;
+                    level = APLOG_DEBUG;
+                }
+                ap_log_cerror(APLOG_MARK, level, rv, c, APLOGNO(02968)
+                              "Can't check pipelined data");
+                return;
+            }
+
+            if (mode == AP_MODE_READBYTES) {
+                mode = AP_MODE_SPECULATIVE;
+                cr = 0;
+                continue;
+            }
+
+            if (cr) {
+                AP_DEBUG_ASSERT(len == 2 && buf[0] == APR_ASCII_CR);
+                if (buf[1] != APR_ASCII_LF) {
+                    return;
+                }
+                mode = AP_MODE_READBYTES;
+                num_blank_lines--;
+            }
+            else {
+                if (buf[0] == APR_ASCII_CR) {
+                    cr = 1;
+                }
+                else if (buf[0] == APR_ASCII_LF) {
+                    mode = AP_MODE_READBYTES;
+                    num_blank_lines--;
+                }
+                else {
+                    c->data_in_input_filters = 1;
+                    return;
+                }
+            }
+        } while (num_blank_lines >= 0);
+
+        /* Don't recycle this (abused) connection */
+        c->keepalive = AP_CONN_CLOSE;
     }
 }
 
@@ -249,20 +329,38 @@ AP_DECLARE(void) ap_process_request_after_handler(request_rec *r)
      * this bucket is destroyed, the request will be logged and
      * its pool will be freed
      */
-    bb = apr_brigade_create(r->connection->pool, r->connection->bucket_alloc);
-    b = ap_bucket_eor_create(r->connection->bucket_alloc, r);
+    bb = apr_brigade_create(c->pool, c->bucket_alloc);
+    b = ap_bucket_eor_create(c->bucket_alloc, r);
     APR_BRIGADE_INSERT_HEAD(bb, b);
 
-    ap_pass_brigade(r->connection->output_filters, bb);
+    /* Find the last request, taking into account internal
+     * redirects. We want to send the EOR bucket at the end of
+     * all the buckets so it does not jump the queue.
+     */
+    while (r->next) {
+        r = r->next;
+    }
+
+    ap_pass_brigade(r->output_filters, bb);
+
+    /* The EOR bucket has either been handled by an output filter (eg.
+     * deleted or moved to a buffered_bb => no more in bb), or an error
+     * occured before that (eg. c->aborted => still in bb) and we ought
+     * to destroy it now. So cleanup any remaining bucket along with
+     * the orphan request (if any).
+     */
+    apr_brigade_cleanup(bb);
 
     /* From here onward, it is no longer safe to reference r
      * or r->pool, because r->pool may have been destroyed
      * already by the EOR bucket's cleanup function.
      */
 
+    check_pipeline(c, bb);
+    apr_brigade_destroy(bb);
     if (c->cs)
-        c->cs->state = CONN_STATE_WRITE_COMPLETION;
-    check_pipeline(c);
+        c->cs->state = (c->aborted) ? CONN_STATE_LINGER
+                                    : CONN_STATE_WRITE_COMPLETION;
     AP_PROCESS_REQUEST_RETURN((uintptr_t)r, r->uri, r->status);
     if (ap_extended_status) {
         ap_time_process_request(c->sbh, STOP_PREQUEST);
@@ -337,23 +435,12 @@ void ap_process_async_request(request_rec *r)
     apr_thread_mutex_unlock(r->invoke_mtx);
 #endif
 
-    if (access_status == DONE) {
-        /* e.g., something not in storage like TRACE */
-        access_status = OK;
-    }
-
-    if (access_status == OK) {
-        ap_finalize_request_protocol(r);
-    }
-    else {
-        r->status = HTTP_OK;
-        ap_die(access_status, r);
-    }
+    ap_die_r(access_status, r, HTTP_OK);
 
     ap_process_request_after_handler(r);
 }
 
-void ap_process_request(request_rec *r)
+AP_DECLARE(void) ap_process_request(request_rec *r)
 {
     apr_bucket_brigade *bb;
     apr_bucket *b;
@@ -603,8 +690,17 @@ AP_DECLARE(void) ap_internal_fast_redirect(request_rec *rr, request_rec *r)
     update_r_in_filters(r->output_filters, rr, r);
 
     if (r->main) {
-        ap_add_output_filter_handle(ap_subreq_core_filter_handle,
-                                    NULL, r, r->connection);
+        ap_filter_t *next = r->output_filters;
+        while (next && (next != r->proto_output_filters)) {
+            if (next->frec == ap_subreq_core_filter_handle) {
+                break;
+            }
+            next = next->next;
+        }
+        if (!next || next == r->proto_output_filters) {
+            ap_add_output_filter_handle(ap_subreq_core_filter_handle,
+                                        NULL, r, r->connection);
+        }
     }
     else {
         /*
@@ -631,8 +727,8 @@ AP_DECLARE(void) ap_internal_fast_redirect(request_rec *rr, request_rec *r)
 
 AP_DECLARE(void) ap_internal_redirect(const char *new_uri, request_rec *r)
 {
-    request_rec *new = internal_internal_redirect(new_uri, r);
     int access_status;
+    request_rec *new = internal_internal_redirect(new_uri, r);
 
     AP_INTERNAL_REDIRECT(r->uri, new_uri);
 
@@ -648,12 +744,7 @@ AP_DECLARE(void) ap_internal_redirect(const char *new_uri, request_rec *r)
             access_status = ap_invoke_handler(new);
         }
     }
-    if (access_status == OK) {
-        ap_finalize_request_protocol(new);
-    }
-    else {
-        ap_die(access_status, new);
-    }
+    ap_die(access_status, new);
 }
 
 /* This function is designed for things like actions or CGI scripts, when
@@ -674,15 +765,9 @@ AP_DECLARE(void) ap_internal_redirect_handler(const char *new_uri, request_rec *
         ap_set_content_type(new, r->content_type);
     access_status = ap_process_request_internal(new);
     if (access_status == OK) {
-        if ((access_status = ap_invoke_handler(new)) != 0) {
-            ap_die(access_status, new);
-            return;
-        }
-        ap_finalize_request_protocol(new);
+        access_status = ap_invoke_handler(new);
     }
-    else {
-        ap_die(access_status, new);
-    }
+    ap_die(access_status, new);
 }
 
 AP_DECLARE(void) ap_allow_methods(request_rec *r, int reset, ...)

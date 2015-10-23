@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -34,10 +36,10 @@
 <h3>Summary</h3>
 
 <p>
-<code class="module"><a href="../mod/mod_heartmonitor.html">mod_heartmonitor</a></code> listens for server status messages generated 
-by <code class="module"><a href="../mod/mod_heartbeat.html">mod_heartbeat</a></code> enabled origin servers and makes their status 
-available to <code class="module"><a href="../mod/mod_lbmethod_heartbeat.html">mod_lbmethod_heartbeat</a></code>. This allows 
-<code class="directive"><a href="../mod/mod_proxy.html#proxypass">ProxyPass</a></code> to use the "heartbeat" 
+<code class="module"><a href="../mod/mod_heartmonitor.html">mod_heartmonitor</a></code> listens for server status messages generated
+by <code class="module"><a href="../mod/mod_heartbeat.html">mod_heartbeat</a></code> enabled origin servers and makes their status
+available to <code class="module"><a href="../mod/mod_lbmethod_heartbeat.html">mod_lbmethod_heartbeat</a></code>. This allows
+<code class="directive"><a href="../mod/mod_proxy.html#proxypass">ProxyPass</a></code> to use the "heartbeat"
 <em>lbmethod</em> inside of <code class="directive"><a href="../mod/mod_proxy.html#proxypass">ProxyPass</a></code>.
 </p>
 
@@ -72,11 +74,11 @@ use <code class="module"><a href="../mod/mod_slotmem_shm.html">mod_slotmem_shm</
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_heartmonitor</td></tr>
 </table>
     <p>The <code class="directive">HeartbeatListen</code> directive specifies the
-    multicast address on which the server will listen for status information from 
+    multicast address on which the server will listen for status information from
     <code class="module"><a href="../mod/mod_heartbeat.html">mod_heartbeat</a></code>-enabled servers.  This
     address will usually correspond to a configured  <code class="directive"><a href="../mod/mod_heartbeat.html#heartbeataddress">HeartbeatAddress</a></code> on an origin server.
     </p>
-    
+
     <pre class="prettyprint lang-config">HeartbeatListen 239.0.0.1:27999</pre>
 
 
@@ -86,7 +88,7 @@ use <code class="module"><a href="../mod/mod_slotmem_shm.html">mod_slotmem_shm</
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="directive-section"><h2><a name="HeartbeatMaxServers" id="HeartbeatMaxServers">HeartbeatMaxServers</a> <a name="heartbeatmaxservers" id="heartbeatmaxservers">Directive</a></h2>
 <table class="directive">
-<tr><th><a href="directive-dict.html#Description">Description:</a></th><td>Specifies the maximum number of servers that will be sending 
+<tr><th><a href="directive-dict.html#Description">Description:</a></th><td>Specifies the maximum number of servers that will be sending
 heartbeat requests to this server</td></tr>
 <tr><th><a href="directive-dict.html#Syntax">Syntax:</a></th><td><code>HeartbeatMaxServers <var>number-of-servers</var></code></td></tr>
 <tr><th><a href="directive-dict.html#Default">Default:</a></th><td><code>HeartbeatMaxServers 10</code></td></tr>
@@ -136,7 +138,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_heartmonit
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

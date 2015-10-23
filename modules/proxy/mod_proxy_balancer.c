@@ -633,7 +633,8 @@ static int proxy_balancer_post_request(proxy_worker *worker,
         return HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (!apr_is_empty_array(balancer->errstatuses)) {
+    if (!apr_is_empty_array(balancer->errstatuses)
+        && !(worker->s->status & PROXY_WORKER_IGNORE_ERRORS)) {
         int i;
         for (i = 0; i < balancer->errstatuses->nelts; i++) {
             int val = ((int *)balancer->errstatuses->elts)[i];
@@ -652,10 +653,11 @@ static int proxy_balancer_post_request(proxy_worker *worker,
     }
 
     if (balancer->failontimeout
+        && !(worker->s->status & PROXY_WORKER_IGNORE_ERRORS)
         && (apr_table_get(r->notes, "proxy_timedout")) != NULL) {
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(02460)
                       "%s: Forcing worker (%s) into error state "
-                      "due to timeout and 'failonstatus' parameter being set",
+                      "due to timeout and 'failontimeout' parameter being set",
                        balancer->s->name, ap_proxy_worker_name(r->pool, worker));
         worker->s->status |= PROXY_WORKER_IN_ERROR;
         worker->s->error_time = apr_time_now();
@@ -920,10 +922,10 @@ static int balancer_post_config(apr_pool_t *pconf, apr_pool_t *plog,
 
 static void create_radio(const char *name, unsigned int flag, request_rec *r)
 {
-    ap_rvputs(r, "<td>On <input name='", name, "' id='", name, "' value='1' type=radio", NULL);
+    ap_rvputs(r, "<td><label for='", name, "1'>On</label> <input name='", name, "' id='", name, "1' value='1' type=radio", NULL);
     if (flag)
         ap_rputs(" checked", r);
-    ap_rvputs(r, "> <br/> Off <input name='", name, "' id='", name, "' value='0' type=radio", NULL);
+    ap_rvputs(r, "> <br/> <label for='", name, "0'>Off</label> <input name='", name, "' id='", name, "0' value='0' type=radio", NULL);
     if (!flag)
         ap_rputs(" checked", r);
     ap_rputs("></td>\n", r);
@@ -1037,7 +1039,7 @@ static int balancer_handler(request_rec *r)
         rv = ap_get_brigade(r->input_filters, ib, AP_MODE_READBYTES,
                                 APR_BLOCK_READ, len);
         if (rv != APR_SUCCESS) {
-            return HTTP_INTERNAL_SERVER_ERROR;
+            return ap_map_http_request_error(rv, HTTP_BAD_REQUEST);
         }
         apr_brigade_flatten(ib, buf, &len);
         buf[len] = '\0';
@@ -1255,7 +1257,7 @@ static int balancer_handler(request_rec *r)
             ap_rputs("    <httpd:balancer>\n", r);
             /* Start proxy_balancer */
             ap_rvputs(r, "      <httpd:name>", balancer->s->name, "</httpd:name>\n", NULL);
-            if (balancer->s->sticky) {
+            if (*balancer->s->sticky) {
                 ap_rvputs(r, "      <httpd:stickysession>", balancer->s->sticky,
                           "</httpd:stickysession>\n", NULL);
                 ap_rprintf(r,
@@ -1272,7 +1274,7 @@ static int balancer_handler(request_rec *r)
             }
             ap_rvputs(r, "      <httpd:lbmethod>", balancer->lbmethod->name,
                       "</httpd:lbmethod>\n", NULL);
-            if (balancer->s->sticky) {
+            if (*balancer->s->sticky) {
                 ap_rprintf(r,
                            "      <httpd:scolonpathdelim>%s</httpd:scolonpathdelim>\n",
                            (balancer->s->scolonsep ? "On" : "Off"));
@@ -1479,7 +1481,7 @@ static int balancer_handler(request_rec *r)
             ap_rputs("<hr />\n<h3>LoadBalancer Status for ", r);
             ap_rvputs(r, "<a href=\"", ap_escape_uri(r->pool, r->uri), "?b=",
                       balancer->s->name + sizeof(BALANCER_PREFIX) - 1,
-                      "&nonce=", balancer->s->nonce,
+                      "&amp;nonce=", balancer->s->nonce,
                       "\">", NULL);
             ap_rvputs(r, balancer->s->name, "</a> [",balancer->s->sname, "]</h3>\n", NULL);
             ap_rputs("\n\n<table><tr>"
@@ -1501,15 +1503,15 @@ static int balancer_handler(request_rec *r)
             else {
                 ap_rputs("<td> (None) ", r);
             }
-            ap_rprintf(r, "<td>%s</td>\n",
+            ap_rprintf(r, "</td><td>%s</td>\n",
                        balancer->s->sticky_force ? "On" : "Off");
-            ap_rprintf(r, "</td><td>%" APR_TIME_T_FMT "</td>",
+            ap_rprintf(r, "<td>%" APR_TIME_T_FMT "</td>",
                 apr_time_sec(balancer->s->timeout));
             ap_rprintf(r, "<td>%d</td>\n", balancer->s->max_attempts);
             ap_rprintf(r, "<td>%s</td>\n",
                        balancer->s->lbpname);
             ap_rputs("<td>", r);
-            if (balancer->s->vhost && *(balancer->s->vhost)) {
+            if (*balancer->s->vhost) {
                 ap_rvputs(r, balancer->s->vhost, " -> ", NULL);
             }
             ap_rvputs(r, balancer->s->vpath, "</td>\n", NULL);
@@ -1529,9 +1531,9 @@ static int balancer_handler(request_rec *r)
                 worker = *workers;
                 ap_rvputs(r, "<tr>\n<td><a href=\"",
                           ap_escape_uri(r->pool, r->uri), "?b=",
-                          balancer->s->name + sizeof(BALANCER_PREFIX) - 1, "&w=",
+                          balancer->s->name + sizeof(BALANCER_PREFIX) - 1, "&amp;w=",
                           ap_escape_uri(r->pool, worker->s->name),
-                          "&nonce=", balancer->s->nonce,
+                          "&amp;nonce=", balancer->s->nonce,
                           "\">", NULL);
                 ap_rvputs(r, (*worker->s->uds_path ? "<i>" : ""), ap_proxy_worker_name(r->pool, worker),
                           (*worker->s->uds_path ? "</i>" : ""), "</a></td>", NULL);
@@ -1562,7 +1564,7 @@ static int balancer_handler(request_rec *r)
             ap_rvputs(r, (*wsel->s->uds_path?"<i>":""), ap_proxy_worker_name(r->pool, wsel), (*wsel->s->uds_path?"</i>":""), "</h3>\n", NULL);
             ap_rputs("<form method=\"POST\" enctype=\"application/x-www-form-urlencoded\" action=\"", r);
             ap_rvputs(r, ap_escape_uri(r->pool, action), "\">\n", NULL);
-            ap_rputs("<dl>\n<table><tr><td>Load factor:</td><td><input name='w_lf' id='w_lf' type=text ", r);
+            ap_rputs("<table><tr><td>Load factor:</td><td><input name='w_lf' id='w_lf' type=text ", r);
             ap_rprintf(r, "value='%d'></td></tr>\n", wsel->s->lbfactor);
             ap_rputs("<tr><td>LB Set:</td><td><input name='w_ls' id='w_ls' type=text ", r);
             ap_rprintf(r, "value='%d'></td></tr>\n", wsel->s->lbset);
@@ -1603,7 +1605,7 @@ static int balancer_handler(request_rec *r)
             ap_rvputs(r, bsel->s->name, "</h3>\n", NULL);
             ap_rputs("<form method='POST' enctype='application/x-www-form-urlencoded' action='", r);
             ap_rvputs(r, ap_escape_uri(r->pool, action), "'>\n", NULL);
-            ap_rputs("<dl>\n<table>\n", r);
+            ap_rputs("<table>\n", r);
             provs = ap_list_provider_names(r->pool, PROXY_LBMETHOD, "0");
             if (provs) {
                 ap_rputs("<tr><td>LBmethod:</td>", r);

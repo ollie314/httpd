@@ -132,10 +132,10 @@ static const char * const status_lines[RESPONSE_CODES] =
     "415 Unsupported Media Type",
     "416 Requested Range Not Satisfiable",
     "417 Expectation Failed",
-    NULL, /* 418 */
+    "418 I'm A Teapot",
     NULL, /* 419 */
     NULL, /* 420 */
-    NULL, /* 421 */
+    "421 Misdirected Request",
     "422 Unprocessable Entity",
     "423 Locked",
     "424 Failed Dependency",
@@ -316,8 +316,8 @@ AP_DECLARE(ap_condition_e) ap_condition_if_match(request_rec *r,
      */
     if ((if_match = apr_table_get(r->headers_in, "If-Match")) != NULL) {
         if (if_match[0] == '*'
-                || ((etag = apr_table_get(headers, "ETag")) == NULL
-                        && !ap_find_etag_strong(r->pool, if_match, etag))) {
+                || ((etag = apr_table_get(headers, "ETag")) != NULL
+                        && ap_find_etag_strong(r->pool, if_match, etag))) {
             return AP_CONDITION_STRONG;
         }
         else {
@@ -552,9 +552,6 @@ AP_DECLARE(int) ap_meets_conditions(request_rec *r)
      */
     cond = ap_condition_if_match(r, r->headers_out);
     if (AP_CONDITION_NOMATCH == cond) {
-        not_modified = 0;
-    }
-    else if (cond >= AP_CONDITION_WEAK) {
         return HTTP_PRECONDITION_FAILED;
     }
 
@@ -698,6 +695,8 @@ AP_DECLARE(void) ap_method_registry_init(apr_pool_t *p)
     register_one_method(p, "MKACTIVITY", M_MKACTIVITY);
     register_one_method(p, "BASELINE-CONTROL", M_BASELINE_CONTROL);
     register_one_method(p, "MERGE", M_MERGE);
+    register_one_method(p, "BREW", M_BREW);
+    register_one_method(p, "WHEN", M_WHEN);
 }
 
 AP_DECLARE(int) ap_method_register(apr_pool_t *p, const char *methname)
@@ -796,6 +795,16 @@ static int lookup_builtin_method(const char *method, apr_size_t len)
                     && method[2] == 'P'
                     && method[3] == 'Y'
                     ? M_COPY : UNKNOWN_METHOD);
+        case 'B':
+            return (method[1] == 'R'
+                    && method[2] == 'E'
+                    && method[3] == 'W'
+                    ? M_BREW : UNKNOWN_METHOD);
+        case 'W':
+            return (method[1] == 'H'
+                    && method[2] == 'E'
+                    && method[3] == 'N'
+                    ? M_WHEN : UNKNOWN_METHOD);
         default:
             return UNKNOWN_METHOD;
         }
@@ -1296,6 +1305,14 @@ static const char *get_canned_error_string(int status,
     case HTTP_NETWORK_AUTHENTICATION_REQUIRED:
         return("<p>The client needs to authenticate to gain\n"
                "network access.</p>\n");
+    case HTTP_IM_A_TEAPOT:
+        return("<p>The resulting entity body MAY be short and\n"
+                "stout.</p>\n");
+    case HTTP_MISDIRECTED_REQUEST:
+        return("<p>The client needs a new connection for this\n"
+               "request as the requested host name does not match\n"
+               "the Server Name Indication (SNI) in use for this\n"
+               "connection.</p>\n");
     default:                    /* HTTP_INTERNAL_SERVER_ERROR */
         /*
          * This comparison to expose error-notes could be modified to

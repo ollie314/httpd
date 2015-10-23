@@ -24,6 +24,7 @@
 #include "http_protocol.h"
 #include "http_request.h"
 #include "ap_provider.h"
+#include "util_varbuf.h"
 #include "util_expr_private.h"
 #include "util_md5.h"
 
@@ -32,6 +33,8 @@
 #include "apr_base64.h"
 #include "apr_sha1.h"
 #include "apr_version.h"
+#include "apr_strings.h"
+#include "apr_strmatch.h"
 #if APR_VERSION_AT_LEAST(1,5,0)
 #include "apr_escape.h"
 #endif
@@ -100,7 +103,8 @@ static const char *ap_expr_eval_word(ap_expr_eval_ctx_t *ctx,
                                   node->node_arg2);
         break;
     case op_Concat:
-        if (((ap_expr_t *)node->node_arg2)->node_op != op_Concat) {
+        if (((ap_expr_t *)node->node_arg2)->node_op != op_Concat &&
+            ((ap_expr_t *)node->node_arg1)->node_op != op_Concat) {
             const char *s1 = ap_expr_eval_word(ctx, node->node_arg1);
             const char *s2 = ap_expr_eval_word(ctx, node->node_arg2);
             if (!*s1)
@@ -109,6 +113,30 @@ static const char *ap_expr_eval_word(ap_expr_eval_ctx_t *ctx,
                 result = s1;
             else
                 result = apr_pstrcat(ctx->p, s1, s2, NULL);
+        }
+        else if (((ap_expr_t *)node->node_arg1)->node_op == op_Concat) {
+            const ap_expr_t *nodep = node;
+            int n;
+            int i = 1;
+            struct iovec *vec;
+            do {
+                nodep = nodep->node_arg1;
+                i++;
+            } while (nodep->node_op == op_Concat);
+            vec = apr_palloc(ctx->p, i * sizeof(struct iovec));
+            n = i;
+            nodep = node;
+            i--;
+            do {
+                vec[i].iov_base = (void *)ap_expr_eval_word(ctx,
+                                                            nodep->node_arg2);
+                vec[i].iov_len = strlen(vec[i].iov_base);
+                i--;
+                nodep = nodep->node_arg1;
+            } while (nodep->node_op == op_Concat);
+            vec[i].iov_base = (void *)ap_expr_eval_word(ctx, nodep);
+            vec[i].iov_len = strlen(vec[i].iov_base);
+            result = apr_pstrcatv(ctx->p, vec, n, NULL);
         }
         else {
             const ap_expr_t *nodep = node;
@@ -183,13 +211,29 @@ static const char *ap_expr_eval_string_func(ap_expr_eval_ctx_t *ctx,
                                             const ap_expr_t *info,
                                             const ap_expr_t *arg)
 {
-    ap_expr_string_func_t *func = (ap_expr_string_func_t *)info->node_arg1;
     const void *data = info->node_arg2;
 
     AP_DEBUG_ASSERT(info->node_op == op_StringFuncInfo);
-    AP_DEBUG_ASSERT(func != NULL);
+    AP_DEBUG_ASSERT(info->node_arg1 != NULL);
     AP_DEBUG_ASSERT(data != NULL);
-    return (*func)(ctx, data, ap_expr_eval_word(ctx, arg));
+    if (arg->node_op == op_ListElement) {
+        /* Evaluate the list elements and store them in apr_array_header. */
+        ap_expr_string_list_func_t *func = (ap_expr_string_list_func_t *)info->node_arg1;
+        apr_array_header_t *args = apr_array_make(ctx->p, 2, sizeof(char *));
+        do {
+            const ap_expr_t *val = arg->node_arg1;
+            const char **new = apr_array_push(args);
+            *new = ap_expr_eval_word(ctx, val);
+
+            arg = arg->node_arg2;
+        } while (arg != NULL);
+
+        return (*func)(ctx, data, args);
+    }
+    else {
+        ap_expr_string_func_t *func = (ap_expr_string_func_t *)info->node_arg1;
+        return (*func)(ctx, data, ap_expr_eval_word(ctx, arg));
+    }
 }
 
 static int intstrcmp(const char *s1, const char *s2)
@@ -443,7 +487,25 @@ static ap_expr_t *ap_expr_info_make(int type, const char *name,
     parms.func  = &info->node_arg1;
     parms.data  = &info->node_arg2;
     parms.err   = &ctx->error2;
-    parms.arg   = (arg && arg->node_op == op_String) ? arg->node_arg1 : NULL;
+    parms.arg   = NULL;
+    if (arg) {
+        switch(arg->node_op) {
+            case op_String:
+                parms.arg = arg->node_arg1;
+                break;
+            case op_ListElement:
+                do {
+                    const ap_expr_t *val = arg->node_arg1;
+                    if (val->node_op == op_String) {
+                        parms.arg = val->node_arg1;
+                    }
+                    arg = arg->node_arg2;
+                } while (arg != NULL);
+                break;
+            default:
+                break;
+        }
+    }
     if (ctx->lookup_fn(&parms) != OK)
         return NULL;
     return info;
@@ -1071,6 +1133,60 @@ static const char *ldap_func(ap_expr_eval_ctx_t *ctx, const void *data,
 }
 #endif
 
+static int replace_func_parse_arg(ap_expr_lookup_parms *parms)
+{
+    const char *original = parms->arg;
+    const apr_strmatch_pattern *pattern;
+
+    if (!parms->arg) {
+        *parms->err = apr_psprintf(parms->ptemp, "replace() function needs "
+                                   "exactly 3 arguments");
+        return !OK;
+    }
+    pattern = apr_strmatch_precompile(parms->pool, original, 0);
+    *parms->data = pattern;
+    return OK;
+}
+
+static const char *replace_func(ap_expr_eval_ctx_t *ctx, const void *data,
+                               const apr_array_header_t *args)
+{
+    char *buff, *original, *replacement;
+    struct ap_varbuf vb;
+    apr_size_t repl_len, orig_len;
+    const char *repl;
+    apr_size_t bytes;
+    apr_size_t len;
+    const apr_strmatch_pattern *pattern = data;
+    if (args->nelts != 3) {
+        *ctx->err = apr_psprintf(ctx->p, "replace() function needs "
+                                 "exactly 3 arguments");
+        return "";
+    }
+
+    buff = APR_ARRAY_IDX(args, 2, char *);
+    original = APR_ARRAY_IDX(args, 1, char *);
+    replacement = APR_ARRAY_IDX(args, 0, char *);
+    repl_len = strlen(replacement);
+    orig_len = strlen(original);
+    bytes = strlen(buff);
+
+    ap_varbuf_init(ctx->p, &vb, 0);
+    vb.strlen = 0;
+    
+    while ((repl = apr_strmatch(pattern, buff, bytes))) {
+        len = (apr_size_t) (repl - buff);
+        ap_varbuf_strmemcat(&vb, buff, len);
+        ap_varbuf_strmemcat(&vb, replacement, repl_len);
+
+        len += orig_len;
+        bytes -= len;
+        buff += len;
+    }
+
+    return ap_varbuf_pdup(ctx->p, &vb, NULL, 0, buff, bytes, &len);
+}
+
 #define MAX_FILE_SIZE 10*1024*1024
 static const char *file_func(ap_expr_eval_ctx_t *ctx, const void *data,
                              char *arg)
@@ -1126,6 +1242,18 @@ static const char *filesize_func(ap_expr_eval_ctx_t *ctx, const void *data,
     else
         return "0";
 }
+
+static const char *filemod_func(ap_expr_eval_ctx_t *ctx, const void *data,
+                                  char *arg)
+{
+    apr_finfo_t sb;
+    if (apr_stat(&sb, arg, APR_FINFO_MIN, ctx->p) == APR_SUCCESS
+        && sb.filetype == APR_REG && sb.mtime > 0)
+        return apr_psprintf(ctx->p, "%" APR_OFF_T_FMT, (apr_off_t)sb.mtime);
+    else
+        return "0";
+}
+
 
 static const char *unescape_func(ap_expr_eval_ctx_t *ctx, const void *data,
                                  const char *arg)
@@ -1650,6 +1778,7 @@ static const struct expr_provider_single string_func_providers[] = {
     { unescape_func,        "unescape",       NULL, 0 },
     { file_func,            "file",           NULL, 1 },
     { filesize_func,        "filesize",       NULL, 1 },
+    { filemod_func,         "filemod",        NULL, 1 },
     { base64_func,          "base64",         NULL, 0 },
     { unbase64_func,        "unbase64",       NULL, 0 },
     { sha1_func,            "sha1",           NULL, 0 },
@@ -1657,6 +1786,7 @@ static const struct expr_provider_single string_func_providers[] = {
 #if APR_VERSION_AT_LEAST(1,6,0)
     { ldap_func,            "ldap",           NULL, 0 },
 #endif
+    { replace_func,         "replace",        replace_func_parse_arg, 0 },
     { NULL, NULL, NULL}
 };
 

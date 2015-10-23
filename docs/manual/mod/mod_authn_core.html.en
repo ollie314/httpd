@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -39,16 +41,16 @@
     <code class="module"><a href="../mod/mod_authn_core.html">mod_authn_core</a></code> provides directives that are
     common to all authentication providers.</p>
 </div>
-<div id="quickview"><h3 class="directives">Directives</h3>
+<div id="quickview"><h3>Topics</h3>
+<ul id="topics">
+<li><img alt="" src="../images/down.gif" /> <a href="#authnalias">Creating Authentication Provider Aliases</a></li>
+</ul><h3 class="directives">Directives</h3>
 <ul id="toc">
 <li><img alt="" src="../images/down.gif" /> <a href="#authname">AuthName</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#authnprovideralias">&lt;AuthnProviderAlias&gt;</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#authtype">AuthType</a></li>
 </ul>
-<h3>Topics</h3>
-<ul id="topics">
-<li><img alt="" src="../images/down.gif" /> <a href="#authnalias">Creating Authentication Provider Aliases</a></li>
-</ul><ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
+<ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="section">
 <h2><a name="authnalias" id="authnalias">Creating Authentication Provider Aliases</a></h2>
@@ -70,17 +72,17 @@
 
         <div class="example"><h3>Checking multiple text password files</h3><pre class="prettyprint lang-config"># Check here first
 &lt;AuthnProviderAlias file file1&gt;
-    AuthUserFile /www/conf/passwords1
+    AuthUserFile "/www/conf/passwords1"
 &lt;/AuthnProviderAlias&gt;
 
 # Then check here
-&lt;AuthnProviderAlias file file2&gt;   
-    AuthUserFile /www/conf/passwords2
+&lt;AuthnProviderAlias file file2&gt;
+    AuthUserFile "/www/conf/passwords2"
 &lt;/AuthnProviderAlias&gt;
 
-&lt;Directory /var/web/pages/secure&gt;
+&lt;Directory "/var/web/pages/secure"&gt;
     AuthBasicProvider file1 file2
-    
+
     AuthType Basic
     AuthName "Protected Area"
     Require valid-user
@@ -93,27 +95,24 @@
         hosts:</p>
 
         <div class="example"><h3>Checking multiple LDAP servers</h3><pre class="prettyprint lang-config">&lt;AuthnProviderAlias ldap ldap-alias1&gt;
-    AuthLDAPBindDN cn=youruser,o=ctx
+    AuthLDAPBindDN "cn=youruser,o=ctx"
     AuthLDAPBindPassword yourpassword
-    AuthLDAPURL ldap://ldap.host/o=ctx
+    AuthLDAPURL "ldap://ldap.host/o=ctx"
 &lt;/AuthnProviderAlias&gt;
 &lt;AuthnProviderAlias ldap ldap-other-alias&gt;
-    AuthLDAPBindDN cn=yourotheruser,o=dev
+    AuthLDAPBindDN "cn=yourotheruser,o=dev"
     AuthLDAPBindPassword yourotherpassword
-    AuthLDAPURL ldap://other.ldap.host/o=dev?cn
+    AuthLDAPURL "ldap://other.ldap.host/o=dev?cn"
 &lt;/AuthnProviderAlias&gt;
 
-Alias /secure /webpages/secure
-&lt;Directory /webpages/secure&gt;
-    Order deny,allow
-    Allow from all
-    
+Alias "/secure" "/webpages/secure"
+&lt;Directory "/webpages/secure"&gt;
     AuthBasicProvider ldap-other-alias  ldap-alias1
-    
+
     AuthType Basic
     AuthName "LDAP Protected Place"
     Require valid-user
-    # Note that Require ldap-* would not work here, since the 
+    # Note that Require ldap-* would not work here, since the
     # AuthnProviderAlias does not provide the config to authorization providers
     # that are implemented in the same module as the authentication provider.
 &lt;/Directory&gt;</pre>
@@ -149,6 +148,15 @@ authentication</td></tr>
 
     <p>The string provided for the <code>AuthName</code> is what will
     appear in the password dialog provided by most browsers.</p>
+
+    <p>From 2.4.13, <a href="../expr.html">expression syntax</a> can be
+    used inside the directive to produce the name dynamically.</p>
+
+   <p>For example:</p>
+
+   <pre class="prettyprint lang-config">AuthName "%{HTTP_HOST}"</pre>
+
+
 
 <h3>See also</h3>
 <ul>
@@ -211,19 +219,22 @@ the specified alias</td></tr>
     in the following example, clients may access the
     <code>/www/docs/public</code> directory without authenticating:</p>
 
-    <pre class="prettyprint lang-config">&lt;Directory /www/docs&gt;
+    <pre class="prettyprint lang-config">&lt;Directory "/www/docs"&gt;
     AuthType Basic
     AuthName Documents
     AuthBasicProvider file
-    AuthUserFile /usr/local/apache/passwd/passwords
+    AuthUserFile "/usr/local/apache/passwd/passwords"
     Require valid-user
 &lt;/Directory&gt;
 
-&lt;Directory /www/docs/public&gt;
+&lt;Directory "/www/docs/public"&gt;
     AuthType None
     Require all granted
 &lt;/Directory&gt;</pre>
 
+
+    <p>From 2.4.13, <a href="../expr.html">expression syntax</a> can be
+    used inside the directive to specify the type dynamically.</p>
 
     <div class="note">When disabling authentication, note that clients which have
     already authenticated against another portion of the server's document
@@ -259,7 +270,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_authn_core
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

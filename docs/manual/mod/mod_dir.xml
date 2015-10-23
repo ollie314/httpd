@@ -108,19 +108,19 @@ a directory</description>
     </p>
     <highlight language="config">
 # Example A: Set index.html as an index page, then add index.php to that list as well.
-&lt;Directory /foo&gt;
+&lt;Directory "/foo"&gt;
     DirectoryIndex index.html
     DirectoryIndex index.php
 &lt;/Directory&gt;
 
 # Example B: This is identical to example A, except it's done with a single directive.
-&lt;Directory /foo&gt;
+&lt;Directory "/foo"&gt;
     DirectoryIndex index.html index.php
 &lt;/Directory&gt;
 
 # Example C: To replace the list, you must explicitly reset it first:
 # In this example, only index.php will remain as an index resource.
-&lt;Directory /foo&gt;
+&lt;Directory "/foo"&gt;
     DirectoryIndex index.html
     DirectoryIndex disabled
     DirectoryIndex index.php
@@ -209,7 +209,7 @@ a directory</description>
 
     <highlight language="config">
 # see security warning below!
-&lt;Location /some/path&gt;
+&lt;Location "/some/path"&gt;
     DirectorySlash Off
     SetHandler some-handler
 &lt;/Location&gt;
@@ -267,10 +267,10 @@ later</compatibility>
     <p>In a sub-URI, such as <em>http://example.com/blog/</em> this
     <em>sub-URI</em> has to be supplied as <var>local-url</var>:</p>
     <highlight language="config">
-&lt;Directory /web/example.com/htdocs/blog&gt;
+&lt;Directory "/web/example.com/htdocs/blog"&gt;
     FallbackResource /blog/index.php
 &lt;/Directory&gt;
-&lt;Directory /web/example.com/htdocs/blog/images&gt;
+&lt;Directory "/web/example.com/htdocs/blog/images"&gt;
     FallbackResource disabled
 &lt;/Directory&gt;
     </highlight>
@@ -287,18 +287,18 @@ later</compatibility>
 <compatibility>Available in 2.4.8 and later.  Releases prior to 2.4 implicitly
 act as if "DirectoryCheckHandler ON" was specified.</compatibility>
 <usage>
-    <p>The <directive>DirectoryCheckHandler</directive> directive determines 
+    <p>The <directive>DirectoryCheckHandler</directive> directive determines
     whether <module>mod_dir</module> should check for directory indexes or
     add trailing slashes when some other handler has been configured for
-    the current URL.  Handlers can be set by directives such as 
-    <directive module="core">SetHandler</directive> or by other modules at 
+    the current URL.  Handlers can be set by directives such as
+    <directive module="core">SetHandler</directive> or by other modules at
     runtime. </p>
 
     <p> In releases prior to 2.4, this module did not take any action if any
-    other handler was configured for a URL. This allows directory indexes to 
-    be served even when a <directive>SetHandler</directive> directive is 
+    other handler was configured for a URL. This allows directory indexes to
+    be served even when a <directive>SetHandler</directive> directive is
     specified for an entire directory, but it can also result in some conflicts
-    with other modules.</p> 
+    with other modules.</p>
 </usage>
 </directivesynopsis>
 

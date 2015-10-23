@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -52,7 +54,12 @@
     detect configuration mistakes within the server itself.</p>
 
 </div>
-<div id="quickview"><h3 class="directives">Directives</h3>
+<div id="quickview"><h3>Topics</h3>
+<ul id="topics">
+<li><img alt="" src="../images/down.gif" /> <a href="#actions">Actions</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#tests">Policy Tests</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#example">Example Configuration</a></li>
+</ul><h3 class="directives">Directives</h3>
 <ul id="toc">
 <li><img alt="" src="../images/down.gif" /> <a href="#policyconditional">PolicyConditional</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#policyconditionalurl">PolicyConditionalURL</a></li>
@@ -75,12 +82,7 @@
 <li><img alt="" src="../images/down.gif" /> <a href="#policyversion">PolicyVersion</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#policyversionurl">PolicyVersionURL</a></li>
 </ul>
-<h3>Topics</h3>
-<ul id="topics">
-<li><img alt="" src="../images/down.gif" /> <a href="#actions">Actions</a></li>
-<li><img alt="" src="../images/down.gif" /> <a href="#tests">Policy Tests</a></li>
-<li><img alt="" src="../images/down.gif" /> <a href="#example">Example Configuration</a></li>
-</ul><h3>See also</h3>
+<h3>See also</h3>
 <ul class="seealso">
 <li><a href="../filter.html">Filters</a></li>
 <li><a href="../compliance.html">HTTP Protocol Compliance</a></li>
@@ -137,7 +139,7 @@
     <dd>Content types that are syntactically invalid or blank can be detected
 	and the request rejected. Types can be restricted to a specific list
 	containing optional wildcards ? and *.</dd>
-    
+
     <dt><strong><a href="../compliance.html#policylength">POLICY_LENGTH</a>
     </strong>: Enforce the presence of a Content-Length</dt>
     <dd>The length of responses can be specified in one of three ways, by
@@ -228,40 +230,40 @@
     <p>A typical configuration protecting a server serving static content
     might be as follows:</p>
 
-    <pre class="prettyprint lang-config">&lt;Location /&gt;
+    <pre class="prettyprint lang-config">&lt;Location "/"&gt;
   SetOutputFilter POLICY_TYPE;POLICY_LENGTH;POLICY_KEEPALIVE;POLICY_VARY;POLICY_VALIDATION; \
     POLICY_CONDITIONAL;POLICY_NOCACHE;POLICY_MAXAGE;POLICY_VERSION
-  
+
   # content type must be present and valid, but can be anything
   PolicyType enforce */*
-  
+
   # reject if no explicitly declared content length
   PolicyLength enforce
-  
+
   # covered by the policy length filter
   PolicyKeepalive ignore
-  
+
   # reject if User-Agent appears within Vary headers
   PolicyVary enforce User-Agent
-  
+
   # we want to enforce validation
   PolicyValidation enforce
-  
+
   # non-functional conditional responses should be rejected
   PolicyConditional enforce
-  
+
   # no-cache responses should be rejected
   PolicyNocache enforce
-  
+
   # maxage must be at least a day
   PolicyMaxage enforce 86400
-  
+
   # request version can be anything
   PolicyVersion ignore HTTP/1.1
 &lt;/Location&gt;
 
 # suppress policy protection for server-status
-&lt;Location /server-status&gt;
+&lt;Location "/server-status"&gt;
   PolicyFilter off
 &lt;/Location&gt;</pre>
 
@@ -341,12 +343,12 @@ later.</td></tr>
     <p>Master switch to enable or disable policies for a given URL space.</p>
 
     <div class="example"><h3>Example</h3><pre class="prettyprint lang-config"># enabled by default
-&lt;Location /&gt;
+&lt;Location "/"&gt;
   PolicyFilter on
 &lt;/Location&gt;
 
 # suppress policy protection for server-status
-&lt;Location /server-status&gt;
+&lt;Location "/server-status"&gt;
   PolicyFilter off
 &lt;/Location&gt;</pre>
 </div>
@@ -678,7 +680,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_policy.htm
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

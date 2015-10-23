@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -25,6 +27,7 @@
 <div id="preamble"><h1>Apache Module mod_log_forensic</h1>
 <div class="toplang">
 <p><span>Available Languages: </span><a href="../en/mod/mod_log_forensic.html" title="English">&nbsp;en&nbsp;</a> |
+<a href="../fr/mod/mod_log_forensic.html" hreflang="fr" rel="alternate" title="Français">&nbsp;fr&nbsp;</a> |
 <a href="../ja/mod/mod_log_forensic.html" hreflang="ja" rel="alternate" title="Japanese">&nbsp;ja&nbsp;</a> |
 <a href="../tr/mod/mod_log_forensic.html" hreflang="tr" rel="alternate" title="Türkçe">&nbsp;tr&nbsp;</a></p>
 </div>
@@ -34,8 +37,15 @@
 <tr><th><a href="module-dict.html#SourceFile">Source File:</a></th><td>mod_log_forensic.c</td></tr></table>
 <h3>Summary</h3>
 
-    <p>This module provides for forensic logging of client
-    requests. Logging is done before and after processing a request, so the
+    <p>This module provides for forensic logging of client requests.</p>
+
+    <p>Create the log file using the <code class="directive">ForensicLog</code>
+    directive:</p>
+
+    <pre class="prettyprint lang-config">ForensicLog logs/forensic_log</pre>
+
+    
+    <p>Logging is done before and after processing a request, so the
     forensic log contains two log lines for each request.
     The forensic logger is very strict, which means:</p>
 
@@ -49,18 +59,22 @@
     </ul>
 
     <p>The <code>check_forensic</code> script, which can be found in the
-    distribution's support directory, may be helpful in evaluating the
-    forensic log output.</p>
+    distribution's support directory, processes the resulting log file
+    to identify the requests that didn't complete.</p>
+
+    <div class="example"><p><code>
+    check-forensic forensic_log
+    </code></p></div>
 </div>
-<div id="quickview"><h3 class="directives">Directives</h3>
-<ul id="toc">
-<li><img alt="" src="../images/down.gif" /> <a href="#forensiclog">ForensicLog</a></li>
-</ul>
-<h3>Topics</h3>
+<div id="quickview"><h3>Topics</h3>
 <ul id="topics">
 <li><img alt="" src="../images/down.gif" /> <a href="#formats">Forensic Log Format</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#security">Security Considerations</a></li>
-</ul><h3>See also</h3>
+</ul><h3 class="directives">Directives</h3>
+<ul id="toc">
+<li><img alt="" src="../images/down.gif" /> <a href="#forensiclog">ForensicLog</a></li>
+</ul>
+<h3>See also</h3>
 <ul class="seealso">
 <li><a href="../logs.html">Apache Log Files</a></li>
 <li><code class="module"><a href="../mod/mod_log_config.html">mod_log_config</a></code></li>
@@ -107,7 +121,7 @@
     document for details on why your security could be compromised
     if the directory where logfiles are stored is writable by
     anyone other than the user that starts the server.</p>
-    <p>The log files may contain sensitive data such as the contents of 
+    <p>The log files may contain sensitive data such as the contents of
     <code>Authorization:</code> headers (which can contain passwords), so
     they should not be readable by anyone except the user that starts the
     server.</p>
@@ -161,6 +175,7 @@
 </div>
 <div class="bottomlang">
 <p><span>Available Languages: </span><a href="../en/mod/mod_log_forensic.html" title="English">&nbsp;en&nbsp;</a> |
+<a href="../fr/mod/mod_log_forensic.html" hreflang="fr" rel="alternate" title="Français">&nbsp;fr&nbsp;</a> |
 <a href="../ja/mod/mod_log_forensic.html" hreflang="ja" rel="alternate" title="Japanese">&nbsp;ja&nbsp;</a> |
 <a href="../tr/mod/mod_log_forensic.html" hreflang="tr" rel="alternate" title="Türkçe">&nbsp;tr&nbsp;</a></p>
 </div><div class="top"><a href="#page-header"><img src="../images/up.gif" alt="top" /></a></div><div class="section"><h2><a id="comments_section" name="comments_section">Comments</a></h2><div class="warning"><strong>Notice:</strong><br />This is not a Q&amp;A section. Comments placed here should be pointed towards suggestions on improving the documentation or server, and may be removed again by our moderators if they are either implemented or considered invalid/off-topic. Questions on how to manage the Apache HTTP Server should be directed at either our IRC channel, #httpd, on Freenode, or sent to our <a href="http://httpd.apache.org/lists.html">mailing lists</a>.</div>
@@ -181,7 +196,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_log_forens
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -42,7 +44,14 @@ to provide the cryptography engine.</p>
 <p>Further details, discussion, and examples are provided in the
 <a href="../ssl/">SSL documentation</a>.</p>
 </div>
-<div id="quickview"><h3 class="directives">Directives</h3>
+<div id="quickview"><h3>Topics</h3>
+<ul id="topics">
+<li><img alt="" src="../images/down.gif" /> <a href="#envvars">Environment Variables</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#logformats">Custom Log Formats</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#notes">Request Notes</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#expressionparser">Expression Parser Extension</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#authzproviders">Authorization providers for use with Require</a></li>
+</ul><h3 class="directives">Directives</h3>
 <ul id="toc">
 <li><img alt="" src="../images/down.gif" /> <a href="#sslcacertificatefile">SSLCACertificateFile</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#sslcacertificatepath">SSLCACertificatePath</a></li>
@@ -95,6 +104,7 @@ to provide the cryptography engine.</p>
 <li><img alt="" src="../images/down.gif" /> <a href="#sslsessioncache">SSLSessionCache</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#sslsessioncachetimeout">SSLSessionCacheTimeout</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#sslsessionticketkeyfile">SSLSessionTicketKeyFile</a></li>
+<li><img alt="" src="../images/down.gif" /> <a href="#sslsessiontickets">SSLSessionTickets</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#sslsrpunknownuserseed">SSLSRPUnknownUserSeed</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#sslsrpverifierfile">SSLSRPVerifierFile</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#sslstaplingcache">SSLStaplingCache</a></li>
@@ -112,13 +122,7 @@ to provide the cryptography engine.</p>
 <li><img alt="" src="../images/down.gif" /> <a href="#sslverifyclient">SSLVerifyClient</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#sslverifydepth">SSLVerifyDepth</a></li>
 </ul>
-<h3>Topics</h3>
-<ul id="topics">
-<li><img alt="" src="../images/down.gif" /> <a href="#envvars">Environment Variables</a></li>
-<li><img alt="" src="../images/down.gif" /> <a href="#logformats">Custom Log Formats</a></li>
-<li><img alt="" src="../images/down.gif" /> <a href="#notes">Request Notes</a></li>
-<li><img alt="" src="../images/down.gif" /> <a href="#authzproviders">Authorization providers for use with Require</a></li>
-</ul><ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
+<ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="section">
 <h2><a name="envvars" id="envvars">Environment Variables</a></h2>
@@ -154,6 +158,9 @@ compatibility variables.</p>
 <tr><td><code>SSL_CLIENT_M_SERIAL</code></td>           <td>string</td>    <td>The serial of the client certificate</td></tr>
 <tr><td><code>SSL_CLIENT_S_DN</code></td>               <td>string</td>    <td>Subject DN in client's certificate</td></tr>
 <tr><td><code>SSL_CLIENT_S_DN_</code><em>x509</em></td> <td>string</td>    <td>Component of client's Subject DN</td></tr>
+<tr><td><code>SSL_CLIENT_SAN_Email_</code><em>n</em></td> <td>string</td>  <td>Client certificate's subjectAltName extension entries of type rfc822Name</td></tr>
+<tr><td><code>SSL_CLIENT_SAN_DNS_</code><em>n</em></td> <td>string</td>    <td>Client certificate's subjectAltName extension entries of type dNSName</td></tr>
+<tr><td><code>SSL_CLIENT_SAN_OTHER_msUPN_</code><em>n</em></td> <td>string</td>    <td>Client certificate's subjectAltName extension entries of type otherName, Microsoft User Principal Name form (OID 1.3.6.1.4.1.311.20.2.3)</td></tr>
 <tr><td><code>SSL_CLIENT_I_DN</code></td>               <td>string</td>    <td>Issuer DN of client's certificate</td></tr>
 <tr><td><code>SSL_CLIENT_I_DN_</code><em>x509</em></td> <td>string</td>    <td>Component of client's Issuer DN</td></tr>
 <tr><td><code>SSL_CLIENT_V_START</code></td>            <td>string</td>    <td>Validity of client's certificate (start time)</td></tr>
@@ -163,10 +170,14 @@ compatibility variables.</p>
 <tr><td><code>SSL_CLIENT_A_KEY</code></td>              <td>string</td>    <td>Algorithm used for the public key of client's certificate</td></tr>
 <tr><td><code>SSL_CLIENT_CERT</code></td>               <td>string</td>    <td>PEM-encoded client certificate</td></tr>
 <tr><td><code>SSL_CLIENT_CERT_CHAIN_</code><em>n</em></td> <td>string</td>    <td>PEM-encoded certificates in client certificate chain</td></tr>
+<tr><td><code>SSL_CLIENT_CERT_RFC4523_CEA</code></td>   <td>string</td>    <td>Serial number and issuer of the certificate. The format matches that of the CertificateExactAssertion in RFC4523</td></tr>
 <tr><td><code>SSL_CLIENT_VERIFY</code></td>             <td>string</td>    <td><code>NONE</code>, <code>SUCCESS</code>, <code>GENEROUS</code> or <code>FAILED:</code><em>reason</em></td></tr>
 <tr><td><code>SSL_SERVER_M_VERSION</code></td>          <td>string</td>    <td>The version of the server certificate</td></tr>
 <tr><td><code>SSL_SERVER_M_SERIAL</code></td>           <td>string</td>    <td>The serial of the server certificate</td></tr>
 <tr><td><code>SSL_SERVER_S_DN</code></td>               <td>string</td>    <td>Subject DN in server's certificate</td></tr>
+<tr><td><code>SSL_SERVER_SAN_Email_</code><em>n</em></td> <td>string</td>  <td>Server certificate's subjectAltName extension entries of type rfc822Name</td></tr>
+<tr><td><code>SSL_SERVER_SAN_DNS_</code><em>n</em></td> <td>string</td>    <td>Server certificate's subjectAltName extension entries of type dNSName</td></tr>
+<tr><td><code>SSL_SERVER_SAN_OTHER_dnsSRV_</code><em>n</em></td> <td>string</td>    <td>Server certificate's subjectAltName extension entries of type otherName, SRVName form (OID 1.3.6.1.5.5.7.8.7, RFC 4985)</td></tr>
 <tr><td><code>SSL_SERVER_S_DN_</code><em>x509</em></td> <td>string</td>    <td>Component of server's Subject DN</td></tr>
 <tr><td><code>SSL_SERVER_I_DN</code></td>               <td>string</td>    <td>Issuer DN of server's certificate</td></tr>
 <tr><td><code>SSL_SERVER_I_DN_</code><em>x509</em></td> <td>string</td>    <td>Component of server's Issuer DN</td></tr>
@@ -248,8 +259,11 @@ you find in the above table.</p>
 For backward compatibility there is additionally a special
 ``<code>%{</code><em>name</em><code>}c</code>'' cryptography format function
 provided. Information about this function is provided in the <a href="../ssl/ssl_compat.html">Compatibility</a> chapter.</p>
-<div class="example"><h3>Example</h3><pre class="prettyprint lang-config">CustomLog logs/ssl_request_log "%t %h %{SSL_PROTOCOL}x %{SSL_CIPHER}x \"%r\" %b"</pre>
+<div class="example"><h3>Example</h3><pre class="prettyprint lang-config">CustomLog "logs/ssl_request_log" "%t %h %{SSL_PROTOCOL}x %{SSL_CIPHER}x \"%r\" %b"</pre>
 </div>
+<p>These formats even work without setting the <code>StdEnvVars</code>
+option of the <code class="directive"><a href="#ssloptions">SSLOptions</a></code>
+directive.</p>
 </div><div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="section">
 <h2><a name="notes" id="notes">Request Notes</a></h2>
@@ -278,6 +292,27 @@ string in <code class="module"><a href="../mod/mod_log_config.html">mod_log_conf
   for the current connection, the note is not set.</dd>
 </dl>
 
+</div><div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
+<div class="section">
+<h2><a name="expressionparser" id="expressionparser">Expression Parser Extension</a></h2>
+
+<p>When <code class="module"><a href="../mod/mod_ssl.html">mod_ssl</a></code> is built into Apache or at least
+loaded (under DSO situation) any <a name="envvars">variables</a>
+provided by <code class="module"><a href="../mod/mod_ssl.html">mod_ssl</a></code> can be used in expressions
+for the <a href="../expr.html">ap_expr Expression Parser</a>.
+The variables can be referenced using the syntax
+``<code>%{</code><em>varname</em><code>}</code>''. Starting
+with version 2.4.17 one can also use the
+<code class="module"><a href="../mod/mod_rewrite.html">mod_rewrite</a></code> style syntax
+``<code>%{SSL:</code><em>varname</em><code>}</code>'' or
+the function style syntax
+``<code>ssl(</code><em>varname</em><code>)</code>''.</p>
+<div class="example"><h3>Example (using <code class="module"><a href="../mod/mod_headers.html">mod_headers</a></code>)</h3><pre class="prettyprint lang-config">Header set X-SSL-PROTOCOL "expr=%{SSL_PROTOCOL}"
+Header set X-SSL-CIPHER "expr=%{SSL:SSL_CIPHER}"</pre>
+</div>
+<p>This feature even works without setting the <code>StdEnvVars</code>
+option of the <code class="directive"><a href="#ssloptions">SSLOptions</a></code>
+directive.</p>
 </div><div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="section">
 <h2><a name="authzproviders" id="authzproviders">Authorization providers for use with Require</a></h2>
@@ -512,9 +547,8 @@ contains the appropriate symbolic links.</p>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_ssl</td></tr>
 </table>
 <div class="note"><h3>SSLCertificateChainFile is deprecated</h3>
-<p><code>SSLCertificateChainFile</code> became obsolete with version
-2.5.0-dev as of 2013-12-28, when
-<code class="directive"><a href="#sslcertificatefile">SSLCertificateFile</a></code>
+<p><code>SSLCertificateChainFile</code> became obsolete with version 2.4.8,
+when <code class="directive"><a href="#sslcertificatefile">SSLCertificateFile</a></code>
 was extended to also load intermediate CA certificates from the server
 certificate file.</p>
 </div>
@@ -558,35 +592,44 @@ confused in this situation.</p>
 <p>
 This directive points to a file with certificate data in PEM format.
 At a minimum, the file must include an end-entity (leaf) certificate.
-Beginning with version 2.5.0-dev as of 2013-12-28, it may also
-include intermediate CA certificates, sorted from leaf to root,
-and obsoletes <code class="directive"><a href="#sslcertificatechainfile">SSLCertificateChainFile</a></code>.
-</p>
-
-<p>
-Additional optional elements are DH parameters and/or an EC curve name
-for ephemeral keys, as generated by <code>openssl dhparam</code> and
-<code>openssl ecparam</code>, respectively (supported in version 2.5.0-dev
-as of 2013-09-29), and finally, the end-entity certificate's private key.
-If the private key is encrypted, the pass phrase dialog is forced
-at startup time.</p>
-
-<p>
-This directive can be used multiple times (referencing different filenames)
+The directive can be used multiple times (referencing different filenames)
 to support multiple algorithms for server authentication - typically
 RSA, DSA, and ECC. The number of supported algorithms depends on the
 OpenSSL version being used for mod_ssl: with version 1.0.0 or later,
 <code>openssl list-public-key-algorithms</code> will output a list
-of supported algorithms.</p>
+of supported algorithms.
+</p>
 
 <p>
-When running with OpenSSL 1.0.2 or later, this directive allows
-to configure the intermediate CA chain on a per-certificate basis,
-which removes a limitation of the (now obsolete)
-<code class="directive"><a href="#sslcertificatechainfile">SSLCertificateChainFile</a></code> directive.
-DH and ECDH parameters, however, are only read from the first
-<code class="directive">SSLCertificateFile</code> directive, as they
-are applied independently of the authentication algorithm type.</p>
+The files may also include intermediate CA certificates, sorted from
+leaf to root. This is supported with version 2.4.8 and later,
+and obsoletes <code class="directive"><a href="#sslcertificatechainfile">SSLCertificateChainFile</a></code>.
+When running with OpenSSL 1.0.2 or later, this allows
+to configure the intermediate CA chain on a per-certificate basis.
+</p>
+
+<p>
+Custom DH parameters and an EC curve name for ephemeral keys,
+can also be added to end of the first file configured using
+<code class="directive"><a href="#sslcertificatefile">SSLCertificateFile</a></code>.
+This is supported in version 2.4.7 or later.
+Such parameters can be generated using the commands
+<code>openssl dhparam</code> and <code>openssl ecparam</code>.
+The parameters can be added as-is to the end of the first
+certificate file. Only the first file can be used for custom
+parameters, as they are applied independently of the authentication
+algorithm type.
+</p>
+
+<p>
+Finally the end-entity certificate's private key can also be
+added to the certificate file instead of using a separate
+<code class="directive"><a href="#sslcertificatekeyfile">SSLCertificateKeyFile</a></code>
+directive. This practice is highly discouraged. If it is used,
+the certificate files using such an embedded key must be configured
+after the certificates using a separate key file. If the private
+key is encrypted, the pass phrase dialog is forced at startup time.
+</p>
 
 <div class="note">
 <h3>DH parameter interoperability with primes &gt; 1024 bit</h3>
@@ -619,9 +662,7 @@ such issues.
 </table>
 <p>
 This directive points to the PEM-encoded private key file for the
-server (the private key may also be combined with the certificate in the
-<code class="directive"><a href="#sslcertificatefile">SSLCertificateFile</a></code>, but this practice
-is discouraged). If the contained private key is encrypted, the pass phrase
+server. If the contained private key is encrypted, the pass phrase
 dialog is forced at startup time.</p>
 
 <p>
@@ -630,6 +671,13 @@ to support multiple algorithms for server authentication. For each
 <code class="directive"><a href="#sslcertificatekeyfile">SSLCertificateKeyFile</a></code>
 directive, there must be a matching <code class="directive">SSLCertificateFile</code>
 directive.</p>
+
+<p>
+The private key may also be combined with the certificate in the file given by
+<code class="directive"><a href="#sslcertificatefile">SSLCertificateFile</a></code>, but this practice
+is highly discouraged. If it is used, the certificate files using such
+an embedded key must be configured after the certificates using a separate
+key file.</p>
 
 <div class="example"><h3>Example</h3><pre class="prettyprint lang-config">SSLCertificateKeyFile /usr/local/apache2/conf/ssl.key/server.key</pre>
 </div>
@@ -746,9 +794,9 @@ prefixes are:</p>
 <div class="note">
 <h3><code>aNULL</code>, <code>eNULL</code> and <code>EXP</code>
 ciphers are always disabled</h3>
-<p>Beginning with version 2.5.0-dev as of 2013-09-25, null and export-grade
-ciphers are always disabled, as mod_ssl unconditionally prepends any supplied
-cipher suite string with <code>!aNULL:!eNULL:!EXP:</code> at initialization.</p>
+<p>Beginning with version 2.4.7, null and export-grade
+ciphers are always disabled, as mod_ssl unconditionally adds
+<code>!aNULL:!eNULL:!EXP</code> to any cipher string at initialization.</p>
 </div>
 
 <p>A simpler way to look at all of this is to use the ``<code>openssl ciphers
@@ -1069,7 +1117,7 @@ which means that OCSP responses are considered valid as long as their
 <tr><th><a href="directive-dict.html#Context">Context:</a></th><td>server config, virtual host</td></tr>
 <tr><th><a href="directive-dict.html#Status">Status:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_ssl</td></tr>
-<tr><th><a href="directive-dict.html#Compatibility">Compatibility:</a></th><td>Available in httpd 2.5-dev and later</td></tr>
+<tr><th><a href="directive-dict.html#Compatibility">Compatibility:</a></th><td>Available in httpd 2.4.10 and later</td></tr>
 </table>
 <p>This option determines whether queries to OCSP responders should contain
 a nonce or not. By default, a query nonce is always used and checked against
@@ -1096,7 +1144,7 @@ features are added to OpenSSL.</p>
 depends on the OpenSSL version being used for <code class="module"><a href="../mod/mod_ssl.html">mod_ssl</a></code>
 (at least version 1.0.2 is required). For a list of supported command
 names, see the section <em>Supported configuration file commands</em> in the
-<a href="http://www.openssl.org/docs/ssl/SSL_CONF_cmd.html#SUPPORTED_CONFIGURATION_FILE_COM">SSL_CONF_cmd(3)</a> manual page for OpenSSL.</p>
+<a href="http://www.openssl.org/docs/man1.0.2/ssl/SSL_CONF_cmd.html#SUPPORTED-CONFIGURATION-FILE-COMMANDS">SSL_CONF_cmd(3)</a> manual page for OpenSSL.</p>
 
 <p>Some of the <code class="directive">SSLOpenSSLConfCmd</code> commands can be used
 as an alternative to existing directives (such as
@@ -1308,7 +1356,7 @@ query can be done in two ways which can be configured by
 <table class="directive">
 <tr><th><a href="directive-dict.html#Description">Description:</a></th><td>Configure usable SSL/TLS protocol versions</td></tr>
 <tr><th><a href="directive-dict.html#Syntax">Syntax:</a></th><td><code>SSLProtocol [+|-]<em>protocol</em> ...</code></td></tr>
-<tr><th><a href="directive-dict.html#Default">Default:</a></th><td><code>SSLProtocol all</code></td></tr>
+<tr><th><a href="directive-dict.html#Default">Default:</a></th><td><code>SSLProtocol all -SSLv3</code></td></tr>
 <tr><th><a href="directive-dict.html#Context">Context:</a></th><td>server config, virtual host</td></tr>
 <tr><th><a href="directive-dict.html#Status">Status:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_ssl</td></tr>
@@ -1323,7 +1371,8 @@ The available (case-insensitive) <em>protocol</em>s are:</p>
     <p>
     This is the Secure Sockets Layer (SSL) protocol, version 3.0, from
     the Netscape Corporation.
-    It is the successor to SSLv2 and the predecessor to TLSv1.</p></li>
+    It is the successor to SSLv2 and the predecessor to TLSv1, but is
+    deprecated in <a href="http://www.ietf.org/rfc/rfc7568.txt">RFC 7568</a>.</p></li>
 
 <li><code>TLSv1</code>
     <p>
@@ -1346,7 +1395,9 @@ The available (case-insensitive) <em>protocol</em>s are:</p>
     <p>
     This is a shortcut for ``<code>+SSLv3 +TLSv1</code>'' or
     - when using OpenSSL 1.0.1 and later -
-    ``<code>+SSLv3 +TLSv1 +TLSv1.1 +TLSv1.2</code>, respectively.</p></li>
+    ``<code>+SSLv3 +TLSv1 +TLSv1.1 +TLSv1.2</code>'', respectively
+    (except for OpenSSL versions compiled with the ``no-ssl3'' configuration
+    option, where <code>all</code> does not include <code>+SSLv3</code>).</p></li>
 </ul>
 <div class="example"><h3>Example</h3><pre class="prettyprint lang-config">SSLProtocol TLSv1</pre>
 </div>
@@ -1496,7 +1547,7 @@ compared against the hostname of the request URL. If both are not equal
 a 502 status code (Bad Gateway) is sent.
 </p>
 <p>
-SSLProxyCheckPeerCN has been superseded by
+In 2.4.5 and later, SSLProxyCheckPeerCN has been superseded by
 <code class="directive"><a href="#sslproxycheckpeername">SSLProxyCheckPeerName</a></code>, and its
 setting is only taken into account when
 <code>SSLProxyCheckPeerName off</code> is specified at the same time.
@@ -1535,6 +1586,7 @@ sent.
 <tr><th><a href="directive-dict.html#Context">Context:</a></th><td>server config, virtual host</td></tr>
 <tr><th><a href="directive-dict.html#Status">Status:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_ssl</td></tr>
+<tr><th><a href="directive-dict.html#Compatibility">Compatibility:</a></th><td>Apache HTTP Server 2.4.5 and later</td></tr>
 </table>
 <p>
 This directive configures host name checking for server certificates
@@ -1687,7 +1739,7 @@ directory contains the appropriate symbolic links.</p>
 <table class="directive">
 <tr><th><a href="directive-dict.html#Description">Description:</a></th><td>Configure usable SSL protocol flavors for proxy usage</td></tr>
 <tr><th><a href="directive-dict.html#Syntax">Syntax:</a></th><td><code>SSLProxyProtocol [+|-]<em>protocol</em> ...</code></td></tr>
-<tr><th><a href="directive-dict.html#Default">Default:</a></th><td><code>SSLProxyProtocol all</code></td></tr>
+<tr><th><a href="directive-dict.html#Default">Default:</a></th><td><code>SSLProxyProtocol all -SSLv3</code></td></tr>
 <tr><th><a href="directive-dict.html#Context">Context:</a></th><td>server config, virtual host</td></tr>
 <tr><th><a href="directive-dict.html#Override">Override:</a></th><td>Options</td></tr>
 <tr><th><a href="directive-dict.html#Status">Status:</a></th><td>Extension</td></tr>
@@ -1957,9 +2009,9 @@ function ::= funcname "<strong>(</strong>" funcargs "<strong>)</strong>"</pre>
 the <a href="../expr.html#functions">ap_expr documentation</a>.</p>
 
 <p>The <em>expression</em> is parsed into an internal machine
-representation when the configuration is loaded, and then evaluated 
-during request processing.  In .htaccess context, the <em>expression</em> is 
-both parsed and executed each time the .htaccess file is encountered during 
+representation when the configuration is loaded, and then evaluated
+during request processing.  In .htaccess context, the <em>expression</em> is
+both parsed and executed each time the .htaccess file is encountered during
 request processing.</p>
 
 <div class="example"><h3>Example</h3><pre class="prettyprint lang-config">SSLRequire (    %{SSL_CIPHER} !~ m/^(EXP|NULL)-/                   \
@@ -2117,6 +2169,7 @@ in the Session Cache</td></tr>
 <tr><th><a href="directive-dict.html#Context">Context:</a></th><td>server config, virtual host</td></tr>
 <tr><th><a href="directive-dict.html#Status">Status:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_ssl</td></tr>
+<tr><th><a href="directive-dict.html#Compatibility">Compatibility:</a></th><td>Applies also to RFC 5077 TLS session resumption in Apache 2.4.10 and later</td></tr>
 </table>
 <p>
 This directive sets the timeout in seconds for the information stored in the
@@ -2155,12 +2208,35 @@ dd if=/dev/random of=/path/to/file.tkey bs=1 count=48
 
 <p>Ticket keys should be rotated (replaced) on a frequent basis,
 as this is the only way to invalidate an existing session ticket -
-OpenSSL currently doesn't allow to specify a limit for ticket lifetimes.</p>
+OpenSSL currently doesn't allow to specify a limit for ticket lifetimes.
+A new ticket key only gets used after restarting the web server.
+All existing session tickets become invalid after a restart.</p>
 
 <div class="warning">
 <p>The ticket key file contains sensitive keying material and should
 be protected with file permissions similar to those used for
 <code class="directive"><a href="#sslcertificatekeyfile">SSLCertificateKeyFile</a></code>.</p>
+</div>
+
+</div>
+<div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
+<div class="directive-section"><h2><a name="SSLSessionTickets" id="SSLSessionTickets">SSLSessionTickets</a> <a name="sslsessiontickets" id="sslsessiontickets">Directive</a></h2>
+<table class="directive">
+<tr><th><a href="directive-dict.html#Description">Description:</a></th><td>Enable or disable use of TLS session tickets</td></tr>
+<tr><th><a href="directive-dict.html#Syntax">Syntax:</a></th><td><code>SSLSessionTickets on|off</code></td></tr>
+<tr><th><a href="directive-dict.html#Default">Default:</a></th><td><code>SSLSessionTickets on</code></td></tr>
+<tr><th><a href="directive-dict.html#Context">Context:</a></th><td>server config, virtual host</td></tr>
+<tr><th><a href="directive-dict.html#Status">Status:</a></th><td>Extension</td></tr>
+<tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_ssl</td></tr>
+<tr><th><a href="directive-dict.html#Compatibility">Compatibility:</a></th><td>Available in httpd 2.4.11 and later, if using OpenSSL 0.9.8f
+or later.</td></tr>
+</table>
+<p>This directive allows to enable or disable the use of TLS session tickets
+(RFC 5077).</p>
+<div class="warning">
+<p>TLS session tickets are enabled by default. Using them without restarting
+the web server with an appropriate frequency (e.g. daily) compromises perfect
+forward secrecy.</p>
 </div>
 
 </div>
@@ -2231,10 +2307,6 @@ is enabled. Configuration of a cache is mandatory for OCSP stapling.
 With the exception of <code>none</code> and <code>nonenotnull</code>,
 the same storage types are supported as with
 <code class="directive"><a href="#sslsessioncache">SSLSessionCache</a></code>.</p>
-
-<p>The <code>ssl-stapling</code> mutex is used to serialize access to the
-OCSP stapling cache to prevent corruption.  This mutex can be configured
-using the <code class="directive"><a href="../mod/core.html#mutex">Mutex</a></code> directive.</p>
 
 </div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
@@ -2458,6 +2530,14 @@ stated goal of "saving roundtrips and resources" - see also
 (TLS Multiple Certificate Status Extension).
 </p>
 
+<p>When OCSP stapling is enabled, the <code>ssl-stapling</code> mutex is used
+to control access to the OCSP stapling cache in order to prevent corruption,
+and the <code>sss-stapling-refresh</code> mutex is used to control refreshes
+of OCSP responses.  These mutexes can be configured using the
+<code class="directive"><a href="../mod/core.html#mutex">Mutex</a></code> directive.
+</p>
+
+
 </div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="directive-section"><h2><a name="SSLVerifyClient" id="SSLVerifyClient">SSLVerifyClient</a> <a name="sslverifyclient" id="sslverifyclient">Directive</a></h2>
@@ -2553,7 +2633,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_ssl.html';
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

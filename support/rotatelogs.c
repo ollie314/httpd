@@ -109,9 +109,9 @@ static void usage(const char *argv0, const char *reason)
     }
     fprintf(stderr,
 #if APR_FILES_AS_SOCKETS
-            "Usage: %s [-v] [-l] [-L linkname] [-p prog] [-f] [-d] [-t] [-e] [-c] [-n number] <logfile> "
+            "Usage: %s [-v] [-l] [-L linkname] [-p prog] [-f] [-D] [-t] [-e] [-c] [-n number] <logfile> "
 #else
-            "Usage: %s [-v] [-l] [-L linkname] [-p prog] [-f] [-d] [-t] [-e] [-n number] <logfile> "
+            "Usage: %s [-v] [-l] [-L linkname] [-p prog] [-f] [-D] [-t] [-e] [-n number] <logfile> "
 #endif
             "{<rotation time in seconds>|<rotation size>(B|K|M|G)} "
             "[offset minutes from UTC]\n\n",
@@ -143,14 +143,15 @@ static void usage(const char *argv0, const char *reason)
             "  -L path  Create hard link from current log to specified path.\n"
             "  -p prog  Run specified program after opening a new log file. See below.\n"
             "  -f       Force opening of log on program start.\n"
-            "  -d       Create parent directories of log file.\n" 
+            "  -D       Create parent directories of log file.\n" 
             "  -t       Truncate logfile instead of rotating, tail friendly.\n"
             "  -e       Echo log to stdout for further processing.\n"
 #if APR_FILES_AS_SOCKETS
             "  -c       Create log even if it is empty.\n"
 #endif
+            "  -n num   Rotate file by adding suffixes '.0', '.1', ..., '.(num-1)'.\n"
             "\n"
-            "The program is invoked as \"[prog] <curfile> [<prevfile>]\"\n"
+            "The program for '-p' is invoked as \"[prog] <curfile> [<prevfile>]\"\n"
             "where <curfile> is the filename of the newly opened logfile, and\n"
             "<prevfile>, if given, is the filename of the previously used logfile.\n"
             "\n");
@@ -213,7 +214,7 @@ static void dumpConfig (rotate_config_t *config)
     fprintf(stderr, "Rotation create empty logs:  %12s\n", config->create_empty ? "yes" : "no");
 #endif
     fprintf(stderr, "Rotation file name: %21s\n", config->szLogRoot);
-    fprintf(stderr, "Post-rotation prog: %21s\n", config->postrotate_prog);
+    fprintf(stderr, "Post-rotation prog: %21s\n", config->postrotate_prog ? config->postrotate_prog : "not used");
 }
 
 /*
@@ -280,7 +281,7 @@ static void post_rotate(apr_pool_t *pool, struct logfile *newlog,
     if (config->linkfile) {
         apr_file_remove(config->linkfile, newlog->pool);
         if (config->verbose) {
-            fprintf(stderr,"Linking %s to %s\n", newlog->name, config->linkfile);
+            fprintf(stderr, "Linking %s to %s\n", newlog->name, config->linkfile);
         }
         rv = apr_file_link(newlog->name, config->linkfile);
         if (rv != APR_SUCCESS) {
@@ -582,9 +583,9 @@ int main (int argc, const char * const argv[])
     apr_pool_create(&status.pool, NULL);
     apr_getopt_init(&opt, status.pool, argc, argv);
 #if APR_FILES_AS_SOCKETS
-    while ((rv = apr_getopt(opt, "lL:p:fdtvecn:", &c, &opt_arg)) == APR_SUCCESS) {
+    while ((rv = apr_getopt(opt, "lL:p:fDtvecn:", &c, &opt_arg)) == APR_SUCCESS) {
 #else
-    while ((rv = apr_getopt(opt, "lL:p:fdtven:", &c, &opt_arg)) == APR_SUCCESS) {
+    while ((rv = apr_getopt(opt, "lL:p:fDtven:", &c, &opt_arg)) == APR_SUCCESS) {
 #endif
         switch (c) {
         case 'l':
@@ -603,7 +604,7 @@ int main (int argc, const char * const argv[])
         case 'f':
             config.force_open = 1;
             break;
-        case 'd':
+        case 'D':
             config.create_path = 1;
             break;
         case 't':

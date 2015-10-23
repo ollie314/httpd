@@ -117,7 +117,7 @@ typedef union {
 
 /** mechanism for declaring a directive with no arguments */
 # define AP_INIT_NO_ARGS(directive, func, mconfig, where, help) \
-    { directive, { .no_args=func }, mconfig, where, RAW_ARGS, help }
+    { directive, { .no_args=func }, mconfig, where, NO_ARGS, help }
 /** mechanism for declaring a directive with raw argument parsing */
 # define AP_INIT_RAW_ARGS(directive, func, mconfig, where, help) \
     { directive, { .raw_args=func }, mconfig, where, RAW_ARGS, help }
@@ -168,7 +168,7 @@ typedef const char *(*cmd_func) ();
 # define AP_FLAG     func
 
 # define AP_INIT_NO_ARGS(directive, func, mconfig, where, help) \
-    { directive, func, mconfig, where, RAW_ARGS, help }
+    { directive, func, mconfig, where, NO_ARGS, help }
 # define AP_INIT_RAW_ARGS(directive, func, mconfig, where, help) \
     { directive, func, mconfig, where, RAW_ARGS, help }
 # define AP_INIT_TAKE_ARGV(directive, func, mconfig, where, help) \
@@ -325,7 +325,10 @@ struct cmd_parms_struct {
     struct ap_conf_vector_t *context;
     /** directive with syntax error */
     const ap_directive_t *err_directive;
-
+ 
+    /** If the current directive is EXEC_ON_READ, this is the last 
+        (non-EXEC_ON_READ)  enclosing directive  */
+    ap_directive_t *parent;
 };
 
 /**
@@ -410,6 +413,23 @@ struct module_struct {
 };
 
 /**
+ * The AP_MAYBE_USELESS macro is used vor variable declarations that
+ * might potentially exhibit "unused var" warnings on some compilers if
+ * left untreated.
+ * Since static intializers are not part of the C language (C89), making
+ * (void) usage is not possible. However many compiler have proprietary 
+ * mechanism to suppress those warnings.  
+ */
+#ifdef AP_MAYBE_USELESS
+#elif defined(__GNUC__)
+# define AP_MAYBE_USELESS(x) x __attribute__((unused)) 
+#elif defined(__LCLINT__)
+# define AP_MAYBE_USELESS(x) /*@unused@*/ x  
+#else
+# define AP_MAYBE_USELESS(x) x
+#endif
+    
+/**
  * The APLOG_USE_MODULE macro is used choose which module a file belongs to.
  * This is necessary to allow per-module loglevel configuration.
  *
@@ -424,7 +444,7 @@ struct module_struct {
  */
 #define APLOG_USE_MODULE(foo) \
     extern module AP_MODULE_DECLARE_DATA foo##_module;                  \
-    static int * const aplog_module_index = &(foo##_module.module_index)
+    AP_MAYBE_USELESS(static int * const aplog_module_index) = &(foo##_module.module_index)
 
 /**
  * AP_DECLARE_MODULE is a convenience macro that combines a call of

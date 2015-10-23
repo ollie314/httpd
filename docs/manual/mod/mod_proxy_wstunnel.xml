@@ -28,7 +28,7 @@
 <status>Extension</status>
 <sourcefile>mod_proxy_wstunnel.c</sourcefile>
 <identifier>proxy_wstunnel_module</identifier>
-<compatibility>Available for unix in version 2.4.5 and later</compatibility>
+<compatibility>Available in httpd 2.4.5 and later</compatibility>
 
 <summary>
     <p>This module <em>requires</em> the service of <module
@@ -44,8 +44,8 @@ Connection: Upgrade
 
     <example><title>Proxying requests to websockets server</title>
     <highlight language="config">
-ProxyPass /ws2/  ws://echo.websocket.org/
-ProxyPass /wss2/ wss://echo.websocket.org/
+ProxyPass "/ws2/"  "ws://echo.websocket.org/"
+ProxyPass "/wss2/" "wss://echo.websocket.org/"
     </highlight>
     </example>
 
@@ -62,10 +62,10 @@ ProxyPass /wss2/ wss://echo.websocket.org/
 </contextlist>
 
 <usage>
-    <p>This directive instructs the server to try to create an asynchronous tunnel. 
-    If the current MPM does not support the necessary features, a synchronous 
+    <p>This directive instructs the server to try to create an asynchronous tunnel.
+    If the current MPM does not support the necessary features, a synchronous
     tunnel is used.</p>
-    <note><title>Note</title><p>Async support is experimental and subject 
+    <note><title>Note</title><p>Async support is experimental and subject
     to change.</p></note>
 </usage>
 </directivesynopsis>
@@ -80,7 +80,7 @@ ProxyPass /wss2/ wss://echo.websocket.org/
 </contextlist>
 
 <usage>
-    <p>This directive imposes a maximum amount of time for the tunnel to be 
+    <p>This directive imposes a maximum amount of time for the tunnel to be
     left open while idle.</p>
 </usage>
 </directivesynopsis>
@@ -95,10 +95,10 @@ ProxyPass /wss2/ wss://echo.websocket.org/
 </contextlist>
 
 <usage>
-    <p>If <directive>ProxyWebsocketAsync</directive> is enabled, this directive 
+    <p>If <directive>ProxyWebsocketAsync</directive> is enabled, this directive
     controls how long the server synchronously waits for more data.</p>
 
-    <note><title>Note</title><p>Async support is experimental and subject 
+    <note><title>Note</title><p>Async support is experimental and subject
     to change. </p></note>
 
 </usage>

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="fr" xml:lang="fr"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="fr" xml:lang="fr"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -50,14 +52,14 @@
     <pre class="prettyprint lang-config"># Activation de la mise en cache
 CacheSocache shmcb
 CacheSocacheMaxSize 102400
-&lt;Location /foo&gt;
+&lt;Location "/foo"&gt;
     CacheEnable socache
 &lt;/Location&gt;
 
 # Possibilité de se rabattre sur le cache disque
 CacheSocache shmcb
 CacheSocacheMaxSize 102400
-&lt;Location /foo&gt;
+&lt;Location "/foo"&gt;
     CacheEnable socache
     CacheEnable disk
 &lt;/Location&gt;</pre>
@@ -86,14 +88,14 @@ CacheSocacheMaxSize 102400
 </ul><ul class="seealso"><li><a href="#comments_section">Commentaires</a></li></ul></div>
 
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
-<div class="directive-section"><h2><a name="CacheSocache" id="CacheSocache">CacheSocache</a> <a name="cachesocache" id="cachesocache">Directive</a></h2>
+<div class="directive-section"><h2><a name="cachesocache" id="cachesocache">Directive</a> <a name="CacheSocache" id="CacheSocache">CacheSocache</a></h2>
 <table class="directive">
 <tr><th><a href="directive-dict.html#Description">Description:</a></th><td>Implémentation du cache d'objets partagés à utiliser</td></tr>
 <tr><th><a href="directive-dict.html#Syntax">Syntaxe:</a></th><td><code>CacheSocache <var>type[:args]</var></code></td></tr>
 <tr><th><a href="directive-dict.html#Context">Contexte:</a></th><td>configuration du serveur, serveur virtuel</td></tr>
 <tr><th><a href="directive-dict.html#Status">Statut:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_cache_socache</td></tr>
-<tr><th><a href="directive-dict.html#Compatibility">Compatibilité:</a></th><td>Disponible à partir de la version 2.5 du serveur HTTP
+<tr><th><a href="directive-dict.html#Compatibility">Compatibilité:</a></th><td>Disponible à partir de la version 2.4.5 du serveur HTTP
 Apache</td></tr>
 </table>
     <p>La directive <code class="directive">CacheSocache</code>
@@ -107,7 +109,7 @@ Apache</td></tr>
 
 </div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
-<div class="directive-section"><h2><a name="CacheSocacheMaxSize" id="CacheSocacheMaxSize">CacheSocacheMaxSize</a> <a name="cachesocachemaxsize" id="cachesocachemaxsize">Directive</a></h2>
+<div class="directive-section"><h2><a name="cachesocachemaxsize" id="cachesocachemaxsize">Directive</a> <a name="CacheSocacheMaxSize" id="CacheSocacheMaxSize">CacheSocacheMaxSize</a></h2>
 <table class="directive">
 <tr><th><a href="directive-dict.html#Description">Description:</a></th><td>La taille maximale d'une entrée pouvant être placée dans le
 cache</td></tr>
@@ -116,7 +118,7 @@ cache</td></tr>
 <tr><th><a href="directive-dict.html#Context">Contexte:</a></th><td>configuration du serveur, serveur virtuel, répertoire, .htaccess</td></tr>
 <tr><th><a href="directive-dict.html#Status">Statut:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_cache_socache</td></tr>
-<tr><th><a href="directive-dict.html#Compatibility">Compatibilité:</a></th><td>Disponible à partir de la version 2.5 du serveur HTTP
+<tr><th><a href="directive-dict.html#Compatibility">Compatibilité:</a></th><td>Disponible à partir de la version 2.4.5 du serveur HTTP
 Apache</td></tr>
 </table>
     <p>La directive <code class="directive">CacheSocacheMaxSize</code>
@@ -138,7 +140,7 @@ Apache</td></tr>
 
 </div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
-<div class="directive-section"><h2><a name="CacheSocacheMaxTime" id="CacheSocacheMaxTime">CacheSocacheMaxTime</a> <a name="cachesocachemaxtime" id="cachesocachemaxtime">Directive</a></h2>
+<div class="directive-section"><h2><a name="cachesocachemaxtime" id="cachesocachemaxtime">Directive</a> <a name="CacheSocacheMaxTime" id="CacheSocacheMaxTime">CacheSocacheMaxTime</a></h2>
 <table class="directive">
 <tr><th><a href="directive-dict.html#Description">Description:</a></th><td>La durée maximale de stockage d'un document dans le cache
 avant péremption</td></tr>
@@ -147,7 +149,7 @@ avant péremption</td></tr>
 <tr><th><a href="directive-dict.html#Context">Contexte:</a></th><td>configuration du serveur, serveur virtuel, répertoire, .htaccess</td></tr>
 <tr><th><a href="directive-dict.html#Status">Statut:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_cache_socache</td></tr>
-<tr><th><a href="directive-dict.html#Compatibility">Compatibilité:</a></th><td>Disponible à partir de la version 2.5 du serveur HTTP
+<tr><th><a href="directive-dict.html#Compatibility">Compatibilité:</a></th><td>Disponible à partir de la version 2.4.5 du serveur HTTP
 Apache</td></tr>
 </table>
     <p>La directive <code class="directive">CacheSocacheMaxTime</code>
@@ -160,7 +162,7 @@ Apache</td></tr>
 
 </div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
-<div class="directive-section"><h2><a name="CacheSocacheMinTime" id="CacheSocacheMinTime">CacheSocacheMinTime</a> <a name="cachesocachemintime" id="cachesocachemintime">Directive</a></h2>
+<div class="directive-section"><h2><a name="cachesocachemintime" id="cachesocachemintime">Directive</a> <a name="CacheSocacheMinTime" id="CacheSocacheMinTime">CacheSocacheMinTime</a></h2>
 <table class="directive">
 <tr><th><a href="directive-dict.html#Description">Description:</a></th><td>La durée minimale de stockage d'un document dans le cache</td></tr>
 <tr><th><a href="directive-dict.html#Syntax">Syntaxe:</a></th><td><code>CacheSocacheMinTime <var>seconds</var></code></td></tr>
@@ -168,7 +170,7 @@ Apache</td></tr>
 <tr><th><a href="directive-dict.html#Context">Contexte:</a></th><td>configuration du serveur, serveur virtuel, répertoire, .htaccess</td></tr>
 <tr><th><a href="directive-dict.html#Status">Statut:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_cache_socache</td></tr>
-<tr><th><a href="directive-dict.html#Compatibility">Compatibilité:</a></th><td>Disponible à partir de la version 2.5 du serveur HTTP
+<tr><th><a href="directive-dict.html#Compatibility">Compatibilité:</a></th><td>Disponible à partir de la version 2.4.5 du serveur HTTP
 Apache</td></tr>
 </table>
     <p>La directive <code class="directive">CacheSocacheMinTime</code>
@@ -183,7 +185,7 @@ Apache</td></tr>
 
 </div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
-<div class="directive-section"><h2><a name="CacheSocacheReadSize" id="CacheSocacheReadSize">CacheSocacheReadSize</a> <a name="cachesocachereadsize" id="cachesocachereadsize">Directive</a></h2>
+<div class="directive-section"><h2><a name="cachesocachereadsize" id="cachesocachereadsize">Directive</a> <a name="CacheSocacheReadSize" id="CacheSocacheReadSize">CacheSocacheReadSize</a></h2>
 <table class="directive">
 <tr><th><a href="directive-dict.html#Description">Description:</a></th><td>La quantité minimale de données du document à lire et
 mettre en cache avant envoi au client</td></tr>
@@ -192,7 +194,7 @@ mettre en cache avant envoi au client</td></tr>
 <tr><th><a href="directive-dict.html#Context">Contexte:</a></th><td>configuration du serveur, serveur virtuel, répertoire, .htaccess</td></tr>
 <tr><th><a href="directive-dict.html#Status">Statut:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_cache_socache</td></tr>
-<tr><th><a href="directive-dict.html#Compatibility">Compatibilité:</a></th><td>Disponible à partir de la version 2.5 du serveur HTTP
+<tr><th><a href="directive-dict.html#Compatibility">Compatibilité:</a></th><td>Disponible à partir de la version 2.4.5 du serveur HTTP
 Apache</td></tr>
 </table>
     <p>La directive <code class="directive">CacheSocacheReadSize</code>
@@ -214,7 +216,7 @@ Apache</td></tr>
 
 </div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
-<div class="directive-section"><h2><a name="CacheSocacheReadTime" id="CacheSocacheReadTime">CacheSocacheReadTime</a> <a name="cachesocachereadtime" id="cachesocachereadtime">Directive</a></h2>
+<div class="directive-section"><h2><a name="cachesocachereadtime" id="cachesocachereadtime">Directive</a> <a name="CacheSocacheReadTime" id="CacheSocacheReadTime">CacheSocacheReadTime</a></h2>
 <table class="directive">
 <tr><th><a href="directive-dict.html#Description">Description:</a></th><td>La durée minimale de lecture avant l'envoi des données</td></tr>
 <tr><th><a href="directive-dict.html#Syntax">Syntaxe:</a></th><td><code>CacheSocacheReadTime <var>millisecondes</var></code></td></tr>
@@ -222,7 +224,7 @@ Apache</td></tr>
 <tr><th><a href="directive-dict.html#Context">Contexte:</a></th><td>configuration du serveur, serveur virtuel, répertoire, .htaccess</td></tr>
 <tr><th><a href="directive-dict.html#Status">Statut:</a></th><td>Extension</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td>mod_cache_socache</td></tr>
-<tr><th><a href="directive-dict.html#Compatibility">Compatibilité:</a></th><td>Disponible à partir de la version 2.5 du serveur HTTP
+<tr><th><a href="directive-dict.html#Compatibility">Compatibilité:</a></th><td>Disponible à partir de la version 2.4.5 du serveur HTTP
 Apache</td></tr>
 </table>
     <p>La directive <code class="directive">CacheSocacheReadTime</code>
@@ -268,7 +270,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_cache_soca
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Autorisé sous <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Autorisé sous <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossaire</a> | <a href="../sitemap.html">Plan du site</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

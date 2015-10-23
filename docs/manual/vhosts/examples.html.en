@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><!--
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+<meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type" />
+<!--
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
               This file is generated from xml source: DO NOT EDIT
         XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -64,7 +66,7 @@
     sites on a single IP address.</a></h2>
 
     <p>Your server has multiple hostnames that resolve to a single address,
-    and you want to respond differently for <code>www.example.com</code> 
+    and you want to respond differently for <code>www.example.com</code>
     and <code>www.example.org</code>.</p>
 
     <div class="note"><h3>Note</h3><p>Creating virtual
@@ -80,14 +82,14 @@
     <pre class="prettyprint lang-config"># Ensure that Apache listens on port 80
 Listen 80
 &lt;VirtualHost *:80&gt;
-    DocumentRoot /www/example1
+    DocumentRoot "/www/example1"
     ServerName www.example.com
-  
+
     # Other directives here
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost *:80&gt;
-    DocumentRoot /www/example2
+    DocumentRoot "/www/example2"
     ServerName www.example.org
 
     # Other directives here
@@ -112,8 +114,8 @@ Listen 80
             <h3>Note</h3>
 
            <p>You may replace <code>*</code> with a specific IP address
-           on the system.  Such virtual hosts will only be used for 
-           HTTP requests received on connection to the specified IP 
+           on the system.  Such virtual hosts will only be used for
+           HTTP requests received on connection to the specified IP
            address.</p>
 
            <p>However, it is additionally useful to use <code>*</code>
@@ -143,19 +145,19 @@ Listen 80
 
 # This is the "main" server running on 172.20.30.40
 ServerName server.example.com
-DocumentRoot /www/mainserver
+DocumentRoot "/www/mainserver"
 
 &lt;VirtualHost 172.20.30.50&gt;
-    DocumentRoot /www/example1
+    DocumentRoot "/www/example1"
     ServerName www.example.com
-    
+
     # Other directives here ...
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.50&gt;
-    DocumentRoot /www/example2
+    DocumentRoot "/www/example2"
     ServerName www.example.org
-    
+
     # Other directives here ...
 &lt;/VirtualHost&gt;</pre>
 
@@ -184,7 +186,7 @@ DocumentRoot /www/mainserver
     section.</p>
 
     <pre class="prettyprint lang-config">&lt;VirtualHost 192.168.1.1 172.20.30.40&gt;
-    DocumentRoot /www/server1
+    DocumentRoot "/www/server1"
     ServerName server.example.com
     ServerAlias server
 &lt;/VirtualHost&gt;</pre>
@@ -219,22 +221,22 @@ Listen 8080
 
 &lt;VirtualHost 172.20.30.40:80&gt;
     ServerName www.example.com
-    DocumentRoot /www/domain-80
+    DocumentRoot "/www/domain-80"
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.40:8080&gt;
     ServerName www.example.com
-    DocumentRoot /www/domain-8080
+    DocumentRoot "/www/domain-8080"
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.40:80&gt;
     ServerName www.example.org
-    DocumentRoot /www/otherdomain-80
+    DocumentRoot "/www/otherdomain-80"
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.40:8080&gt;
     ServerName www.example.org
-    DocumentRoot /www/otherdomain-8080
+    DocumentRoot "/www/otherdomain-8080"
 &lt;/VirtualHost&gt;</pre>
 
 
@@ -250,12 +252,12 @@ Listen 8080
     <pre class="prettyprint lang-config">Listen 80
 
 &lt;VirtualHost 172.20.30.40&gt;
-    DocumentRoot /www/example1
+    DocumentRoot "/www/example1"
     ServerName www.example.com
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.50&gt;
-    DocumentRoot /www/example2
+    DocumentRoot "/www/example2"
     ServerName www.example.org
 &lt;/VirtualHost&gt;</pre>
 
@@ -282,22 +284,22 @@ Listen 172.20.30.50:80
 Listen 172.20.30.50:8080
 
 &lt;VirtualHost 172.20.30.40:80&gt;
-    DocumentRoot /www/example1-80
+    DocumentRoot "/www/example1-80"
     ServerName www.example.com
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.40:8080&gt;
-    DocumentRoot /www/example1-8080
+    DocumentRoot "/www/example1-8080"
     ServerName www.example.com
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.50:80&gt;
-    DocumentRoot /www/example2-80
+    DocumentRoot "/www/example2-80"
     ServerName www.example.org
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.50:8080&gt;
-    DocumentRoot /www/example2-8080
+    DocumentRoot "/www/example2-8080"
     ServerName www.example.org
 &lt;/VirtualHost&gt;</pre>
 
@@ -312,28 +314,28 @@ Listen 172.20.30.50:8080
 
     <pre class="prettyprint lang-config">Listen 80
 &lt;VirtualHost 172.20.30.40&gt;
-    DocumentRoot /www/example1
+    DocumentRoot "/www/example1"
     ServerName www.example.com
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.40&gt;
-    DocumentRoot /www/example2
+    DocumentRoot "/www/example2"
     ServerName www.example.org
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.40&gt;
-    DocumentRoot /www/example3
+    DocumentRoot "/www/example3"
     ServerName www.example.net
 &lt;/VirtualHost&gt;
 
 # IP-based
 &lt;VirtualHost 172.20.30.50&gt;
-    DocumentRoot /www/example4
+    DocumentRoot "/www/example4"
     ServerName www.example.edu
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.60&gt;
-    DocumentRoot /www/example5
+    DocumentRoot "/www/example5"
     ServerName www.example.gov
 &lt;/VirtualHost&gt;</pre>
 
@@ -353,8 +355,8 @@ Listen 172.20.30.50:8080
 
     <pre class="prettyprint lang-config">&lt;VirtualHost *:*&gt;
     ProxyPreserveHost On
-    ProxyPass / http://192.168.111.2/
-    ProxyPassReverse / http://192.168.111.2/
+    ProxyPass        "/" "http://192.168.111.2/"
+    ProxyPassReverse "/" "http://192.168.111.2/"
     ServerName hostname.example.com
 &lt;/VirtualHost&gt;</pre>
 
@@ -372,7 +374,7 @@ Listen 172.20.30.50:8080
     any other virtual host.</p>
 
     <pre class="prettyprint lang-config">&lt;VirtualHost _default_:*&gt;
-    DocumentRoot /www/default
+    DocumentRoot "/www/default"
 &lt;/VirtualHost&gt;</pre>
 
 
@@ -397,12 +399,12 @@ Listen 172.20.30.50:8080
     to use a second <code>_default_</code> vhost for port 80.</p>
 
     <pre class="prettyprint lang-config">&lt;VirtualHost _default_:80&gt;
-    DocumentRoot /www/default80
+    DocumentRoot "/www/default80"
     # ...
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost _default_:*&gt;
-    DocumentRoot /www/default
+    DocumentRoot "/www/default"
     # ...
 &lt;/VirtualHost&gt;</pre>
 
@@ -420,7 +422,7 @@ Listen 172.20.30.50:8080
     vhosts.</p>
 
     <pre class="prettyprint lang-config">&lt;VirtualHost _default_:80&gt;
-DocumentRoot /www/default
+    DocumentRoot "/www/default"
 ...
 &lt;/VirtualHost&gt;</pre>
 
@@ -452,16 +454,16 @@ DocumentRoot /www/default
 
     <pre class="prettyprint lang-config">Listen 80
 ServerName www.example.com
-DocumentRoot /www/example1
+DocumentRoot "/www/example1"
 
 &lt;VirtualHost 172.20.30.40 172.20.30.50&gt;
-    DocumentRoot /www/example2
+    DocumentRoot "/www/example2"
     ServerName www.example.org
     # ...
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.40&gt;
-    DocumentRoot /www/example3
+    DocumentRoot "/www/example3"
     ServerName www.example.net
     ServerAlias *.example.net
     # ...
@@ -488,27 +490,27 @@ DocumentRoot /www/example1
 
     <pre class="prettyprint lang-config">&lt;VirtualHost 172.20.30.40&gt;
     # primary vhost
-    DocumentRoot /www/subdomain
+    DocumentRoot "/www/subdomain"
     RewriteEngine On
-    RewriteRule . /www/subdomain/index.html
+    RewriteRule "." "/www/subdomain/index.html"
     # ...
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.40&gt;
-DocumentRoot /www/subdomain/sub1
+    DocumentRoot "/www/subdomain/sub1"
     ServerName www.sub1.domain.tld
     ServerPath /sub1/
     RewriteEngine On
-    RewriteRule ^(/sub1/.*) /www/subdomain$1
+    RewriteRule "^(/sub1/.*)" "/www/subdomain$1"
     # ...
 &lt;/VirtualHost&gt;
 
 &lt;VirtualHost 172.20.30.40&gt;
-    DocumentRoot /www/subdomain/sub2
+    DocumentRoot "/www/subdomain/sub2"
     ServerName www.sub2.domain.tld
     ServerPath /sub2/
     RewriteEngine On
-    RewriteRule ^(/sub2/.*) /www/subdomain$1
+    RewriteRule "^(/sub2/.*)" "/www/subdomain$1"
     # ...
 &lt;/VirtualHost&gt;</pre>
 
@@ -556,7 +558,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/vhosts/examples.ht
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2014 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();
