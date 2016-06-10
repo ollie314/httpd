@@ -19,7 +19,6 @@ XINCDIRS	+= \
 			$(APR)/include \
 			$(APRUTIL)/include \
 			$(SRC)/include \
-			$(STDMOD)/http \
 			$(NWOS) \
 			$(EOLIST)
 
@@ -104,7 +103,7 @@ NLM_DESCRIPTION	= Apache $(VERSION_STR) Proxy Express Module
 # This is used by the '-threadname' directive.  If left blank,
 # NLM_NAME Thread will be used.
 #
-NLM_THREAD_NAME	= Prxy Xpress Module
+NLM_THREAD_NAME	= Proxy Xpress Module
 
 #
 # If this is specified, it will override VERSION value in
@@ -148,12 +147,15 @@ XDCDATA		=
 #
 # If there is an NLM target, put it here
 #
-TARGET_nlm = $(OBJDIR)/$(NLM_NAME).nlm
+TARGET_nlm = \
+	$(OBJDIR)/$(NLM_NAME).nlm \
+	$(EOLIST)
 
 #
 # If there is an LIB target, put it here
 #
-TARGET_lib =
+TARGET_lib = \
+	$(EOLIST)
 
 #
 # These are the OBJ files needed to create the NLM target above.
@@ -176,8 +178,8 @@ FILES_nlm_libs = \
 # These will be added as a module command in the link.opt file.
 #
 FILES_nlm_modules = \
-	libc \
 	aprlib \
+	libc \
 	proxy \
 	$(EOLIST)
 
@@ -200,17 +202,11 @@ FILE_nlm_copyright =
 # Any additional imports go here
 #
 FILES_nlm_Ximports = \
-	@libc.imp \
 	@aprlib.imp \
 	@httpd.imp \
-	@$(OBJDIR)/mod_proxy.imp \
+	@mod_proxy.imp \
+	@libc.imp \
 	$(EOLIST)
-
-# Don't link with Winsock if standard sockets are being used
-ifndef USE_STDSOCKETS
-FILES_nlm_Ximports += @ws2nlm.imp \
-	$(EOLIST)
-endif
 
 #
 # Any symbols exported to here
@@ -252,5 +248,3 @@ vpath %.c ../arch/netware
 #
 
 include $(APBUILD)/NWGNUtail.inc
-
-

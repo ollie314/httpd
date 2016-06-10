@@ -86,7 +86,7 @@ static apr_uri_t *determine_responder_uri(SSLSrvConfigRec *sc, X509 *cert,
         return NULL;
     }
 
-    if (strcasecmp(u->scheme, "http") != 0) {
+    if (ap_cstr_casecmp(u->scheme, "http") != 0) {
         ap_log_cerror(APLOG_MARK, APLOG_DEBUG, rv, c, APLOGNO(01920)
                       "cannot handle OCSP responder URI '%s'", s);
         return NULL;
@@ -109,7 +109,7 @@ static OCSP_REQUEST *create_request(X509_STORE_CTX *ctx, X509 *cert,
 {
     OCSP_REQUEST *req = OCSP_REQUEST_new();
 
-    *certid = OCSP_cert_to_id(NULL, cert, ctx->current_issuer);
+    *certid = OCSP_cert_to_id(NULL, cert, X509_STORE_CTX_get0_current_issuer(ctx));
     if (!*certid || !OCSP_request_add0_id(req, *certid)) {
         ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, APLOGNO(01921)
                      "could not retrieve certificate id");
@@ -184,7 +184,7 @@ static int verify_ocsp_status(X509 *cert, X509_STORE_CTX *ctx, conn_rec *c,
 
     if (rc == V_OCSP_CERTSTATUS_GOOD) {
         /* TODO: allow flags configuration. */
-        if (OCSP_basic_verify(basicResponse, NULL, ctx->ctx, 0) != 1) {
+        if (OCSP_basic_verify(basicResponse, NULL, X509_STORE_CTX_get0_store(ctx), 0) != 1) {
             ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, APLOGNO(01925)
                         "failed to verify the OCSP response");
             ssl_log_ssl_error(SSLLOG_MARK, APLOG_ERR, s);
@@ -233,7 +233,7 @@ static int verify_ocsp_status(X509 *cert, X509_STORE_CTX *ctx, conn_rec *c,
                 status == V_OCSP_CERTSTATUS_GOOD ? "good" :
                 (status == V_OCSP_CERTSTATUS_REVOKED ? "revoked" : "unknown");
 
-            ssl_log_cxerror(SSLLOG_MARK, level, 0, c, cert,
+            ssl_log_cxerror(SSLLOG_MARK, level, 0, c, cert, APLOGNO(03239)
                             "OCSP validation completed, "
                             "certificate status: %s (%d, %d)",
                             result, status, reason);
@@ -262,7 +262,7 @@ int modssl_verify_ocsp(X509_STORE_CTX *ctx, SSLSrvConfigRec *sc,
                       "No cert available to check with OCSP");
         return 1;
     }
-    else if (cert->valid && X509_check_issued(cert,cert) == X509_V_OK) {
+    else if (X509_check_issued(cert,cert) == X509_V_OK) {
         /* don't do OCSP checking for valid self-issued certs */
         ap_log_cerror(APLOG_MARK, APLOG_TRACE2, 0, c,
                       "Skipping OCSP check for valid self-issued cert");

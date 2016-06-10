@@ -201,10 +201,10 @@ apr_status_t save_log_config_entry(apr_array_header_t *log_config,
     if (!distrusted_str) {
         distrusted = DISTRUSTED_UNSET;
     }
-    else if (!strcasecmp(distrusted_str, "1")) {
+    else if (!strcmp(distrusted_str, "1")) {
         distrusted = DISTRUSTED;
     }
-    else if (!strcasecmp(distrusted_str, "0")) {
+    else if (!strcmp(distrusted_str, "0")) {
         distrusted = TRUSTED;
     }
     else {
@@ -372,8 +372,9 @@ apr_status_t read_config_db(apr_pool_t *p, server_rec *s_main,
         const char *max_timestamp = apr_dbd_get_entry(driver, row, cur++);
         const char *url = apr_dbd_get_entry(driver, row, cur++);
 
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s_main,
-                     "Log config: Record %s, log id %s, public key file %s, distrusted %s, URL %s, time %s->%s",
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s_main, APLOGNO(03036)
+                     "Log config: Record %s, log id %s, public key file %s,"
+                     " distrusted %s, URL %s, time %s->%s",
                      id,
                      log_id ? log_id : "(unset)",
                      public_key ? public_key : "(unset)",

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="EUC-KR" ?>
 <!DOCTYPE manualpage SYSTEM "./style/manualpage.dtd">
 <?xml-stylesheet type="text/xsl" href="./style/manual.ko.xsl"?>
-<!-- English Revision: 151408:1673945 (outdated) -->
+<!-- English Revision: 151408:1741874 (outdated) -->
 
 <!--
  Licensed to the Apache Software Foundation (ASF) under one or more
@@ -229,7 +229,7 @@ href="http://apache.webthing.com/mod_proxy_html/">mod_proxy_html</a>
     프로그램을 사용할 수 있다. 재작성 엔진은 위에서 다룬 세
     종류 대응, 즉, 내부 리다이렉션 (alias), 외부 리다이렉션,
     프록시, 모두를 지원한다. mod_rewrite를 사용하는 실제 예는
-    <a href="misc/rewriteguide.html">URL 제작성 지침서</a>에서
+    <a href="rewrite/">URL 제작성 지침서</a>에서
     설명한다.</p>
 </section>
 

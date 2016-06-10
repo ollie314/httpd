@@ -16,6 +16,8 @@
 #ifndef __mod_h2__h2_task__
 #define __mod_h2__h2_task__
 
+#include <http_core.h>
+
 /**
  * A h2_task fakes a HTTP/1.1 request from the data in a HTTP/2 stream 
  * (HEADER+CONT.+DATA) the module recieves.
@@ -36,152 +38,95 @@
  */
 
 struct apr_thread_cond_t;
+struct h2_bucket_beam;
 struct h2_conn;
 struct h2_mplx;
 struct h2_task;
-struct h2_resp_head;
+struct h2_req_engine;
+struct h2_request;
+struct h2_response;
 struct h2_worker;
 
 typedef struct h2_task h2_task;
 
 struct h2_task {
-    /** Links to the rest of the tasks */
-    APR_RING_ENTRY(h2_task) link;
-
     const char *id;
     int stream_id;
+    conn_rec *c;
+    apr_pool_t *pool;
+    
+    const struct h2_request *request;
+    struct h2_response *response;
+    
+    struct {
+        struct h2_bucket_beam *beam;
+        apr_bucket_brigade *bb;
+        apr_bucket_brigade *tmp;
+        apr_read_type_e block;
+        unsigned int chunked : 1;
+        unsigned int eos : 1;
+        unsigned int eos_written : 1;
+    } input;
+    struct {
+        struct h2_bucket_beam *beam;
+        struct h2_from_h1 *from_h1;
+        unsigned int response_open : 1;
+        apr_off_t written;
+        apr_bucket_brigade *bb;
+    } output;
+    
     struct h2_mplx *mplx;
+    struct apr_thread_cond_t *cond;
     
-    volatile apr_uint32_t has_started;
-    volatile apr_uint32_t has_finished;
+    int rst_error;                   /* h2 related stream abort error */
+    unsigned int filters_set    : 1;
+    unsigned int ser_headers    : 1;
+    unsigned int frozen         : 1;
+    unsigned int blocking       : 1;
+    unsigned int detached       : 1;
+    unsigned int submitted      : 1; /* response has been submitted to client */
+    unsigned int worker_started : 1; /* h2_worker started processing for this io */
+    unsigned int worker_done    : 1; /* h2_worker finished for this io */
     
-    const char *method;
-    const char *scheme;
-    const char *authority;
-    const char *path;
-    apr_table_t *headers;
-    int input_eos;
-
-    struct conn_rec *c;
+    apr_time_t started_at;           /* when processing started */
+    apr_time_t done_at;              /* when processing was done */
+    apr_bucket *eor;
+    
+    struct h2_req_engine *engine;   /* engine hosted by this task */
+    struct h2_req_engine *assigned; /* engine that task has been assigned to */
+    request_rec *r;                 /* request being processed in this task */
 };
 
-typedef struct h2_task_env h2_task_env;
+h2_task *h2_task_create(conn_rec *c, const struct h2_request *req, 
+                        struct h2_bucket_beam *input, struct h2_mplx *mplx);
 
-struct h2_task_env {
-    const char *id;
-    int stream_id;
-    struct h2_mplx *mplx;
-    
-    apr_pool_t *pool;              /* pool for task lifetime things */
-    apr_bucket_alloc_t *bucket_alloc;
-    
-    const char *method;
-    const char *scheme;
-    const char *authority;
-    const char *path;
-    apr_table_t *headers;
-    int input_eos;
-    
-    int serialize_headers;
+void h2_task_destroy(h2_task *task);
 
-    struct conn_rec c;
-    struct h2_task_input *input;
-    struct h2_task_output *output;
-    
-    struct apr_thread_cond_t *io;   /* used to wait for events on */
-};
+apr_status_t h2_task_do(h2_task *task, apr_thread_t *thread);
+
+void h2_task_set_response(h2_task *task, struct h2_response *response);
+
+void h2_task_redo(h2_task *task);
+int h2_task_can_redo(h2_task *task);
 
 /**
- * The magic pointer value that indicates the head of a h2_task list
- * @param  b The task list
- * @return The magic pointer value
+ * Reset the task with the given error code, resets all input/output.
  */
-#define H2_TASK_LIST_SENTINEL(b)	APR_RING_SENTINEL((b), h2_task, link)
-
-/**
- * Determine if the task list is empty
- * @param b The list to check
- * @return true or false
- */
-#define H2_TASK_LIST_EMPTY(b)	APR_RING_EMPTY((b), h2_task, link)
-
-/**
- * Return the first task in a list
- * @param b The list to query
- * @return The first task in the list
- */
-#define H2_TASK_LIST_FIRST(b)	APR_RING_FIRST(b)
-
-/**
- * Return the last task in a list
- * @param b The list to query
- * @return The last task int he list
- */
-#define H2_TASK_LIST_LAST(b)	APR_RING_LAST(b)
-
-/**
- * Insert a single task at the front of a list
- * @param b The list to add to
- * @param e The task to insert
- */
-#define H2_TASK_LIST_INSERT_HEAD(b, e) do {				\
-    h2_task *ap__b = (e);                                        \
-    APR_RING_INSERT_HEAD((b), ap__b, h2_task, link);	\
-} while (0)
-
-/**
- * Insert a single task at the end of a list
- * @param b The list to add to
- * @param e The task to insert
- */
-#define H2_TASK_LIST_INSERT_TAIL(b, e) do {				\
-    h2_task *ap__b = (e);					\
-    APR_RING_INSERT_TAIL((b), ap__b, h2_task, link);	\
-} while (0)
-
-/**
- * Get the next task in the list
- * @param e The current task
- * @return The next task
- */
-#define H2_TASK_NEXT(e)	APR_RING_NEXT((e), link)
-/**
- * Get the previous task in the list
- * @param e The current task
- * @return The previous task
- */
-#define H2_TASK_PREV(e)	APR_RING_PREV((e), link)
-
-/**
- * Remove a task from its list
- * @param e The task to remove
- */
-#define H2_TASK_REMOVE(e)	APR_RING_REMOVE((e), link)
-
-
-h2_task *h2_task_create(long session_id, int stream_id, 
-                        apr_pool_t *pool, struct h2_mplx *mplx,
-                        conn_rec *c);
-
-apr_status_t h2_task_destroy(h2_task *task);
-
-void h2_task_set_request(h2_task *task, 
-                         const char *method, 
-                         const char *scheme, 
-                         const char *authority, 
-                         const char *path, 
-                         apr_table_t *headers, int eos);
-
-
-apr_status_t h2_task_do(h2_task *task, struct h2_worker *worker);
-apr_status_t h2_task_process_request(h2_task_env *env);
-
-int h2_task_has_started(h2_task *task);
-void h2_task_set_started(h2_task *task);
-int h2_task_has_finished(h2_task *task);
-void h2_task_set_finished(h2_task *task);
+void h2_task_rst(h2_task *task, int error);
 
 void h2_task_register_hooks(void);
-void h2_task_die(h2_task_env *env, int status, request_rec *r);
+/*
+ * One time, post config intialization.
+ */
+apr_status_t h2_task_init(apr_pool_t *pool, server_rec *s);
+
+extern APR_OPTIONAL_FN_TYPE(ap_logio_add_bytes_in) *h2_task_logio_add_bytes_in;
+extern APR_OPTIONAL_FN_TYPE(ap_logio_add_bytes_out) *h2_task_logio_add_bytes_out;
+
+apr_status_t h2_task_freeze(h2_task *task);
+apr_status_t h2_task_thaw(h2_task *task);
+int h2_task_is_detached(h2_task *task);
+
+void h2_task_set_io_blocking(h2_task *task, int blocking);
 
 #endif /* defined(__mod_h2__h2_task__) */

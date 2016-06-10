@@ -358,16 +358,33 @@ static int dav_error_response_tag(request_rec *r,
         ap_rputs(" xmlns:m=\"http://apache.org/dav/xmlns\"", r);
     }
 
-    if (err->namespace != NULL) {
-        ap_rprintf(r,
-                   " xmlns:C=\"%s\">" DEBUG_CR
-                   "<C:%s/>" DEBUG_CR,
-                   err->namespace, err->tagname);
+    if (err->childtags) {
+        if (err->namespace != NULL) {
+            ap_rprintf(r,
+                    " xmlns:C=\"%s\">" DEBUG_CR
+                    "<C:%s>%s</C:%s>" DEBUG_CR,
+                    err->namespace,
+                    err->tagname, err->childtags, err->tagname);
+        }
+        else {
+            ap_rprintf(r,
+                    ">" DEBUG_CR
+                    "<D:%s>%s<D:%s>" DEBUG_CR,
+                    err->tagname, err->childtags, err->tagname);
+        }
     }
     else {
-        ap_rprintf(r,
-                   ">" DEBUG_CR
-                   "<D:%s/>" DEBUG_CR, err->tagname);
+        if (err->namespace != NULL) {
+            ap_rprintf(r,
+                    " xmlns:C=\"%s\">" DEBUG_CR
+                    "<C:%s/>" DEBUG_CR,
+                    err->namespace, err->tagname);
+        }
+        else {
+            ap_rprintf(r,
+                    ">" DEBUG_CR
+                    "<D:%s/>" DEBUG_CR, err->tagname);
+        }
     }
 
     /* here's our mod_dav specific tag: */
@@ -558,6 +575,7 @@ static void dav_log_err(request_rec *r, dav_error *err, int level)
         if (errscan->desc == NULL)
             continue;
 
+        /* Intentional no APLOGNO */
         ap_log_rerror(APLOG_MARK, level, errscan->aprerr, r, "%s  [%d, #%d]",
                       errscan->desc, errscan->status, errscan->error_id);
     }
@@ -651,7 +669,7 @@ DAV_DECLARE(int) dav_get_depth(request_rec *r, int def_depth)
         return def_depth;
     }
 
-    if (strcasecmp(depth, "infinity") == 0) {
+    if (ap_cstr_casecmp(depth, "infinity") == 0) {
         return DAV_INFINITY;
     }
     else if (strcmp(depth, "0") == 0) {
@@ -781,7 +799,7 @@ static int dav_parse_range(request_rec *r,
         return 0;
 
     range = apr_pstrdup(r->pool, range_c);
-    if (strncasecmp(range, "bytes ", 6) != 0
+    if (ap_cstr_casecmpn(range, "bytes ", 6) != 0
         || (dash = ap_strchr(range, '-')) == NULL
         || (slash = ap_strchr(range, '/')) == NULL) {
         /* malformed header */
@@ -2456,7 +2474,7 @@ static int process_mkcol_body(request_rec *r)
     r->remaining = 0;
 
     if (tenc) {
-        if (strcasecmp(tenc, "chunked")) {
+        if (ap_cstr_casecmp(tenc, "chunked")) {
             /* Use this instead of Apache's default error string */
             ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(00589)
                           "Unknown Transfer-Encoding %s", tenc);

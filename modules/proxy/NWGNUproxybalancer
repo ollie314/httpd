@@ -19,7 +19,6 @@ XINCDIRS	+= \
 			$(APR)/include \
 			$(APRUTIL)/include \
 			$(SRC)/include \
-			$(STDMOD)/http \
 			$(NWOS) \
 			$(EOLIST)
 
@@ -104,7 +103,7 @@ NLM_DESCRIPTION	= Apache $(VERSION_STR) Proxy Balancer Sub-Module
 # This is used by the '-threadname' directive.  If left blank,
 # NLM_NAME Thread will be used.
 #
-NLM_THREAD_NAME	= Prxy Blncr Module
+NLM_THREAD_NAME	= Proxy Blncr Module
 
 #
 # If this is specified, it will override VERSION value in
@@ -149,7 +148,7 @@ XDCDATA		=
 # If there is an NLM target, put it here
 #
 TARGET_nlm = \
-	$(OBJDIR)/proxybalancer.nlm \
+	$(OBJDIR)/$(NLM_NAME).nlm \
 	$(EOLIST)
 
 #
@@ -206,11 +205,11 @@ FILE_nlm_copyright =
 FILES_nlm_Ximports = \
 	@aprlib.imp \
 	@httpd.imp \
-	@$(OBJDIR)/mod_proxy.imp \
+	@mod_proxy.imp \
 	@libc.imp \
 	$(EOLIST)
 
-# Don't link with Winsock if standard sockets are being used
+# Link with Winsock if standard sockets are NOT being used.
 ifndef USE_STDSOCKETS
 FILES_nlm_Ximports += @ws2nlm.imp \
 	$(EOLIST)
@@ -256,5 +255,3 @@ vpath %.c ../arch/netware
 #
 
 include $(APBUILD)/NWGNUtail.inc
-
-

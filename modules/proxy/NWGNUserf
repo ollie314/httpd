@@ -38,9 +38,6 @@ XINCDIRS	+= \
 			$(APR)/include \
 			$(APRUTIL)/include \
 			$(SRC)/include \
-			$(STDMOD)/http \
-			$(STDMOD)/generators \
-			$(STDMOD)/ssl \
 			$(NWOS) \
 			$(EOLIST)
 
@@ -299,7 +296,7 @@ FILES_nlm_Ximports = \
 	GetSuperHighResolutionTimer \
 	$(EOLIST)
 
-# Don't link with Winsock if standard sockets are being used
+# Link with Winsock if standard sockets are NOT being used.
 ifndef USE_STDSOCKETS
 FILES_nlm_Ximports += @ws2nlm.imp \
 	$(EOLIST)
@@ -345,5 +342,3 @@ vpath %.c $(V_PATH)
 #
 
 include $(APBUILD)/NWGNUtail.inc
-
-

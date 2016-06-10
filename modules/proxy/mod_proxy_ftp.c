@@ -294,7 +294,7 @@ static int proxy_ftp_canon(request_rec *r, char *url)
     apr_port_t port, def_port;
 
     /* */
-    if (strncasecmp(url, "ftp:", 4) == 0) {
+    if (ap_cstr_casecmpn(url, "ftp:", 4) == 0) {
         url += 4;
     }
     else {
@@ -391,7 +391,7 @@ static int ftp_getrc_msg(conn_rec *ftp_ctrl, apr_bucket_brigade *bb, char *msgbu
         return -1;
     }
 /*
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, NULL,
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, NULL, APLOGNO(03233)
                  "<%s", response);
 */
     if (!apr_isdigit(response[0]) || !apr_isdigit(response[1]) ||
@@ -494,7 +494,7 @@ static apr_status_t proxy_send_dir_filter(ap_filter_t *f,
         path = apr_uri_unparse(p, &f->r->parsed_uri, APR_URI_UNP_OMITSITEPART | APR_URI_UNP_OMITQUERY);
 
         /* If path began with /%2f, change the basedir */
-        if (strncasecmp(path, "/%2f", 4) == 0) {
+        if (ap_cstr_casecmpn(path, "/%2f", 4) == 0) {
             basedir = "/%2f";
         }
 
@@ -1011,7 +1011,7 @@ static int proxy_ftp_handler(request_rec *r, proxy_worker *worker,
                       proxyhost);
         return DECLINED;        /* proxy connections are via HTTP */
     }
-    if (strncasecmp(url, "ftp:", 4)) {
+    if (ap_cstr_casecmpn(url, "ftp:", 4)) {
         ap_log_rerror(APLOG_MARK, APLOG_TRACE3, 0, r,
                       "declining URL %s - not ftp:", url);
         return DECLINED;        /* only interested in FTP */
@@ -1082,7 +1082,7 @@ static int proxy_ftp_handler(request_rec *r, proxy_worker *worker,
      * still smaller that the URL is logged regularly.
      */
     if ((password = apr_table_get(r->headers_in, "Authorization")) != NULL
-        && strcasecmp(ap_getword(r->pool, &password, ' '), "Basic") == 0
+        && ap_cstr_casecmp(ap_getword(r->pool, &password, ' '), "Basic") == 0
         && (password = ap_pbase64decode(r->pool, password))[0] != ':') {
         /* Check the decoded string for special characters. */
         if (!ftp_check_string(password)) {
@@ -1189,7 +1189,7 @@ static int proxy_ftp_handler(request_rec *r, proxy_worker *worker,
     }
 
     if (!backend->connection) {
-        status = ap_proxy_connection_create("FTP", backend, c, r->server);
+        status = ap_proxy_connection_create_ex("FTP", backend, r);
         if (status != OK) {
             proxy_ftp_cleanup(r, backend);
             return status;
@@ -1328,7 +1328,7 @@ static int proxy_ftp_handler(request_rec *r, proxy_worker *worker,
     /* Special handling for leading "%2f": this enforces a "cwd /"
      * out of the $HOME directory which was the starting point after login
      */
-    if (strncasecmp(path, "%2f", 3) == 0) {
+    if (ap_cstr_casecmpn(path, "%2f", 3) == 0) {
         path += 3;
         while (*path == '/') /* skip leading '/' (after root %2f) */
             ++path;
@@ -2035,7 +2035,7 @@ static int proxy_ftp_handler(request_rec *r, proxy_worker *worker,
      * We do not do SSL over the data connection, even if the virtual host we
      * are in might have SSL enabled
      */
-    ap_proxy_ssl_disable(data);
+    ap_proxy_ssl_engine(data, r->per_dir_config, 0);
     /* set up the connection filters */
     rc = ap_run_pre_connection(data, data_sock);
     if (rc != OK && rc != DONE) {

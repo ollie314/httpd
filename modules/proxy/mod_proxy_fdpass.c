@@ -32,7 +32,7 @@ static int proxy_fdpass_canon(request_rec *r, char *url)
 {
     const char *path;
 
-    if (strncasecmp(url, "fd://", 5) == 0) {
+    if (ap_cstr_casecmpn(url, "fd://", 5) == 0) {
         url += 5;
     }
     else {
@@ -57,7 +57,6 @@ static apr_status_t get_socket_from_path(apr_pool_t *p,
     *out_sock = NULL;
 
     rv = apr_socket_create(&s, AF_UNIX, SOCK_STREAM, 0, p);
-
     if (rv != APR_SUCCESS) {
         return rv;
     }
@@ -71,7 +70,6 @@ static apr_status_t get_socket_from_path(apr_pool_t *p,
 
     return APR_SUCCESS;
 }
-
 
 static apr_status_t send_socket(apr_pool_t *p,
                                 apr_socket_t *s,
@@ -119,7 +117,6 @@ static apr_status_t send_socket(apr_pool_t *p,
         return errno;
     }
 
-
     return APR_SUCCESS;
 }
 
@@ -132,7 +129,7 @@ static int proxy_fdpass_handler(request_rec *r, proxy_worker *worker,
     apr_socket_t *sock;
     apr_socket_t *clientsock;
 
-    if (strncasecmp(url, "fd://", 5) == 0) {
+    if (ap_cstr_casecmpn(url, "fd://", 5) == 0) {
         url += 5;
     }
     else {
@@ -149,7 +146,7 @@ static int proxy_fdpass_handler(request_rec *r, proxy_worker *worker,
 
     {
         int status;
-        const char *flush_method = worker->s->flusher ? worker->s->flusher : "flush";
+        const char *flush_method = *worker->s->flusher ? worker->s->flusher : "flush";
 
         proxy_fdpass_flush *flush = ap_lookup_provider(PROXY_FDPASS_FLUSHER,
                                                        flush_method, "0");
@@ -190,7 +187,6 @@ static int proxy_fdpass_handler(request_rec *r, proxy_worker *worker,
         }
         ap_set_core_module_config(r->connection->conn_config, dummy);
     }
-
 
     return OK;
 }

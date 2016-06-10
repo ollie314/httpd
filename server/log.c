@@ -596,7 +596,7 @@ static int log_log_id(const ap_errorlog_info *info, const char *arg,
      * c: log conn log id if available and not a once-per-request log line
      * else: log request log id if available
      */
-    if (arg && !strcasecmp(arg, "c")) {
+    if (arg && (*arg == 'c' || *arg == 'C')) {
         if (info->c && (*arg != 'C' || !info->r)) {
             return cpystrn(buf, info->c->log_id, buflen);
         }

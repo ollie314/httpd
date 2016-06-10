@@ -268,8 +268,8 @@ directive.</p>
        either with a client certificate or by username and password.</p>
 
     <highlight language="config">
-      Require ssl-verify-client<br/>
-      Require valid-user
+Require ssl-verify-client
+Require valid-user
     </highlight>
 
   </section>
@@ -498,7 +498,7 @@ The following five storage <em>type</em>s are currently supported:</p>
 <li><code>dc:UNIX:/path/to/socket</code>
 
     <p>This makes use of the <a
-    href="http://www.distcache.org/">distcache</a> distributed session
+    href="http://distcache.sourceforge.net/">distcache</a> distributed session
     caching libraries.  The argument should specify the location of
     the server or proxy to be used using the distcache address syntax;
     for example, <code>UNIX:/path/to/socket</code> specifies a UNIX
@@ -854,7 +854,8 @@ to support multiple algorithms for server authentication - typically
 RSA, DSA, and ECC. The number of supported algorithms depends on the
 OpenSSL version being used for mod_ssl: with version 1.0.0 or later,
 <code>openssl list-public-key-algorithms</code> will output a list
-of supported algorithms.
+of supported algorithms, see also the note below about limitations
+of OpenSSL versions prior to 1.0.2 and the ways to work around them.
 </p>
 
 <p>
@@ -901,6 +902,33 @@ With Java-based clients in particular (Java 7 or earlier), this may lead
 to handshake failures - see this
 <a href="../ssl/ssl_faq.html#javadh">FAQ answer</a> for working around
 such issues.
+</p>
+</note>
+
+<note>
+<title>Default DH parameters when using multiple certificates and OpenSSL
+versions prior to 1.0.2</title>
+<p>
+When using multiple certificates to support different authentication algorithms
+(like RSA, DSA, but mainly ECC) and OpenSSL prior to 1.0.2, it is recommended
+to either use custom DH parameters (preferably) by adding them to the
+first certificate file (as described above), or to order the
+<directive>SSLCertificateFile</directive> directives such that RSA/DSA
+certificates are placed <strong>after</strong> the ECC one.
+</p>
+<p>
+This is due to a limitation in older versions of OpenSSL which don't let the
+Apache HTTP Server determine the currently selected certificate at handshake
+time (when the DH parameters must be sent to the peer) but instead always
+provide the last configured certificate. Consequently, the server may select
+default DH parameters based on the length of the wrong certificate's key (ECC
+keys are much smaller than RSA/DSA ones and their length is not relevant for
+selecting DH primes).
+</p>
+<p>
+Since custom DH parameters always take precedence over the default ones, this
+issue can be avoided by creating and configuring them (as described above),
+thus using a custom/suitable length.
 </p>
 </note>
 
@@ -1177,10 +1205,12 @@ SSLCARevocationFile /usr/local/apache2/conf/ssl.crl/ca-bundle-client.crl
 <directivesynopsis>
 <name>SSLCARevocationCheck</name>
 <description>Enable CRL-based revocation checking</description>
-<syntax>SSLCARevocationCheck chain|leaf|none</syntax>
+<syntax>SSLCARevocationCheck chain|leaf|none <em>flag</em>s</syntax>
 <default>SSLCARevocationCheck none</default>
 <contextlist><context>server config</context>
 <context>virtual host</context></contextlist>
+<compatibility>Optional <em>flag</em>s available in httpd 2.5-dev or
+later</compatibility>
 
 <usage>
 <p>
@@ -1191,23 +1221,36 @@ configured. When set to <code>chain</code> (recommended setting),
 CRL checks are applied to all certificates in the chain, while setting it to
 <code>leaf</code> limits the checks to the end-entity cert.
 </p>
-<note>
-<title>When set to <code>chain</code> or <code>leaf</code>,
-CRLs <em>must</em> be available for successful validation</title>
-<p>
-Prior to version 2.3.15, CRL checking in mod_ssl also succeeded when
-no CRL(s) were found in any of the locations configured with
-<directive module="mod_ssl">SSLCARevocationFile</directive>
-or <directive module="mod_ssl">SSLCARevocationPath</directive>.
-With the introduction of this directive, the behavior has been changed:
-when checking is enabled, CRLs <em>must</em> be present for the validation
-to succeed - otherwise it will fail with an
-<code>"unable to get certificate CRL"</code> error.
-</p>
-</note>
+<p>The available <em>flag</em>s are:</p>
+<ul>
+<li><code>no_crl_for_cert_ok</code>
+    <p>
+    Prior to version 2.3.15, CRL checking in mod_ssl also succeeded when
+    no CRL(s) for the checked certificate(s) were found in any of the locations
+    configured with <directive module="mod_ssl">SSLCARevocationFile</directive>
+    or <directive module="mod_ssl">SSLCARevocationPath</directive>.
+    </p>
+    <p>
+    With the introduction of <directive>SSLCARevocationFile</directive>,
+    the behavior has been changed: by default with <code>chain</code> or
+    <code>leaf</code>, CRLs <strong>must</strong> be present for the
+    validation to succeed - otherwise it will fail with an
+    <code>"unable to get certificate CRL"</code> error.
+    </p>
+    <p>
+    The <em>flag</em> <code>no_crl_for_cert_ok</code> allows to restore
+    previous behaviour.
+    </p>
+</li>
+</ul>
 <example><title>Example</title>
 <highlight language="config">
 SSLCARevocationCheck chain
+</highlight>
+</example>
+<example><title>Compatibility with versions 2.2</title>
+<highlight language="config">
+SSLCARevocationCheck chain no_crl_for_cert_ok
 </highlight>
 </example>
 </usage>
@@ -1460,7 +1503,7 @@ The available <em>option</em>s are:</p>
 SSLOptions +FakeBasicAuth -StrictRequire
 &lt;Files ~ "\.(cgi|shtml)$"&gt;
     SSLOptions +StdEnvVars -ExportCertData
-&lt;Files&gt;
+&lt;/Files&gt;
 </highlight>
 </example>
 </usage>
@@ -1698,7 +1741,8 @@ SSLStrictSNIVHostCheck on
 <name>SSLProxyMachineCertificatePath</name>
 <description>Directory of PEM-encoded client certificates and keys to be used by the proxy</description>
 <syntax>SSLProxyMachineCertificatePath <em>directory</em></syntax>
-<contextlist><context>server config</context></contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
 <override>Not applicable</override>
 
 <usage>
@@ -1726,7 +1770,8 @@ SSLProxyMachineCertificatePath /usr/local/apache2/conf/proxy.crt/
 <name>SSLProxyMachineCertificateFile</name>
 <description>File of concatenated PEM-encoded client certificates and keys to be used by the proxy</description>
 <syntax>SSLProxyMachineCertificateFile <em>filename</em></syntax>
-<contextlist><context>server config</context></contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
 <override>Not applicable</override>
 
 <usage>
@@ -1754,7 +1799,8 @@ SSLProxyMachineCertificateFile /usr/local/apache2/conf/ssl.crt/proxy.pem
 <name>SSLProxyMachineCertificateChainFile</name>
 <description>File of concatenated PEM-encoded CA certificates to be used by the proxy for choosing a certificate</description>
 <syntax>SSLProxyMachineCertificateChainFile <em>filename</em></syntax>
-<contextlist><context>server config</context></contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
 <override>Not applicable</override>
 
 <usage>
@@ -1787,8 +1833,9 @@ SSLProxyMachineCertificateChainFile /usr/local/apache2/conf/ssl.crt/proxyCA.pem
 <description>Type of remote server Certificate verification</description>
 <syntax>SSLProxyVerify <em>level</em></syntax>
 <default>SSLProxyVerify none</default>
-<contextlist><context>server config</context>
-<context>virtual host</context> </contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
 
 <usage>
 
@@ -1827,8 +1874,9 @@ SSLProxyVerify require
 Certificate verification</description>
 <syntax>SSLProxyVerifyDepth <em>number</em></syntax>
 <default>SSLProxyVerifyDepth 1</default>
-<contextlist><context>server config</context>
-<context>virtual host</context> </contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
 
 <usage>
 <p>
@@ -1856,8 +1904,9 @@ SSLProxyVerifyDepth 10
 </description>
 <syntax>SSLProxyCheckPeerExpire on|off</syntax>
 <default>SSLProxyCheckPeerExpire on</default>
-<contextlist><context>server config</context>
-<context>virtual host</context></contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
 
 <usage>
 <p>
@@ -1879,24 +1928,40 @@ SSLProxyCheckPeerExpire on
 </description>
 <syntax>SSLProxyCheckPeerCN on|off</syntax>
 <default>SSLProxyCheckPeerCN on</default>
-<contextlist><context>server config</context>
-<context>virtual host</context></contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
 
 <usage>
 <p>
 This directive sets whether the remote server certificate's CN field is
 compared against the hostname of the request URL. If both are not equal
-a 502 status code (Bad Gateway) is sent.
+a 502 status code (Bad Gateway) is sent. <code>SSLProxyCheckPeerCN</code> is
+superseded by <directive module="mod_ssl">SSLProxyCheckPeerName</directive>
+in release 2.4.5 and later. 
 </p>
 <p>
-In 2.4.5 and later, SSLProxyCheckPeerCN has been superseded by
-<directive module="mod_ssl">SSLProxyCheckPeerName</directive>, and its
-setting is only taken into account when
-<code>SSLProxyCheckPeerName off</code> is specified at the same time.
+In all releases 2.4.5 through 2.4.20, setting
+<code>SSLProxyCheckPeerName off</code> was sufficient to enable this behavior
+(as the <code>SSLProxyCheckPeerCN</code> default was <code>on</code>.) In 
+these releases, both directives must be set to <code>off</code> to completely
+avoid remote server certificate name validation. Many users reported this
+to be very confusing.
+</p>
+<p>
+As of release 2.4.21, all configurations which enable either one of the
+<code>SSLProxyCheckPeerName</code> or <code>SSLProxyCheckPeerCN</code> options
+will use the new <directive module="mod_ssl">SSLProxyCheckPeerName</directive>
+behavior, and all configurations which disable either one of the 
+<code>SSLProxyCheckPeerName</code> or <code>SSLProxyCheckPeerCN</code> options
+will supress all remote server certificate name validation. Only the following
+configuration will trigger the legacy certificate CN comparison in 2.4.21 and
+later releases;
 </p>
 <example><title>Example</title>
 <highlight language="config">
 SSLProxyCheckPeerCN on
+SSLProxyCheckPeerName off
 </highlight>
 </example>
 </usage>
@@ -1908,27 +1973,37 @@ SSLProxyCheckPeerCN on
 </description>
 <syntax>SSLProxyCheckPeerName on|off</syntax>
 <default>SSLProxyCheckPeerName on</default>
-<contextlist><context>server config</context>
-<context>virtual host</context></contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
 <compatibility>Apache HTTP Server 2.4.5 and later</compatibility>
 
 <usage>
 <p>
-This directive configures host name checking for server certificates
-when mod_ssl is acting as an SSL client. The check will
-succeed if the host name from the request URI is found in
-either the subjectAltName extension or (one of) the CN attribute(s)
-in the certificate's subject. If the check fails, the SSL request
-is aborted and a 502 status code (Bad Gateway) is returned.
-The directive supersedes <directive module="mod_ssl">SSLProxyCheckPeerCN</directive>,
-which only checks for the expected host name in the first CN attribute.
+This directive configures host name checking for server certificates when 
+mod_ssl is acting as an SSL client. The check will succeed if the host name 
+from the request URI matches one of the CN attribute(s) of the certificate's 
+subject, or matches the subjectAltName extension. If the check fails, the SSL 
+request is aborted and a 502 status code (Bad Gateway) is returned.
 </p>
 <p>
-Wildcard matching is supported in one specific flavor: subjectAltName entries
-of type dNSName or CN attributes starting with <code>*.</code> will match
-for any DNS name with the same number of labels and the same suffix
-(i.e., <code>*.example.org</code> matches for <code>foo.example.org</code>,
-but not for <code>foo.bar.example.org</code>).
+Wildcard matching is supported for specific cases: an subjectAltName entry
+of type dNSName, or CN attributes starting with <code>*.</code> will match
+with any host name of the same number of name elements and the same suffix.
+E.g. <code>*.example.org</code> will match <code>foo.example.org</code>,
+but will not match <code>foo.bar.example.org</code>, because the number of
+elements in the respective host names differs.
+</p>
+<p>
+This feature was introduced in 2.4.5 and superseded the behavior of the 
+<directive module="mod_ssl">SSLProxyCheckPeerCN</directive> directive, which 
+only tested the exact value in the first CN attribute against the host name.
+However, many users were confused by the behavior of using these directives
+individually, so the mutual behavior of <code>SSLProxyCheckPeerName</code> 
+and <code>SSLProxyCheckPeerCN</code> directives were improved in release 
+2.4.21. See the <directive module="mod_ssl">SSLProxyCheckPeerCN</directive> 
+directive description for the original behavior and details of these 
+improvements.
 </p>
 </usage>
 </directivesynopsis>
@@ -1938,8 +2013,9 @@ but not for <code>foo.bar.example.org</code>).
 <description>SSL Proxy Engine Operation Switch</description>
 <syntax>SSLProxyEngine on|off</syntax>
 <default>SSLProxyEngine off</default>
-<contextlist><context>server config</context>
-<context>virtual host</context></contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
 
 <usage>
 <p>
@@ -1971,9 +2047,9 @@ proxy SSL/TLS requests.</p>
 <description>Configure usable SSL protocol flavors for proxy usage</description>
 <syntax>SSLProxyProtocol [+|-]<em>protocol</em> ...</syntax>
 <default>SSLProxyProtocol all -SSLv3</default>
-<contextlist><context>server config</context>
-<context>virtual host</context></contextlist>
-<override>Options</override>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
 
 <usage>
 <!-- XXX Why does this have an override and not .htaccess context? -->
@@ -1993,11 +2069,10 @@ for additional information.
 proxy handshake</description>
 <syntax>SSLProxyCipherSuite <em>cipher-spec</em></syntax>
 <default>SSLProxyCipherSuite ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:+LOW:+EXP</default>
-<contextlist><context>server config</context>
-<context>virtual host</context>
-<context>directory</context>
-<context>.htaccess</context></contextlist>
-<override>AuthConfig</override>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
+
 <usage>
 <p>Equivalent to <code>SSLCipherSuite</code>, but for the proxy connection.
 Please refer to <directive module="mod_ssl">SSLCipherSuite</directive>
@@ -2010,8 +2085,9 @@ for additional information.</p>
 <description>Directory of PEM-encoded CA Certificates for
 Remote Server Auth</description>
 <syntax>SSLProxyCACertificatePath <em>directory-path</em></syntax>
-<contextlist><context>server config</context>
-<context>virtual host</context></contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
 
 <usage>
 <p>
@@ -2037,8 +2113,9 @@ SSLProxyCACertificatePath /usr/local/apache2/conf/ssl.crt/
 <description>File of concatenated PEM-encoded CA Certificates
 for Remote Server Auth</description>
 <syntax>SSLProxyCACertificateFile <em>file-path</em></syntax>
-<contextlist><context>server config</context>
-<context>virtual host</context></contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
 
 <usage>
 <p>
@@ -2061,8 +2138,9 @@ SSLProxyCACertificateFile /usr/local/apache2/conf/ssl.crt/ca-bundle-remote-serve
 <description>Directory of PEM-encoded CA CRLs for
 Remote Server Auth</description>
 <syntax>SSLProxyCARevocationPath <em>directory-path</em></syntax>
-<contextlist><context>server config</context>
-<context>virtual host</context></contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
 
 <usage>
 <p>
@@ -2088,8 +2166,9 @@ SSLProxyCARevocationPath /usr/local/apache2/conf/ssl.crl/
 <description>File of concatenated PEM-encoded CA CRLs for
 Remote Server Auth</description>
 <syntax>SSLProxyCARevocationFile <em>file-path</em></syntax>
-<contextlist><context>server config</context>
-<context>virtual host</context></contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
 
 <usage>
 <p>
@@ -2113,8 +2192,9 @@ SSLProxyCARevocationFile /usr/local/apache2/conf/ssl.crl/ca-bundle-remote-server
 <description>Enable CRL-based revocation checking for Remote Server Auth</description>
 <syntax>SSLProxyCARevocationCheck chain|leaf|none</syntax>
 <default>SSLProxyCARevocationCheck none</default>
-<contextlist><context>server config</context>
-<context>virtual host</context></contextlist>
+<contextlist><context>server config</context> <context>virtual host</context>
+<context>proxy section</context></contextlist>
+<override>Not applicable</override>
 
 <usage>
 <p>
@@ -2347,6 +2427,20 @@ Responder), this option should be turned <code>off</code>.</p>
 </directivesynopsis>
 
 <directivesynopsis>
+<name>SSLOCSPProxyURL</name>
+<description>Proxy URL to use for OCSP requests</description>
+<syntax>SSLOCSPProxyURL <em>url</em></syntax>
+<contextlist><context>server config</context>
+<context>virtual host</context></contextlist>
+<compatibility>Available in httpd 2.4.19 and later</compatibility>
+
+<usage>
+<p>This option allows to set the URL of a HTTP proxy that should be used for
+all queries to OCSP responders.</p>
+</usage>
+</directivesynopsis>
+
+<directivesynopsis>
 <name>SSLInsecureRenegotiation</name>
 <description>Option to enable support for insecure renegotiation</description>
 <syntax>SSLInsecureRenegotiation on|off</syntax>
@@ -2527,9 +2621,11 @@ used for controlling the timeout for invalid/unavailable responses.
 
 <usage>
 <p>When enabled, mod_ssl will pass responses from unsuccessful
-stapling related OCSP queries (such as status errors, expired responses etc.)
-on to the client. If set to <code>off</code>, no stapled responses
-for failed queries will be included in the TLS handshake.</p>
+stapling related OCSP queries (such as responses with an overall status
+other than "successful", responses with a certificate status other than
+"good", expired responses etc.) on to the client.
+If set to <code>off</code>, only responses indicating a certificate status
+of "good" will be included in the TLS handshake.</p>
 </usage>
 </directivesynopsis>
 

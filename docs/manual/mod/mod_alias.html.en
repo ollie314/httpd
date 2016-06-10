@@ -19,7 +19,7 @@
 <div id="page-header">
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p>
 <p class="apache">Apache HTTP Server Version 2.5</p>
-<img alt="" src="../images/feather.gif" /></div>
+<img alt="" src="../images/feather.png" /></div>
 <div class="up"><a href="./"><img title="&lt;-" alt="&lt;-" src="../images/left.gif" /></a></div>
 <div id="path">
 <a href="http://www.apache.org/">Apache</a> &gt; <a href="http://httpd.apache.org/">HTTP Server</a> &gt; <a href="http://httpd.apache.org/docs/">Documentation</a> &gt; <a href="../">Version 2.5</a> &gt; <a href="./">Modules</a></div>
@@ -82,11 +82,11 @@
 <li><img alt="" src="../images/down.gif" /> <a href="#scriptalias">ScriptAlias</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#scriptaliasmatch">ScriptAliasMatch</a></li>
 </ul>
-<h3>See also</h3>
+<h3>Bugfix checklist</h3><ul class="seealso"><li><a href="https://www.apache.org/dist/httpd/CHANGES_2.4">httpd changelog</a></li><li><a href="https://bz.apache.org/bugzilla/buglist.cgi?bug_status=__open__&amp;list_id=144532&amp;product=Apache%20httpd-2&amp;query_format=specific&amp;order=changeddate%20DESC%2Cpriority%2Cbug_severity&amp;component=mod_alias">Known issues</a></li><li><a href="https://bz.apache.org/bugzilla/enter_bug.cgi?product=Apache%20httpd-2&amp;component=mod_alias">Report a bug</a></li></ul><h3>See also</h3>
 <ul class="seealso">
 <li><code class="module"><a href="../mod/mod_rewrite.html">mod_rewrite</a></code></li>
 <li><a href="../urlmapping.html">Mapping URLs to the filesystem</a></li>
-</ul><ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
+<li><a href="#comments_section">Comments</a></li></ul></div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="section">
 <h2><a name="order" id="order">Order of Processing</a></h2>
@@ -109,7 +109,7 @@
     configuration will work as expected:</p>
 
     <pre class="prettyprint lang-config">Alias "/foo/bar" "/baz"
-Alias "/foo"     "/gaq"</pre>
+Alias "/foo" "/gaq"</pre>
 
 
     <p>But if the above two directives were reversed in order, the
@@ -163,7 +163,7 @@ Alias "/foo"     "/gaq"</pre>
     <pre class="prettyprint lang-config">Alias "/icons/" "/usr/local/apache/icons/"</pre>
 
 
-    <p>then the url <code>/icons</code> will not be aliased, as it lacks
+    <p>then the URL <code>/icons</code> will not be aliased, as it lacks
     that trailing /. Likewise, if you omit the slash on the
     <var>URL-path</var> then you must also omit it from the
     <var>file-path</var>.</p>
@@ -194,7 +194,7 @@ Alias "/foo"     "/gaq"</pre>
     or <code class="directive"><a href="../mod/core.html#locationmatch">&lt;LocationMatch&gt;</a></code>
     section the URL-path is omitted, and the file-path is interpreted
     using <a href="../expr.html">expression syntax</a>.<br />
-    This syntax is available in Apache 2.4.13 and later.</p>
+    This syntax is available in Apache 2.4.19 and later.</p>
 
     <pre class="prettyprint lang-config">&lt;Location "/image"&gt;
     Alias "/ftp/pub/image"
@@ -392,7 +392,7 @@ Redirect 303 "/three" "http://example.com/other"</pre>
     or <code class="directive"><a href="../mod/core.html#locationmatch">&lt;LocationMatch&gt;</a></code>
     section with the URL-path omitted, then the URL parameter will be
     interpreted using <a href="../expr.html">expression syntax</a>.<br />
-    This syntax is available in Apache 2.4.13 and later.</p>
+    This syntax is available in Apache 2.4.19 and later.</p>
 
     <pre class="prettyprint lang-config">&lt;Location "/one"&gt;
     Redirect permanent "http://example.com/two"
@@ -439,7 +439,6 @@ of the current URL</td></tr>
     <code class="directive"><a href="#redirectmatch">RedirectMatch</a></code>.
     See <code class="directive"><a href="#aliasmatch">AliasMatch</a></code> for
     details.</p>
-
 
 
 </div>
@@ -543,7 +542,7 @@ target as a CGI script</td></tr>
     or <code class="directive"><a href="../mod/core.html#locationmatch">&lt;LocationMatch&gt;</a></code>
     section with the URL-path omitted, then the URL parameter will be
     interpreted using <a href="../expr.html">expression syntax</a>.<br />
-    This syntax is available in Apache 2.4.13 and later.</p>
+    This syntax is available in Apache 2.4.19 and later.</p>
 
     <pre class="prettyprint lang-config">&lt;Location "/cgi-bin"&gt;
     ScriptAlias "/web/cgi-bin/"
@@ -626,7 +625,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_alias.html
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2016 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

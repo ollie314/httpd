@@ -420,7 +420,7 @@ static void note_cookie_auth_failure(request_rec * r)
 static int hook_note_cookie_auth_failure(request_rec * r,
                                          const char *auth_type)
 {
-    if (strcasecmp(auth_type, "form"))
+    if (ap_cstr_casecmp(auth_type, "form"))
         return DECLINED;
 
     note_cookie_auth_failure(r);
@@ -613,7 +613,7 @@ static int get_form_auth(request_rec * r,
 
     /* have we isolated the user and pw before? */
     get_notes_auth(r, sent_user, sent_pw, sent_method, sent_mimetype);
-    if (*sent_user && *sent_pw) {
+    if (sent_user && *sent_user && sent_pw && *sent_pw) {
         return OK;
     }
 
@@ -683,7 +683,7 @@ static int get_form_auth(request_rec * r,
     /* a missing username or missing password means auth denied */
     if (!sent_user || !*sent_user) {
 
-        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r,
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02982)
                       "form parsed, but username field '%s' was missing or empty, unauthorized",
                       username);
 
@@ -691,7 +691,7 @@ static int get_form_auth(request_rec * r,
     }
     if (!sent_pw || !*sent_pw) {
 
-        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r,
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02983)
                       "form parsed, but password field '%s' was missing or empty, unauthorized",
                       password);
 
@@ -842,7 +842,7 @@ static int check_authn(request_rec * r, const char *sent_user, const char *sent_
             break;
         }
 
-        /* If we're returning 403, tell them to try again. */
+        /* If we're returning 401, tell them to try again. */
         if (return_code == HTTP_UNAUTHORIZED) {
             note_cookie_auth_failure(r);
         }
@@ -892,7 +892,7 @@ static int authenticate_form_authn(request_rec * r)
 
     /* Are we configured to be Form auth? */
     current_auth = ap_auth_type(r);
-    if (!current_auth || strcasecmp(current_auth, "form")) {
+    if (!current_auth || ap_cstr_casecmp(current_auth, "form")) {
         return DECLINED;
     }
 

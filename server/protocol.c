@@ -400,7 +400,8 @@ AP_DECLARE(apr_status_t) ap_rgetline_core(char **s, apr_size_t n,
                      */
                     if (do_alloc) {
                         tmp = NULL;
-                    } else {
+                    }
+                    else {
                         /* We're null terminated. */
                         tmp = last_char;
                     }
@@ -526,7 +527,7 @@ AP_CORE_DECLARE(void) ap_parse_uri(request_rec *r, const char *uri)
     if (status == APR_SUCCESS) {
         /* if it has a scheme we may need to do absoluteURI vhost stuff */
         if (r->parsed_uri.scheme
-            && !strcasecmp(r->parsed_uri.scheme, ap_http_scheme(r))) {
+            && !ap_cstr_casecmp(r->parsed_uri.scheme, ap_http_scheme(r))) {
             r->hostname = r->parsed_uri.hostname;
         }
         else if (r->method_number == M_CONNECT) {
@@ -605,7 +606,7 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
              * happen if it exceeds the configured limit for a request-line.
              */
             if (APR_STATUS_IS_ENOSPC(rv)) {
-                r->status    = HTTP_REQUEST_URI_TOO_LARGE;
+                r->status = HTTP_REQUEST_URI_TOO_LARGE;
             }
             else if (APR_STATUS_IS_TIMEUP(rv)) {
                 r->status = HTTP_REQUEST_TIME_OUT;
@@ -614,7 +615,7 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
                 r->status = HTTP_BAD_REQUEST;
             }
             r->proto_num = HTTP_VERSION(1,0);
-            r->protocol  = apr_pstrdup(r->pool, "HTTP/1.0");
+            r->protocol  = "HTTP/1.0";
             return 0;
         }
     } while ((len <= 0) && (--num_blank_lines >= 0));
@@ -634,7 +635,7 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
     if (!*r->method || !*uri) {
         r->status    = HTTP_BAD_REQUEST;
         r->proto_num = HTTP_VERSION(1,0);
-        r->protocol  = apr_pstrdup(r->pool, "HTTP/1.0");
+        r->protocol  = "HTTP/1.0";
         return 0;
     }
 
@@ -647,6 +648,8 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
 
     ap_parse_uri(r, uri);
     if (r->status != HTTP_OK) {
+        r->proto_num = HTTP_VERSION(1,0);
+        r->protocol  = "HTTP/1.0";
         return 0;
     }
 
@@ -654,7 +657,8 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
         r->assbackwards = 0;
         pro = ll;
         len = strlen(ll);
-    } else {
+    }
+    else {
         r->assbackwards = 1;
         pro = "HTTP/0.9";
         len = 8;
@@ -685,14 +689,14 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
                           "Invalid protocol '%s'", r->protocol);
             if (enforce_strict) {
                 r->proto_num = HTTP_VERSION(1,0);
-                r->protocol  = apr_pstrdup(r->pool, "HTTP/1.0");
+                r->protocol  = "HTTP/1.0";
                 r->connection->keepalive = AP_CONN_CLOSE;
                 r->status = HTTP_BAD_REQUEST;
                 return 0;
             }
         }
         if (3 == sscanf(r->protocol, "%4s/%u.%u", http, &major, &minor)
-            && (strcasecmp("http", http) == 0)
+            && (ap_cstr_casecmp("http", http) == 0)
             && (minor < HTTP_VERSION(1, 0)) ) { /* don't allow HTTP/0.1000 */
             r->proto_num = HTTP_VERSION(major, minor);
         }
@@ -1001,16 +1005,10 @@ AP_DECLARE(void) ap_get_mime_headers(request_rec *r)
     apr_brigade_destroy(tmp_bb);
 }
 
-request_rec *ap_read_request(conn_rec *conn)
+AP_DECLARE(request_rec *) ap_create_request(conn_rec *conn)
 {
     request_rec *r;
     apr_pool_t *p;
-    const char *expect;
-    int access_status;
-    apr_bucket_brigade *tmp_bb;
-    apr_socket_t *csd;
-    apr_interval_time_t cur_timeout;
-
 
     apr_pool_create(&p, conn->pool);
     apr_pool_tag(p, "request");
@@ -1049,6 +1047,7 @@ request_rec *ap_read_request(conn_rec *conn)
     r->read_body       = REQUEST_NO_BODY;
 
     r->status          = HTTP_OK;  /* Until further notice */
+    r->header_only     = 0;
     r->the_request     = NULL;
 
     /* Begin by presuming any module can make its own path_info assumptions,
@@ -1058,6 +1057,20 @@ request_rec *ap_read_request(conn_rec *conn)
 
     r->useragent_addr = conn->client_addr;
     r->useragent_ip = conn->client_ip;
+
+    return r;
+}
+
+request_rec *ap_read_request(conn_rec *conn)
+{
+    const char *expect;
+    int access_status;
+    apr_bucket_brigade *tmp_bb;
+    apr_socket_t *csd;
+    apr_interval_time_t cur_timeout;
+
+
+    request_rec *r = ap_create_request(conn);
 
     tmp_bb = apr_brigade_create(r->pool, r->connection->bucket_alloc);
 
@@ -1088,7 +1101,7 @@ request_rec *ap_read_request(conn_rec *conn)
             apr_brigade_destroy(tmp_bb);
             goto traceout;
         case HTTP_REQUEST_TIME_OUT:
-            ap_update_child_status(conn->sbh, SERVER_BUSY_LOG, r);
+            ap_update_child_status(conn->sbh, SERVER_BUSY_LOG, NULL);
             if (!r->connection->keepalives)
                 ap_run_log_transaction(r);
             apr_brigade_destroy(tmp_bb);
@@ -1133,7 +1146,7 @@ request_rec *ap_read_request(conn_rec *conn)
              * the final encoding ...; the server MUST respond with the 400
              * (Bad Request) status code and then close the connection".
              */
-            if (!(strcasecmp(tenc, "chunked") == 0 /* fast path */
+            if (!(ap_cstr_casecmp(tenc, "chunked") == 0 /* fast path */
                     || ap_find_last_token(r->pool, tenc, "chunked"))) {
                 ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(02539)
                               "client sent unknown Transfer-Encoding "
@@ -1238,7 +1251,7 @@ request_rec *ap_read_request(conn_rec *conn)
          * unfortunately, to signal a poor man's mandatory extension that
          * the server must understand or return 417 Expectation Failed.
          */
-        if (strcasecmp(expect, "100-continue") == 0) {
+        if (ap_cstr_casecmp(expect, "100-continue") == 0) {
             r->expecting_100 = 1;
         }
         else {
@@ -1412,13 +1425,9 @@ AP_DECLARE(void) ap_note_digest_auth_failure(request_rec *r)
 
 AP_DECLARE(int) ap_get_basic_auth_pw(request_rec *r, const char **pw)
 {
-    const char *auth_line = apr_table_get(r->headers_in,
-                                          (PROXYREQ_PROXY == r->proxyreq)
-                                              ? "Proxy-Authorization"
-                                              : "Authorization");
-    const char *t;
+    const char *t, *auth_line;
 
-    if (!(t = ap_auth_type(r)) || strcasecmp(t, "Basic"))
+    if (!(t = ap_auth_type(r)) || ap_cstr_casecmp(t, "Basic"))
         return DECLINED;
 
     if (!ap_auth_name(r)) {
@@ -1427,12 +1436,16 @@ AP_DECLARE(int) ap_get_basic_auth_pw(request_rec *r, const char **pw)
         return HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    auth_line = apr_table_get(r->headers_in,
+                              (PROXYREQ_PROXY == r->proxyreq)
+                                  ? "Proxy-Authorization" : "Authorization");
+
     if (!auth_line) {
         ap_note_auth_failure(r);
         return HTTP_UNAUTHORIZED;
     }
 
-    if (strcasecmp(ap_getword(r->pool, &auth_line, ' '), "Basic")) {
+    if (ap_cstr_casecmp(ap_getword(r->pool, &auth_line, ' '), "Basic")) {
         /* Client tried to authenticate using wrong auth scheme */
         ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00573)
                       "client used wrong authentication scheme: %s", r->uri);
@@ -1898,12 +1911,14 @@ typedef struct hdr_ptr {
     ap_filter_t *f;
     apr_bucket_brigade *bb;
 } hdr_ptr;
+
 static int send_header(void *data, const char *key, const char *val)
 {
     ap_fputstrs(((hdr_ptr*)data)->f, ((hdr_ptr*)data)->bb,
                 key, ": ", val, CRLF, NULL);
     return 1;
 }
+
 AP_DECLARE(void) ap_send_interim_response(request_rec *r, int send_headers)
 {
     hdr_ptr x;
@@ -1936,7 +1951,7 @@ AP_DECLARE(void) ap_send_interim_response(request_rec *r, int send_headers)
         rr->expecting_100 = 0;
     }
 
-    status_line = apr_pstrcat(r->pool, AP_SERVER_PROTOCOL, " ", r->status_line, CRLF, NULL);
+    status_line = apr_pstrcat(r->pool, AP_SERVER_PROTOCOL " ", r->status_line, CRLF, NULL);
     ap_xlate_proto_to_ascii(status_line, strlen(status_line));
 
     x.f = r->connection->output_filters;
@@ -1983,7 +1998,7 @@ AP_DECLARE(const char *) ap_get_protocol(conn_rec *c)
 }
 
 AP_DECLARE(apr_status_t) ap_get_protocol_upgrades(conn_rec *c, request_rec *r, 
-                                                  server_rec *s, 
+                                                  server_rec *s, int report_all, 
                                                   const apr_array_header_t **pupgrades)
 {
     apr_pool_t *pool = r? r->pool : c->pool;
@@ -2000,15 +2015,25 @@ AP_DECLARE(apr_status_t) ap_get_protocol_upgrades(conn_rec *c, request_rec *r,
         existing = ap_get_protocol(c);
         if (conf->protocols->nelts > 1 
             || !ap_array_str_contains(conf->protocols, existing)) {
+            int i;
+            
             /* possibly more than one choice or one, but not the
              * existing. (TODO: maybe 426 and Upgrade then?) */
             upgrades = apr_array_make(pool, conf->protocols->nelts + 1, 
                                       sizeof(char *));
-            for (int i = 0; i < conf->protocols->nelts; ++i) {
+            for (i = 0; i < conf->protocols->nelts; i++) {
                 const char *p = APR_ARRAY_IDX(conf->protocols, i, char *);
-                if (strcmp(existing, p)) {
+                /* special quirk for HTTP/2 which does not allow 'h2' to
+                 * be part of an Upgrade: header */
+                if (!strcmp("h2", p)) {
+                    continue;
+                }
+                else if (strcmp(existing, p)) {
                     /* not the one we have and possible, add in this order */
                     APR_ARRAY_PUSH(upgrades, const char*) = p;
+                }
+                else if (!report_all) {
+                    break;
                 }
             }
         }
@@ -2034,7 +2059,7 @@ AP_DECLARE(const char *) ap_select_protocol(conn_rec *c, request_rec *r,
     
     if (APLOGcdebug(c)) {
         const char *p = apr_array_pstrcat(pool, conf->protocols, ',');
-        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c, 
+        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c, APLOGNO(03155) 
                       "select protocol from %s, choices=%s for server %s", 
                       p, apr_array_pstrcat(pool, choices, ','),
                       s->server_hostname);
@@ -2078,7 +2103,7 @@ AP_DECLARE(const char *) ap_select_protocol(conn_rec *c, request_rec *r,
 
         /* Select the most preferred protocol */
         if (APLOGcdebug(c)) {
-            ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c, 
+            ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c, APLOGNO(03156) 
                           "select protocol, proposals=%s preferences=%s configured=%s", 
                           apr_array_pstrcat(pool, proposals, ','),
                           apr_array_pstrcat(pool, prefs, ','),
@@ -2098,7 +2123,8 @@ AP_DECLARE(const char *) ap_select_protocol(conn_rec *c, request_rec *r,
         }
     }
     if (APLOGcdebug(c)) {
-        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c, "selected protocol=%s", 
+        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c, APLOGNO(03157)
+                      "selected protocol=%s", 
                       protocol? protocol : "(none)");
     }
 

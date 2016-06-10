@@ -64,13 +64,14 @@ typedef struct fd_queue_elem_t fd_queue_elem_t;
 
 typedef struct timer_event_t timer_event_t;
 
-struct timer_event_t {
+struct timer_event_t
+{
     APR_RING_ENTRY(timer_event_t) link;
     apr_time_t when;
     ap_mpm_callback_fn_t *cbfunc;
     void *baton;
-    int canceled;           
-    apr_pollfd_t **remove;  
+    int canceled;
+    apr_array_header_t *remove;
 };
 
 struct fd_queue_t
@@ -100,6 +101,7 @@ apr_status_t ap_queue_pop_something(fd_queue_t * queue, apr_socket_t ** sd,
                                     event_conn_state_t ** ecs, apr_pool_t ** p,
                                     timer_event_t ** te);
 apr_status_t ap_queue_interrupt_all(fd_queue_t * queue);
+apr_status_t ap_queue_interrupt_one(fd_queue_t * queue);
 apr_status_t ap_queue_term(fd_queue_t * queue);
 
 #endif /* FDQUEUE_H */

@@ -180,10 +180,10 @@ AP_DECLARE(void) ap_add_common_vars(request_rec *r)
          * for no particular reason.
          */
 
-        if (!strcasecmp(hdrs[i].key, "Content-type")) {
+        if (!ap_cstr_casecmp(hdrs[i].key, "Content-type")) {
             apr_table_addn(e, "CONTENT_TYPE", hdrs[i].val);
         }
-        else if (!strcasecmp(hdrs[i].key, "Content-length")) {
+        else if (!ap_cstr_casecmp(hdrs[i].key, "Content-length")) {
             apr_table_addn(e, "CONTENT_LENGTH", hdrs[i].val);
         }
         /*
@@ -192,8 +192,8 @@ AP_DECLARE(void) ap_add_common_vars(request_rec *r)
          * in the environment with "ps -e".  But, if you must...
          */
 #ifndef SECURITY_HOLE_PASS_AUTHORIZATION
-        else if (!strcasecmp(hdrs[i].key, "Authorization")
-                 || !strcasecmp(hdrs[i].key, "Proxy-Authorization")) {
+        else if (!ap_cstr_casecmp(hdrs[i].key, "Authorization")
+                 || !ap_cstr_casecmp(hdrs[i].key, "Proxy-Authorization")) {
             if (conf->cgi_pass_auth == AP_CGI_PASS_AUTH_ON) {
                 add_unless_null(e, http2env(r, hdrs[i].key), hdrs[i].val);
             }
@@ -244,7 +244,7 @@ AP_DECLARE(void) ap_add_common_vars(request_rec *r)
     apr_table_addn(e, "SERVER_PORT",
                   apr_psprintf(r->pool, "%u", ap_get_server_port(r)));
     add_unless_null(e, "REMOTE_HOST",
-                    ap_get_remote_host(c, r->per_dir_config, REMOTE_HOST, NULL));
+                    ap_get_useragent_host(r, REMOTE_HOST, NULL));
     apr_table_addn(e, "REMOTE_ADDR", r->useragent_ip);
     apr_table_addn(e, "DOCUMENT_ROOT", ap_document_root(r));    /* Apache */
     apr_table_setn(e, "REQUEST_SCHEME", ap_http_scheme(r));
@@ -286,21 +286,26 @@ AP_DECLARE(void) ap_add_common_vars(request_rec *r)
     /* Apache custom error responses. If we have redirected set two new vars */
 
     if (r->prev) {
-        /* PR#57785: reconstruct full URL here */
-        apr_uri_t *uri = &r->prev->parsed_uri;
-        if (!uri->scheme) {
-            uri->scheme = (char*)ap_http_scheme(r->prev);
+        if (conf->qualify_redirect_url != AP_CORE_CONFIG_ON) { 
+            add_unless_null(e, "REDIRECT_URL", r->prev->uri);
         }
-        if (!uri->port) {
-            uri->port = ap_get_server_port(r->prev);
-            uri->port_str = apr_psprintf(r->pool, "%u", uri->port);
-        }
-        if (!uri->hostname) {
-            uri->hostname = (char*)ap_get_server_name_for_url(r->prev);
+        else { 
+            /* PR#57785: reconstruct full URL here */
+            apr_uri_t *uri = &r->prev->parsed_uri;
+            if (!uri->scheme) {
+                uri->scheme = (char*)ap_http_scheme(r->prev);
+            }
+            if (!uri->port) {
+                uri->port = ap_get_server_port(r->prev);
+                uri->port_str = apr_psprintf(r->pool, "%u", uri->port);
+            }
+            if (!uri->hostname) {
+                uri->hostname = (char*)ap_get_server_name_for_url(r->prev);
+            }
+            add_unless_null(e, "REDIRECT_URL",
+                            apr_uri_unparse(r->pool, uri, 0));
         }
         add_unless_null(e, "REDIRECT_QUERY_STRING", r->prev->args);
-        add_unless_null(e, "REDIRECT_URL",
-                        apr_uri_unparse(r->pool, uri, 0));
     }
 
     if (e != r->subprocess_env) {
@@ -365,12 +370,25 @@ static char *original_uri(request_rec *r)
 AP_DECLARE(void) ap_add_cgi_vars(request_rec *r)
 {
     apr_table_t *e = r->subprocess_env;
+    core_dir_config *conf =
+        (core_dir_config *)ap_get_core_module_config(r->per_dir_config);
+    int request_uri_from_original = 1;
+    const char *request_uri_rule;
 
     apr_table_setn(e, "GATEWAY_INTERFACE", "CGI/1.1");
     apr_table_setn(e, "SERVER_PROTOCOL", r->protocol);
     apr_table_setn(e, "REQUEST_METHOD", r->method);
     apr_table_setn(e, "QUERY_STRING", r->args ? r->args : "");
-    apr_table_setn(e, "REQUEST_URI", original_uri(r));
+
+    if (conf->cgi_var_rules) {
+        request_uri_rule = apr_hash_get(conf->cgi_var_rules, "REQUEST_URI",
+                                        APR_HASH_KEY_STRING);
+        if (request_uri_rule && !strcmp(request_uri_rule, "current-uri")) {
+            request_uri_from_original = 0;
+        }
+    }
+    apr_table_setn(e, "REQUEST_URI",
+                   request_uri_from_original ? original_uri(r) : r->uri);
 
     /* Note that the code below special-cases scripts run from includes,
      * because it "knows" that the sub_request has been hacked to have the
@@ -468,12 +486,14 @@ AP_DECLARE(int) ap_scan_script_header_err_core_ex(request_rec *r, char *buffer,
             const char *msg = "Premature end of script headers";
             if (first_header)
                 msg = "End of script output before headers";
+            /* Intentional no APLOGNO */
             ap_log_rerror(SCRIPT_LOG_MARK, APLOG_ERR|APLOG_TOCLIENT, 0, r,
                           "%s: %s", msg,
                           apr_filepath_name_get(r->filename));
             return HTTP_INTERNAL_SERVER_ERROR;
         }
         else if (rv == -1) {
+            /* Intentional no APLOGNO */
             ap_log_rerror(SCRIPT_LOG_MARK, APLOG_ERR|APLOG_TOCLIENT, 0, r,
                           "Script timed out before returning headers: %s",
                           apr_filepath_name_get(r->filename));
@@ -581,6 +601,7 @@ AP_DECLARE(int) ap_scan_script_header_err_core_ex(request_rec *r, char *buffer,
                 }
             }
 
+            /* Intentional no APLOGNO */
             ap_log_rerror(SCRIPT_LOG_MARK, APLOG_ERR|APLOG_TOCLIENT, 0, r,
                           "malformed header from script '%s': Bad header: %.30s",
                           apr_filepath_name_get(r->filename), w);
@@ -592,7 +613,7 @@ AP_DECLARE(int) ap_scan_script_header_err_core_ex(request_rec *r, char *buffer,
             ++l;
         }
 
-        if (!strcasecmp(w, "Content-type")) {
+        if (!ap_cstr_casecmp(w, "Content-type")) {
             char *tmp;
 
             /* Nuke trailing whitespace */
@@ -610,9 +631,10 @@ AP_DECLARE(int) ap_scan_script_header_err_core_ex(request_rec *r, char *buffer,
          * If the script returned a specific status, that's what
          * we'll use - otherwise we assume 200 OK.
          */
-        else if (!strcasecmp(w, "Status")) {
+        else if (!ap_cstr_casecmp(w, "Status")) {
             r->status = cgi_status = atoi(l);
             if (!ap_is_HTTP_VALID_RESPONSE(cgi_status))
+                /* Intentional no APLOGNO */
                 ap_log_rerror(SCRIPT_LOG_MARK, APLOG_ERR|APLOG_TOCLIENT, 0, r,
                               "Invalid status line from script '%s': %.30s",
                               apr_filepath_name_get(r->filename), l);
@@ -623,30 +645,30 @@ AP_DECLARE(int) ap_scan_script_header_err_core_ex(request_rec *r, char *buffer,
                                  apr_filepath_name_get(r->filename), l);
             r->status_line = apr_pstrdup(r->pool, l);
         }
-        else if (!strcasecmp(w, "Location")) {
+        else if (!ap_cstr_casecmp(w, "Location")) {
             apr_table_set(r->headers_out, w, l);
         }
-        else if (!strcasecmp(w, "Content-Length")) {
+        else if (!ap_cstr_casecmp(w, "Content-Length")) {
             apr_table_set(r->headers_out, w, l);
         }
-        else if (!strcasecmp(w, "Content-Range")) {
+        else if (!ap_cstr_casecmp(w, "Content-Range")) {
             apr_table_set(r->headers_out, w, l);
         }
-        else if (!strcasecmp(w, "Transfer-Encoding")) {
+        else if (!ap_cstr_casecmp(w, "Transfer-Encoding")) {
             apr_table_set(r->headers_out, w, l);
         }
-        else if (!strcasecmp(w, "ETag")) {
+        else if (!ap_cstr_casecmp(w, "ETag")) {
             apr_table_set(r->headers_out, w, l);
         }
         /*
          * If the script gave us a Last-Modified header, we can't just
          * pass it on blindly because of restrictions on future values.
          */
-        else if (!strcasecmp(w, "Last-Modified")) {
+        else if (!ap_cstr_casecmp(w, "Last-Modified")) {
             ap_update_mtime(r, apr_date_parse_http(l));
             ap_set_last_modified(r);
         }
-        else if (!strcasecmp(w, "Set-Cookie")) {
+        else if (!ap_cstr_casecmp(w, "Set-Cookie")) {
             apr_table_add(cookie_table, w, l);
         }
         else {

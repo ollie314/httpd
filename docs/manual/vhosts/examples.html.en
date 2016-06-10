@@ -18,7 +18,7 @@
 <body id="manual-page"><div id="page-header">
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p>
 <p class="apache">Apache HTTP Server Version 2.5</p>
-<img alt="" src="../images/feather.gif" /></div>
+<img alt="" src="../images/feather.png" /></div>
 <div class="up"><a href="./"><img title="&lt;-" alt="&lt;-" src="../images/left.gif" /></a></div>
 <div id="path">
 <a href="http://www.apache.org/">Apache</a> &gt; <a href="http://httpd.apache.org/">HTTP Server</a> &gt; <a href="http://httpd.apache.org/docs/">Documentation</a> &gt; <a href="../">Version 2.5</a> &gt; <a href="./">Virtual Hosts</a></div><div id="page-content"><div id="preamble"><h1>VirtualHost Examples</h1>
@@ -59,7 +59,7 @@
     IP-based vhost</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#serverpath">Using the <code>ServerPath</code>
   directive</a></li>
-</ul><ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
+</ul><h3>See also</h3><ul class="seealso"><li><a href="#comments_section">Comments</a></li></ul></div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="section">
 <h2><a name="purename" id="purename">Running several name-based web
@@ -102,8 +102,8 @@ Listen 80
     in the configuration file, it has the highest priority and can be seen
     as the <cite>default</cite> or <cite>primary</cite> server. That means
     that if a request is received that does not match one of the specified
-    <code>ServerName</code> directives, it will be served by this first
-    <code>VirtualHost</code>.</p>
+    <code class="directive"><a href="../mod/core.html#servername">ServerName</a></code> directives, it will be served by this first
+    <code class="directive"><a href="../mod/core.html#virtualhost">&lt;VirtualHost&gt;</a></code>.</p>
 
     <p>The above configuration is what you will want to use in almost
     all name-based virtual hosting situations. The only thing that this
@@ -182,8 +182,7 @@ DocumentRoot "/www/mainserver"
     (<code>192.168.1.1</code>).</p>
 
     <p>The server can be made to respond to internal and external requests
-    with the same content, with just one <code>VirtualHost</code>
-    section.</p>
+    with the same content, with just one <code class="directive"><a href="../mod/core.html#virtualhost">&lt;VirtualHost&gt;</a></code> section.</p>
 
     <pre class="prettyprint lang-config">&lt;VirtualHost 192.168.1.1 172.20.30.40&gt;
     DocumentRoot "/www/server1"
@@ -193,7 +192,7 @@ DocumentRoot "/www/mainserver"
 
 
     <p>Now requests from both networks will be served from the same
-    <code>VirtualHost</code>.</p>
+    <code class="directive"><a href="../mod/core.html#virtualhost">&lt;VirtualHost&gt;</a></code>.</p>
 
     <div class="note">
           <h3>Note:</h3><p>On the internal
@@ -558,7 +557,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/vhosts/examples.ht
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2016 The Apache Software Foundation.<br />Licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossary</a> | <a href="../sitemap.html">Sitemap</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

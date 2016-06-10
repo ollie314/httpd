@@ -238,7 +238,7 @@ static void note_basic_auth_failure(request_rec *r)
 
 static int hook_note_basic_auth_failure(request_rec *r, const char *auth_type)
 {
-    if (strcasecmp(auth_type, "Basic"))
+    if (ap_cstr_casecmp(auth_type, "Basic"))
         return DECLINED;
 
     note_basic_auth_failure(r);
@@ -250,7 +250,6 @@ static int get_basic_auth(request_rec *r, const char **user,
 {
     const char *auth_line;
     char *decoded_line;
-    int length;
 
     /* Get the appropriate header */
     auth_line = apr_table_get(r->headers_in, (PROXYREQ_PROXY == r->proxyreq)
@@ -262,7 +261,7 @@ static int get_basic_auth(request_rec *r, const char **user,
         return HTTP_UNAUTHORIZED;
     }
 
-    if (strcasecmp(ap_getword(r->pool, &auth_line, ' '), "Basic")) {
+    if (ap_cstr_casecmp(ap_getword(r->pool, &auth_line, ' '), "Basic")) {
         /* Client tried to authenticate using wrong auth scheme */
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(01614)
                       "client used wrong authentication scheme: %s", r->uri);
@@ -275,10 +274,7 @@ static int get_basic_auth(request_rec *r, const char **user,
         auth_line++;
     }
 
-    decoded_line = apr_palloc(r->pool, apr_base64_decode_len(auth_line) + 1);
-    length = apr_base64_decode(decoded_line, auth_line);
-    /* Null-terminate the string. */
-    decoded_line[length] = '\0';
+    decoded_line = ap_pbase64decode(r->pool, auth_line);
 
     *user = ap_getword_nulls(r->pool, (const char**)&decoded_line, ':');
     *pw = decoded_line;
@@ -305,7 +301,7 @@ static int authenticate_basic_user(request_rec *r)
 
     /* Are we configured to be Basic auth? */
     current_auth = ap_auth_type(r);
-    if (!current_auth || strcasecmp(current_auth, "Basic")) {
+    if (!current_auth || ap_cstr_casecmp(current_auth, "Basic")) {
         return DECLINED;
     }
 

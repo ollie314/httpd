@@ -1009,15 +1009,16 @@ AP_DECLARE(int) ap_directory_walk(request_rec *r)
                 /* No htaccess in an incomplete root path,
                  * nor if it's disabled
                  */
-                if (seg < startseg || (!opts.override && opts.override_list == NULL)) {
+                if (seg < startseg || (!opts.override 
+                    && apr_is_empty_table(opts.override_list)
+                    )) {
                     break;
                 }
 
 
                 res = ap_parse_htaccess(&htaccess_conf, r, opts.override,
                                         opts.override_opts, opts.override_list,
-                                        apr_pstrdup(r->pool, r->filename),
-                                        sconf->access_name);
+                                        r->filename, sconf->access_name);
                 if (res) {
                     return res;
                 }
@@ -1340,7 +1341,7 @@ AP_DECLARE(int) ap_directory_walk(request_rec *r)
  x   if (r->finfo.filetype != APR_DIR
  x       && (res = resolve_symlink(r->filename, r->info, ap_allow_options(r),
  x                                 r->pool))) {
- x       ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
+ x       ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(03295)
  x                     "Symbolic link not allowed: %s", r->filename);
  x       return res;
  x   }
@@ -1607,9 +1608,6 @@ AP_DECLARE(int) ap_file_walk(request_rec *r)
         return OK;
     }
 
-    cache = prep_walk_cache(AP_NOTE_FILE_WALK, r);
-    cached = (cache->cached != NULL);
-
     /* No tricks here, there are just no <Files > to parse in this context.
      * We won't destroy the cache, just in case _this_ redirect is later
      * redirected again to a context containing the same or similar <Files >.
@@ -1617,6 +1615,9 @@ AP_DECLARE(int) ap_file_walk(request_rec *r)
     if (!num_sec) {
         return OK;
     }
+
+    cache = prep_walk_cache(AP_NOTE_FILE_WALK, r);
+    cached = (cache->cached != NULL);
 
     /* Get the basename .. and copy for the cache just
      * in case r->filename is munged by another module

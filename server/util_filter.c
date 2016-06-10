@@ -209,6 +209,7 @@ static ap_filter_rec_t *register_filter(const char *name,
                             ap_filter_func filter_func,
                             ap_init_filter_func filter_init,
                             ap_filter_type ftype,
+                            ap_filter_direction_e direction,
                             filter_trie_node **reg_filter_set)
 {
     ap_filter_rec_t *frec;
@@ -242,6 +243,7 @@ static ap_filter_rec_t *register_filter(const char *name,
     frec->filter_func = filter_func;
     frec->filter_init_func = filter_init;
     frec->ftype = ftype;
+    frec->direction = direction;
 
     apr_pool_cleanup_register(FILTER_POOL, NULL, filter_cleanup,
                               apr_pool_cleanup_null);
@@ -255,7 +257,7 @@ AP_DECLARE(ap_filter_rec_t *) ap_register_input_filter(const char *name,
 {
     ap_filter_func f;
     f.in_func = filter_func;
-    return register_filter(name, f, filter_init, ftype,
+    return register_filter(name, f, filter_init, ftype, AP_FILTER_INPUT,
                            &registered_input_filters);
 }
 
@@ -278,7 +280,7 @@ AP_DECLARE(ap_filter_rec_t *) ap_register_output_filter_protocol(
     ap_filter_rec_t* ret ;
     ap_filter_func f;
     f.out_func = filter_func;
-    ret = register_filter(name, f, filter_init, ftype,
+    ret = register_filter(name, f, filter_init, ftype, AP_FILTER_OUTPUT,
                           &registered_output_filters);
     ret->proto_flags = proto_flags ;
     return ret ;
@@ -636,7 +638,8 @@ AP_DECLARE(apr_status_t) ap_pass_brigade_fchk(request_rec *r,
                 va_start(ap, fmt);
                 res = apr_pvsprintf(r->pool, fmt, ap);
                 va_end(ap);
-                ap_log_rerror(APLOG_MARK, APLOG_DEBUG, rv, r, "%s", res);
+                ap_log_rerror(APLOG_MARK, APLOG_DEBUG, rv, r, APLOGNO(03158)
+                              "%s", res);
             }
             return HTTP_INTERNAL_SERVER_ERROR;
         }
@@ -696,9 +699,35 @@ static apr_status_t filters_cleanup(void *data)
 {
     ap_filter_t **key = data;
 
-    apr_hash_set((*key)->c->filters, key, sizeof(ap_filter_t **), NULL);
+    apr_hash_set((*key)->c->filters, key, sizeof *key, NULL);
 
     return APR_SUCCESS;
+}
+
+AP_DECLARE(int) ap_filter_prepare_brigade(ap_filter_t *f, apr_pool_t **p)
+{
+    apr_pool_t *pool;
+    ap_filter_t **key;
+
+    if (!f->bb) {
+
+        pool = f->r ? f->r->pool : f->c->pool;
+
+        key = apr_pmemdup(pool, &f, sizeof f);
+        apr_hash_set(f->c->filters, key, sizeof *key, f);
+
+        f->bb = apr_brigade_create(pool, f->c->bucket_alloc);
+
+        apr_pool_pre_cleanup_register(pool, key, filters_cleanup);
+
+        if (p) {
+            *p = pool;
+        }
+
+        return OK;
+    }
+
+    return DECLINED;
 }
 
 AP_DECLARE(apr_status_t) ap_filter_setaside_brigade(ap_filter_t *f,
@@ -715,24 +744,11 @@ AP_DECLARE(apr_status_t) ap_filter_setaside_brigade(ap_filter_t *f,
     }
 
     if (!APR_BRIGADE_EMPTY(bb)) {
-        apr_pool_t *pool;
+        apr_pool_t *pool = NULL;
         /*
          * Set aside the brigade bb within f->bb.
          */
-        if (!f->bb) {
-            ap_filter_t **key;
-
-            pool = f->r ? f->r->pool : f->c->pool;
-
-            key = apr_palloc(pool, sizeof(ap_filter_t **));
-            *key = f;
-            apr_hash_set(f->c->filters, key, sizeof(ap_filter_t **), f);
-
-            f->bb = apr_brigade_create(pool, f->c->bucket_alloc);
-
-            apr_pool_pre_cleanup_register(pool, key, filters_cleanup);
-
-        }
+        ap_filter_prepare_brigade(f, &pool);
 
         /* decide what pool we setaside to, request pool or deferred pool? */
         if (f->r) {
@@ -870,8 +886,8 @@ AP_DECLARE(apr_status_t) ap_filter_reinstate_brigade(ap_filter_t *f,
                               "seen in brigade%s: bytes: %" APR_SIZE_T_FMT
                               ", non-file bytes: %" APR_SIZE_T_FMT ", eor "
                               "buckets: %d, morphing buckets: %d",
-                              flush_upto == NULL ? " so far"
-                                                 : " since last flush point",
+                              *flush_upto == NULL ? " so far"
+                                                  : " since last flush point",
                               bytes_in_brigade,
                               non_file_bytes_in_brigade,
                               eor_buckets_in_brigade,
@@ -950,6 +966,67 @@ AP_DECLARE(int) ap_filter_should_yield(ap_filter_t *f)
         f = f->next;
     }
     return 0;
+}
+
+AP_DECLARE(int) ap_filter_output_pending(conn_rec *c)
+{
+    apr_hash_index_t *rindex;
+    int data_in_output_filters = DECLINED;
+
+    rindex = apr_hash_first(NULL, c->filters);
+    while (rindex) {
+        ap_filter_t *f = apr_hash_this_val(rindex);
+
+        if (f->frec->direction == AP_FILTER_OUTPUT && f->bb
+                && !APR_BRIGADE_EMPTY(f->bb)) {
+
+            apr_status_t rv;
+
+            rv = ap_pass_brigade(f, c->empty);
+            apr_brigade_cleanup(c->empty);
+            if (APR_SUCCESS != rv) {
+                ap_log_cerror(
+                        APLOG_MARK, APLOG_DEBUG, rv, c, APLOGNO(00470)
+                        "write failure in '%s' output filter", f->frec->name);
+                return rv;
+            }
+
+            if (ap_filter_should_yield(f)) {
+                data_in_output_filters = OK;
+            }
+        }
+
+        rindex = apr_hash_next(rindex);
+    }
+
+    return data_in_output_filters;
+}
+
+AP_DECLARE(int) ap_filter_input_pending(conn_rec *c)
+{
+    apr_hash_index_t *rindex;
+
+    rindex = apr_hash_first(NULL, c->filters);
+    while (rindex) {
+        ap_filter_t *f = apr_hash_this_val(rindex);
+
+        if (f->frec->direction == AP_FILTER_INPUT && f->bb) {
+            apr_bucket *e = APR_BRIGADE_FIRST(f->bb);
+
+            /* if there is at least one non-morphing bucket
+             * in place, then we have data pending
+             */
+            if (e != APR_BRIGADE_SENTINEL(f->bb)
+                    && e->length != (apr_size_t)(-1)) {
+                return OK;
+            }
+
+        }
+
+        rindex = apr_hash_next(rindex);
+    }
+
+    return DECLINED;
 }
 
 AP_DECLARE_NONSTD(apr_status_t) ap_filter_flush(apr_bucket_brigade *bb,

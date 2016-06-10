@@ -495,14 +495,44 @@
  *                         ap_filter_should_yield(). Add empty and filters to
  *                         conn_rec.
  * 20150222.6 (2.5.0-dev)  Add async_filter to conn_rec.
+ * 20150222.7 (2.5.0-dev)  Add ap_casecmpstr[n]();
+ * 20150222.8 (2.5.0-dev)  Add ap_getword_conf2[_nc]();
+ * 20150222.9 (2.5.0-dev)  Add expr_handler to core_dir_config.
+ * 20150222.10 (2.5.0-dev) Add new ap_update_child_status...() methods,
+ *                         add protocol to worker_score in scoreboard.h,
+ *                         Add pre_close connection hook and 
+ *                         ap_prep_lingering_close().
+ * 20150222.11 (2.5.0-dev) Split useragent_host from the conn_rec into
+ *                         the request_rec, with ap_get_useragent_host()
+ * 20150222.12 (2.5.0-dev) Add complete_connection hook,
+ *                         ap_filter_complete_connection().
+ * 20150222.13 (2.5.0-dev) Add ap_create_request().
+ * 20160312.0 (2.5.0-dev)  Rename complete_connection to output_pending,
+ *                         add ap_filter_input_pending(),
+ *                         ap_filter_prepare_brigade(), ap_filter_direction_e
+ * 20160312.1 (2.5.0-dev)  Add cgi_var_rules to core_dir_config.
+ * 20160315.0 (2.5.0-dev)  Rename ap_mpm_register_socket_callback,
+ *                         ap_mpm_register_socket_callback_timeout and
+ *                         ap_mpm_unregister_socket_callback to
+ *                         ap_mpm_register_poll_callback,
+ *                         ap_mpm_register_poll_callback_timeout and
+ *                         ap_mpm_unregister_poll_callback. Add
+ *                         AP_MPMQ_CAN_POLL.
+ * 20160315.1 (2.5.0-dev)  Add AP_IMPLEMENT_OPTIONAL_HOOK_RUN_FIRST.
+ * 20160315.2 (2.5.0-dev)  Add optional proxy_{hook,run}_section_post_config(),
+ *                         ap_proxy_connection_create_ex() and section_config
+ *                         to struct proxy_{worker,balancer} in mod_proxy.h,
+ *                         and optional ssl_engine_set() to mod_ssl.h.
+ * 20160315.3 (2.5.0-dev)  Add childtags to dav_error.
+ * 20160608.1 (2.5.0-dev)  Rename ap_casecmpstr[n]() to ap_cstr_casecmp[n]()
  */
 
 #define MODULE_MAGIC_COOKIE 0x41503235UL /* "AP25" */
 
 #ifndef MODULE_MAGIC_NUMBER_MAJOR
-#define MODULE_MAGIC_NUMBER_MAJOR 20150222
+#define MODULE_MAGIC_NUMBER_MAJOR 20160608
 #endif
-#define MODULE_MAGIC_NUMBER_MINOR 6                 /* 0...n */
+#define MODULE_MAGIC_NUMBER_MINOR 1                 /* 0...n */
 
 /**
  * Determine if the server's current MODULE_MAGIC_NUMBER is at least a

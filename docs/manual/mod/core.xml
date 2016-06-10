@@ -420,7 +420,8 @@ NoDecode option available in 2.3.12 and later.</compatibility>
       <dt>Nonfatal=[Override|Unknown|All]</dt>
 
       <dd>
-      Allow use of AllowOverride option to treat syntax errors in
+      Allow use of AllowOverride option to treat invalid (unrecognized
+      or disallowed) directives in
       .htaccess as nonfatal. Instead of causing an Internal Server
       Error, disallowed or unrecognised directives will be ignored
       and a warning logged:
@@ -433,7 +434,7 @@ NoDecode option available in 2.3.12 and later.</compatibility>
           <li><strong>Nonfatal=All</strong> treats both the above as nonfatal.</li>
       </ul>
       <p>Note that a syntax error in a valid directive will still cause
-      an internal server error.</p>
+      an Internal Server Error.</p>
       <note type="warning"><title>Security</title>
           Nonfatal errors may have security implications for .htaccess users.
           For example, if AllowOverride disallows AuthConfig, users'
@@ -529,7 +530,7 @@ AllowOverrideList Redirect RedirectMatch
 
     <p>In the example above, only the <code>Redirect</code> and
     <code>RedirectMatch</code> directives are allowed. All others will
-    cause an internal server error.</p>
+    cause an Internal Server Error.</p>
 
     <p>Example:</p>
 
@@ -542,7 +543,7 @@ AllowOverrideList CookieTracking CookieName
     </directive> grants permission to the <code>AuthConfig</code>
     directive grouping and <directive>AllowOverrideList</directive> grants
     permission to only two directives from the <code>FileInfo</code> directive
-    grouping. All others will cause an internal server error.</p>
+    grouping. All others will cause an Internal Server Error.</p>
 </usage>
 
 <seealso><directive module="core">AccessFileName</directive></seealso>
@@ -624,6 +625,32 @@ variables</description>
     and <module>mod_ext_filter</module>.  Third-party modules that don't
     use <code>ap_add_common_vars()</code> may choose to respect the setting
     as well.</p>
+</usage>
+</directivesynopsis>
+
+<directivesynopsis>
+<name>CGIVar</name>
+<description>Controls how some CGI variables are set</description>
+<syntax>CGIVar <var>variable</var> <var>rule</var></syntax>
+<contextlist><context>directory</context><context>.htaccess</context>
+</contextlist>
+<override>FileInfo</override>
+<compatibility>Available in Apache HTTP Server 2.4.21 and later</compatibility>
+
+<usage>
+  <p>This directive controls how some CGI variables are set.</p>
+
+  <p><strong>REQUEST_URI</strong> rules:</p>
+  <dl>
+    <dt><code>original-uri</code> (default)</dt>
+    <dd>The value is taken from the original request line, and will not
+    reflect internal redirects or subrequests which change the requested
+    resource.</dd>
+    <dt><code>current-uri</code></dt>
+    <dd>The value reflects the resource currently being processed,
+    which may be different than the original request from the client
+    due to internal redirects or subrequests.</dd>
+  </dl>
 </usage>
 </directivesynopsis>
 
@@ -1303,12 +1330,12 @@ in case of an error</description>
     before any expression is parsed. Examples:</p>
 
     <highlight language="config">
-ErrorDocument 500 http://foo.example.com/cgi-bin/tester
-ErrorDocument 404 /cgi-bin/bad_urls.pl
+ErrorDocument 500 http://example.com/cgi-bin/server-error.cgi
+ErrorDocument 404 /errors/bad_urls.php
 ErrorDocument 401 /subscription_info.html
-ErrorDocument 403 "Sorry can't allow you access today"
+ErrorDocument 403 "Sorry, can't allow you access today"
 ErrorDocument 403 Forbidden!
-ErrorDocument 403 /cgi-bin/forbidden.pl?referrer=%{escape:%{HTTP_REFERER}}
+ErrorDocument 403 /errors/forbidden.py?referrer=%{escape:%{HTTP_REFERER}}
     </highlight>
 
     <p>Additionally, the special value <code>default</code> can be used
@@ -3373,10 +3400,10 @@ or specified mutexes</description>
         holding a mutex that uses this implementation, the server will deadlock
         and stop responding to requests.  When this occurs, the server will
         require a manual restart to recover.</p>
-        <p>Solaris is a notable exception as it provides a mechanism which
+        <p>Solaris and Linux are notable exceptions as they provide a mechanism which
         usually allows the mutex to be recovered after a child process
         terminates abnormally while holding a mutex.</p>
-        <p>If your system implements the
+        <p>If your system is POSIX compliant or if it implements the
         <code>pthread_mutexattr_setrobust_np()</code> function, you may be able
         to use the <code>pthread</code> option safely.</p>
         </note>
@@ -4060,7 +4087,8 @@ to name-virtual hosts</description>
     >ServerAlias</directive> is used, with no different precedence for wildcards
     (nor for ServerName vs. ServerAlias).  </p>
 
-    <p>The complete list of names in the <directive>VirtualHost</directive>
+    <p>The complete list of names in the <directive type="section" module="core"
+    >VirtualHost</directive>
     directive are treated just like a (non wildcard)
     <directive>ServerAlias</directive>.</p>
 
@@ -4073,20 +4101,24 @@ to name-virtual hosts</description>
 <name>ServerName</name>
 <description>Hostname and port that the server uses to identify
 itself</description>
-<syntax>ServerName [<var>scheme</var>://]<var>fully-qualified-domain-name</var>[:<var>port</var>]</syntax>
+<syntax>ServerName [<var>scheme</var>://]<var>domain-name</var>|<var>ip-address</var>[:<var>port</var>]</syntax>
 <contextlist><context>server config</context><context>virtual host</context>
 </contextlist>
 
 <usage>
     <p>The <directive>ServerName</directive> directive sets the
-    request scheme, hostname and
-    port that the server uses to identify itself.  This is used when
-    creating redirection URLs.</p>
+    request scheme, hostname and port that the server uses to identify itself.
+    </p>
 
-    <p>Additionally, <directive>ServerName</directive> is used (possibly
-    in conjunction with <directive>ServerAlias</directive>) to uniquely
+    <p><directive>ServerName</directive> is used (possibly
+    in conjunction with <directive module="core">ServerAlias</directive>) to uniquely
     identify a virtual host, when using <a
     href="../vhosts/name-based.html">name-based virtual hosts</a>.</p>
+
+    <p>Additionally, this is used when
+    creating self-referential redirection URLs when 
+    <directive module="core">UseCanonicalName</directive> is set to a non-default
+    value.</p>
 
     <p>For example, if the name of the
     machine hosting the web server is <code>simple.example.com</code>,
@@ -4103,9 +4135,10 @@ ServerName www.example.com
     each appearance overrides the previous appearance (within that
     server).</p>
 
-    <p>If no <directive>ServerName</directive> is specified, then the
-    server attempts to deduce the client visible hostname by performing a
-    reverse lookup on an IP address of the systems hostname.</p>
+    <p>If no <directive>ServerName</directive> is specified, the
+    server attempts to deduce the client visible hostname by first asking 
+    the operating system for the system hostname, and if that fails, 
+    performing a reverse lookup on an IP address present on the system.</p>
 
     <p>If no port is specified in the
     <directive>ServerName</directive>, then the server will use the
@@ -4313,11 +4346,12 @@ header</description>
 <name>SetHandler</name>
 <description>Forces all matching files to be processed by a
 handler</description>
-<syntax>SetHandler <var>handler-name</var>|None</syntax>
+<syntax>SetHandler <var>handler-name</var>|none|<var>expression</var></syntax>
 <contextlist><context>server config</context><context>virtual host</context>
 <context>directory</context><context>.htaccess</context>
 </contextlist>
 <override>FileInfo</override>
+<compatibility>2.5 and later</compatibility>
 
 <usage>
     <p>When placed into an <code>.htaccess</code> file or a
@@ -4352,6 +4386,15 @@ SetHandler imap-file
 &lt;FilesMatch "\.php$"&gt;
     SetHandler application/x-httpd-php
 &lt;/FilesMatch&gt;
+    </highlight>
+
+    <p>String-valued expressions can be used to reference per-request 
+    variables, including backreferences to named regular expressions:</p>
+
+    <highlight language="config">
+&lt;LocationMatch ^/app/(?&lt;sub&gt;[^/]+)/&gt;
+     SetHandler "proxy:unix:/var/run/app_%{env:MATCH_sub}.sock|fcgi://localhost:8080"
+&lt;/LocationMatch&gt;
     </highlight>
 
     <p>You can override an earlier defined <directive>SetHandler</directive>
@@ -4439,10 +4482,14 @@ certain events before failing a request</description>
     <p>The <directive>TimeOut</directive> directive defines the length
     of time Apache httpd will wait for I/O in various circumstances:</p>
 
-    <ol>
-      <li>When reading data from the client, the length of time to
+    <ul>
+      <li><p>When reading data from the client, the length of time to
       wait for a TCP packet to arrive if the read buffer is
-      empty.</li>
+      empty.</p>
+      <p> For initial data on a new connection, this directive doesn't
+      take effect until after any configured <directive module="core">
+      AcceptFilter</directive> has passed the new connection to the server.</p>
+      </li>
 
       <li>When writing data to the client, the length of time to wait
       for an acknowledgement of a packet if the send buffer is
@@ -4457,7 +4504,7 @@ certain events before failing a request</description>
       <li>In <module>mod_proxy</module>, the default timeout value if
       <directive module="mod_proxy">ProxyTimeout</directive> is not
       configured.</li>
-    </ol>
+    </ul>
 
 </usage>
 </directivesynopsis>
@@ -4802,6 +4849,33 @@ for external processing, e.g. to a CGI script.</p>
     where trailers were always merged.</p>
 </usage>
 </directivesynopsis>
+
+<directivesynopsis>
+<name>QualifyRedirectURL</name>
+<description>Controls whether the REDIRECT_URL environment variable is 
+             fully qualified</description>
+<syntax>QualifyRedirectURL ON|OFF</syntax>
+<default>QualifyRedirectURL OFF</default>
+<contextlist><context>server config</context><context>virtual host</context>
+<context>directory</context>
+</contextlist>
+<override>FileInfo</override>
+<compatibility>Directive supported in 2.4.18 and later. 2.4.17 acted
+as if 'QualifyRedirectURL ON' was configured.</compatibility>
+
+<usage>
+    <p>This directive controls whether the server will ensure that the 
+    REDIRECT_URL environment variable is fully qualified.  By default, 
+    the variable contains the verbatim URL requested by the client, 
+    such as "/index.html".  With <directive module="core"
+    >QualifyRedirectURL ON</directive>, the same request would result in a
+    value such as "http://www.example.com/index.html".</p>
+    <p>Even without this directive set, when a request is issued against a 
+    fully qualified URL, REDIRECT_URL will remain fully qualified.
+    </p>
+</usage>
+</directivesynopsis>
+
 
 
 </modulesynopsis>

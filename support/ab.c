@@ -170,6 +170,10 @@
 #define SK_VALUE(x,y) sk_X509_value(x,y)
 typedef STACK_OF(X509) X509_STACK_TYPE;
 
+#if defined(_MSC_VER) && _MSC_VER >= 1900
+#include <openssl/applink.c>
+#endif
+
 #endif
 
 #if defined(USE_SSL)
@@ -334,6 +338,7 @@ int is_ssl;
 SSL_CTX *ssl_ctx;
 char *ssl_cipher = NULL;
 char *ssl_info = NULL;
+char *ssl_tmp_key = NULL;
 BIO *bio_out,*bio_err;
 #endif
 
@@ -424,6 +429,41 @@ static char *xstrdup(const char *s)
         exit(1);
     }
     return ret;
+}
+
+/*
+ * Similar to standard strstr() but we ignore case in this version.
+ * Copied from ap_strcasestr().
+ */
+static char *xstrcasestr(const char *s1, const char *s2)
+{
+    char *p1, *p2;
+    if (*s2 == '\0') {
+        /* an empty s2 */
+        return((char *)s1);
+    }
+    while(1) {
+        for ( ; (*s1 != '\0') && (apr_tolower(*s1) != apr_tolower(*s2)); s1++);
+        if (*s1 == '\0') {
+            return(NULL);
+        }
+        /* found first character of s2, see if the rest matches */
+        p1 = (char *)s1;
+        p2 = (char *)s2;
+        for (++p1, ++p2; apr_tolower(*p1) == apr_tolower(*p2); ++p1, ++p2) {
+            if (*p1 == '\0') {
+                /* both strings ended together */
+                return((char *)s1);
+            }
+        }
+        if (*p2 == '\0') {
+            /* second string ended, a match */
+            break;
+        }
+        /* didn't find a match here, try starting at next character in s1 */
+        s1++;
+    }
+    return((char *)s1);
 }
 
 /* pool abort function */
@@ -674,6 +714,41 @@ static void ssl_proceed_handshake(struct connection *c)
                              SSL_CIPHER_get_name(ci),
                              pk_bits, sk_bits);
             }
+            if (ssl_tmp_key == NULL) {
+                EVP_PKEY *key;
+                if (SSL_get_server_tmp_key(c->ssl, &key)) {
+                    ssl_tmp_key = xmalloc(128);
+                    switch (EVP_PKEY_id(key)) {
+                    case EVP_PKEY_RSA:
+                        apr_snprintf(ssl_tmp_key, 128, "RSA %d bits",
+                                     EVP_PKEY_bits(key));
+                        break;
+                    case EVP_PKEY_DH:
+                        apr_snprintf(ssl_tmp_key, 128, "DH %d bits",
+                                     EVP_PKEY_bits(key));
+                        break;
+#ifndef OPENSSL_NO_EC
+                    case EVP_PKEY_EC: {
+                        const char *cname = NULL;
+                        EC_KEY *ec = EVP_PKEY_get1_EC_KEY(key);
+                        int nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
+                        EC_KEY_free(ec);
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+                        cname = EC_curve_nid2nist(nid);
+#endif
+                        if (!cname)
+                            cname = OBJ_nid2sn(nid);
+
+                        apr_snprintf(ssl_tmp_key, 128, "ECDH %s %d bits",
+                                     cname,
+                                     EVP_PKEY_bits(key));
+                        break;
+                        }
+#endif
+                    }
+                    EVP_PKEY_free(key);
+                }
+            }
             write_request(c);
             do_next = 0;
             break;
@@ -822,6 +897,9 @@ static void output_results(int sig)
 #ifdef USE_SSL
     if (is_ssl && ssl_info) {
         printf("SSL/TLS Protocol:       %s\n", ssl_info);
+    }
+    if (is_ssl && ssl_tmp_key) {
+        printf("Server Temp Key:        %s\n", ssl_tmp_key);
     }
 #endif
     printf("\n");
@@ -1537,7 +1615,7 @@ static void read_connection(struct connection * c)
                  */
                 char *p, *q;
                 size_t len = 0;
-                p = strstr(c->cbuff, "Server:");
+                p = xstrcasestr(c->cbuff, "Server:");
                 q = servername;
                 if (p) {
                     p += 8;
@@ -1574,22 +1652,15 @@ static void read_connection(struct connection * c)
             }
             c->gotheader = 1;
             *s = 0;     /* terminate at end of header */
-            if (keepalive &&
-            (strstr(c->cbuff, "Keep-Alive")
-             || strstr(c->cbuff, "keep-alive"))) {  /* for benefit of MSIIS */
+            if (keepalive && xstrcasestr(c->cbuff, "Keep-Alive")) {
                 char *cl;
-                cl = strstr(c->cbuff, "Content-Length:");
-                /* handle NCSA, which sends Content-length: */
-                if (!cl)
-                    cl = strstr(c->cbuff, "Content-length:");
-                if (cl) {
-                    c->keepalive = 1;
+                c->keepalive = 1;
+                cl = xstrcasestr(c->cbuff, "Content-Length:");
+                if (cl && method != HEAD) {
                     /* response to HEAD doesn't have entity body */
-                    c->length = method != HEAD ? atoi(cl + 16) : 0;
+                    c->length = atoi(cl + 16);
                 }
-                /* The response may not have a Content-Length header */
-                if (!cl) {
-                    c->keepalive = 1;
+                else {
                     c->length = 0;
                 }
             }
@@ -2133,6 +2204,14 @@ int main(int argc, const char * const argv[])
     apr_getopt_t *opt;
     const char *opt_arg;
     char c;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    int max_prot = TLS1_2_VERSION;
+#ifndef OPENSSL_NO_SSL3
+    int min_prot = SSL3_VERSION;
+#else
+    int min_prot = TLS1_VERSION;
+#endif
+#endif /* #if OPENSSL_VERSION_NUMBER >= 0x10100000L */
 #ifdef USE_SSL
     AB_SSL_METHOD_CONST SSL_METHOD *meth = SSLv23_client_method();
 #endif
@@ -2350,6 +2429,7 @@ int main(int argc, const char * const argv[])
                 method_str[CUSTOM_METHOD] = strdup(opt_arg);
                 break;
             case 'f':
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
                 if (strncasecmp(opt_arg, "ALL", 3) == 0) {
                     meth = SSLv23_client_method();
 #ifndef OPENSSL_NO_SSL2
@@ -2369,6 +2449,31 @@ int main(int argc, const char * const argv[])
                 } else if (strncasecmp(opt_arg, "TLS1", 4) == 0) {
                     meth = TLSv1_client_method();
                 }
+#else /* #if OPENSSL_VERSION_NUMBER < 0x10100000L */
+                meth = TLS_client_method();
+                if (strncasecmp(opt_arg, "ALL", 3) == 0) {
+                    max_prot = TLS1_2_VERSION;
+#ifndef OPENSSL_NO_SSL3
+                    min_prot = SSL3_VERSION;
+#else
+                    min_prot = TLS1_VERSION;
+#endif
+#ifndef OPENSSL_NO_SSL3
+                } else if (strncasecmp(opt_arg, "SSL3", 4) == 0) {
+                    max_prot = SSL3_VERSION;
+                    min_prot = SSL3_VERSION;
+#endif
+                } else if (strncasecmp(opt_arg, "TLS1.1", 6) == 0) {
+                    max_prot = TLS1_1_VERSION;
+                    min_prot = TLS1_1_VERSION;
+                } else if (strncasecmp(opt_arg, "TLS1.2", 6) == 0) {
+                    max_prot = TLS1_2_VERSION;
+                    min_prot = TLS1_2_VERSION;
+                } else if (strncasecmp(opt_arg, "TLS1", 4) == 0) {
+                    max_prot = TLS1_VERSION;
+                    min_prot = TLS1_VERSION;
+                }
+#endif /* #if OPENSSL_VERSION_NUMBER < 0x10100000L */
                 break;
 #endif
         }
@@ -2413,7 +2518,11 @@ int main(int argc, const char * const argv[])
 #ifdef RSAREF
     R_malloc_init();
 #else
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     CRYPTO_malloc_init();
+#else
+    OPENSSL_malloc_init();
+#endif
 #endif
     SSL_load_error_strings();
     SSL_library_init();
@@ -2426,6 +2535,10 @@ int main(int argc, const char * const argv[])
         exit(1);
     }
     SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    SSL_CTX_set_max_proto_version(ssl_ctx, max_prot);
+    SSL_CTX_set_min_proto_version(ssl_ctx, min_prot);
+#endif
 #ifdef SSL_MODE_RELEASE_BUFFERS
     /* Keep memory usage as low as possible */
     SSL_CTX_set_mode (ssl_ctx, SSL_MODE_RELEASE_BUFFERS);

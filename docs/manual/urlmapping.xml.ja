@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE manualpage SYSTEM "./style/manualpage.dtd">
 <?xml-stylesheet type="text/xsl" href="./style/manual.ja.xsl"?>
-<!-- English Revision: 151408:1673945 (outdated) -->
+<!-- English Revision: 151408:1741874 (outdated) -->
 
 <!--
  Licensed to the Apache Software Foundation (ASF) under one or more
@@ -253,7 +253,7 @@ href="http://apache.webthing.com/mod_proxy_html/">mod_proxy_html</a>
     決めることもできます。リライトエンジンは上で挙げられている三つのマッピング
     すべてを行なうことができます: 内部のリダイレクト (エイリアス)、
     外部のリダイレクト、プロキシです。mod_rewrite を使う多くの実用的な例は
-    <a href="misc/rewriteguide.html">URL リライトガイド</a>
+    <a href="rewrite/">URL リライトガイド</a>
     で説明されています。</p>
 </section>
 

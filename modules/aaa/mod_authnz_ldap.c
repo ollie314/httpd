@@ -1433,7 +1433,7 @@ static authz_status ldapsearch_check_authorization(request_rec *r,
     }
 
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02633)
-                  "auth_ldap authorize filter: authorization denied for "
+                  "auth_ldap authorize search: authorization denied for "
                   "to %s", r->uri);
 
     return AUTHZ_DENIED;
@@ -1842,8 +1842,8 @@ static int authnz_ldap_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *
     {
         if (!util_ldap_ssl_supported(s))
         {
-            ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s,
-                     "LDAP: SSL connections (ldaps://) not supported by utilLDAP");
+            ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03159)
+                         "LDAP: SSL connections (ldaps://) not supported by utilLDAP");
             return(!OK);
         }
     }

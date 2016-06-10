@@ -55,9 +55,19 @@ static void  ssl_var_lookup_ssl_cipher_bits(SSL *ssl, int *usekeysize, int *algk
 static char *ssl_var_lookup_ssl_version(apr_pool_t *p, char *var);
 static char *ssl_var_lookup_ssl_compress_meth(SSL *ssl);
 
-static int ssl_is_https(conn_rec *c)
+static SSLConnRec *ssl_get_effective_config(conn_rec *c)
 {
     SSLConnRec *sslconn = myConnConfig(c);
+    if (!(sslconn && sslconn->ssl) && c->master) {
+        /* use master connection if no SSL defined here */
+        sslconn = myConnConfig(c->master);
+    }
+    return sslconn;
+}
+
+static int ssl_is_https(conn_rec *c)
+{
+    SSLConnRec *sslconn = ssl_get_effective_config(c);
     return sslconn && sslconn->ssl;
 }
 
@@ -73,7 +83,7 @@ static int ssl_is_https(conn_rec *c)
 static apr_status_t ssl_get_tls_cb(apr_pool_t *p, conn_rec *c, const char *type,
                                    unsigned char **buf, apr_size_t *size)
 {
-    SSLConnRec *sslconn = myConnConfig(c);
+    SSLConnRec *sslconn = ssl_get_effective_config(c);
     const char *prefix;
     apr_size_t preflen;
     const unsigned char *data;
@@ -104,7 +114,11 @@ static apr_status_t ssl_get_tls_cb(apr_pool_t *p, conn_rec *c, const char *type,
     else if (x != NULL) {
         const EVP_MD *md;
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
         md = EVP_get_digestbynid(OBJ_obj2nid(x->sig_alg->algorithm));
+#else
+        md = EVP_get_digestbynid(X509_get_signature_nid(x));
+#endif
         /* Override digest as specified by RFC 5929 section 4.1. */
         if (md == NULL || md == EVP_md5() || md == EVP_sha1()) {
             md = EVP_sha256();
@@ -144,7 +158,7 @@ static apr_array_header_t *expr_peer_ext_list_fn(ap_expr_eval_ctx_t *ctx,
 static const char *expr_var_fn(ap_expr_eval_ctx_t *ctx, const void *data)
 {
     char *var = (char *)data;
-    SSLConnRec *sslconn = myConnConfig(ctx->c);
+    SSLConnRec *sslconn = ssl_get_effective_config(ctx->c);
 
     return sslconn ? ssl_var_lookup_ssl(ctx->p, sslconn, ctx->r, var) : NULL;
 }
@@ -281,8 +295,7 @@ char *ssl_var_lookup(apr_pool_t *p, server_rec *s, conn_rec *c, request_rec *r, 
             else if (strcEQ(var, "REMOTE_ADDR"))
                 result = r->useragent_ip;
             else if (strcEQ(var, "REMOTE_HOST"))
-                result = ap_get_remote_host(r->connection, r->per_dir_config,
-                                            REMOTE_NAME, NULL);
+                result = ap_get_useragent_host(r, REMOTE_NAME, NULL);
             else if (strcEQ(var, "REMOTE_IDENT"))
                 result = ap_get_remote_logname(r);
             else if (strcEQ(var, "REMOTE_USER"))
@@ -331,11 +344,7 @@ char *ssl_var_lookup(apr_pool_t *p, server_rec *s, conn_rec *c, request_rec *r, 
      * Connection stuff
      */
     if (result == NULL && c != NULL) {
-        SSLConnRec *sslconn = myConnConfig(c);
-        if (!(sslconn && sslconn->ssl) && c->master) {
-            /* use master connection if no SSL defined here */
-            sslconn = myConnConfig(c->master);
-        }
+        SSLConnRec *sslconn = ssl_get_effective_config(c);
         if (strlen(var) > 4 && strcEQn(var, "SSL_", 4)
             && sslconn && sslconn->ssl)
             result = ssl_var_lookup_ssl(p, sslconn, r, var+4);
@@ -429,7 +438,7 @@ static char *ssl_var_lookup_ssl(apr_pool_t *p, SSLConnRec *sslconn,
         char buf[MODSSL_SESSION_ID_STRING_LEN];
         SSL_SESSION *pSession = SSL_get_session(ssl);
         if (pSession) {
-            unsigned char *id;
+            IDCONST unsigned char *id;
             unsigned int idlen;
 
 #ifdef OPENSSL_NO_SSL_INTERN
@@ -594,13 +603,25 @@ static char *ssl_var_lookup_ssl_cert(apr_pool_t *p, request_rec *r, X509 *xs,
         resdup = FALSE;
     }
     else if (strcEQ(var, "A_SIG")) {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
         nid = OBJ_obj2nid((ASN1_OBJECT *)(xs->cert_info->signature->algorithm));
+#else
+        ASN1_OBJECT *paobj;
+        X509_ALGOR_get0(&paobj, NULL, NULL, X509_get0_tbs_sigalg(xs));
+        nid = OBJ_obj2nid(paobj);
+#endif
         result = apr_pstrdup(p,
                              (nid == NID_undef) ? "UNKNOWN" : OBJ_nid2ln(nid));
         resdup = FALSE;
     }
     else if (strcEQ(var, "A_KEY")) {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
         nid = OBJ_obj2nid((ASN1_OBJECT *)(xs->cert_info->key->algor->algorithm));
+#else
+        ASN1_OBJECT *paobj;
+        X509_PUBKEY_get0_param(&paobj, NULL, 0, NULL, X509_get_X509_PUBKEY(xs));
+        nid = OBJ_obj2nid(paobj);
+#endif
         result = apr_pstrdup(p,
                              (nid == NID_undef) ? "UNKNOWN" : OBJ_nid2ln(nid));
         resdup = FALSE;
@@ -662,11 +683,8 @@ static char *ssl_var_lookup_ssl_cert_dn(apr_pool_t *p, X509_NAME *xsname, char *
     for (i = 0; ssl_var_lookup_ssl_cert_dn_rec[i].name != NULL; i++) {
         if (strEQn(var, ssl_var_lookup_ssl_cert_dn_rec[i].name, varlen)
             && strlen(ssl_var_lookup_ssl_cert_dn_rec[i].name) == varlen) {
-            for (j = 0; j < sk_X509_NAME_ENTRY_num((STACK_OF(X509_NAME_ENTRY) *)
-                                                   xsname->entries);
-                 j++) {
-                xsne = sk_X509_NAME_ENTRY_value((STACK_OF(X509_NAME_ENTRY) *)
-                                                xsname->entries, j);
+            for (j = 0; j < X509_NAME_entry_count(xsname); j++) {
+                xsne = X509_NAME_get_entry(xsname, j);
 
                 n =OBJ_obj2nid((ASN1_OBJECT *)X509_NAME_ENTRY_get_object(xsne));
 
@@ -968,7 +986,6 @@ static char *ssl_var_lookup_ssl_version(apr_pool_t *p, char *var)
 static void extract_dn(apr_table_t *t, apr_hash_t *nids, const char *pfx,
                        X509_NAME *xn, apr_pool_t *p)
 {
-    STACK_OF(X509_NAME_ENTRY) *ents = xn->entries;
     X509_NAME_ENTRY *xsne;
     apr_hash_t *count;
     int i, nid;
@@ -978,10 +995,9 @@ static void extract_dn(apr_table_t *t, apr_hash_t *nids, const char *pfx,
     count = apr_hash_make(p);
 
     /* For each RDN... */
-    for (i = 0; i < sk_X509_NAME_ENTRY_num(ents); i++) {
+    for (i = 0; i < X509_NAME_entry_count(xn); i++) {
          const char *tag;
-
-         xsne = sk_X509_NAME_ENTRY_value(ents, i);
+         xsne = X509_NAME_get_entry(xn, i);
 
          /* Retrieve the nid, and check whether this is one of the nids
           * which are to be extracted. */
@@ -1118,7 +1134,7 @@ static int dump_extn_value(BIO *bio, ASN1_OCTET_STRING *str)
 apr_array_header_t *ssl_ext_list(apr_pool_t *p, conn_rec *c, int peer,
                                  const char *extension)
 {
-    SSLConnRec *sslconn = myConnConfig(c);
+    SSLConnRec *sslconn = ssl_get_effective_config(c);
     SSL *ssl = NULL;
     apr_array_header_t *array = NULL;
     X509 *xs = NULL;
@@ -1155,7 +1171,7 @@ apr_array_header_t *ssl_ext_list(apr_pool_t *p, conn_rec *c, int peer,
     for (j = 0; j < count; j++) {
         X509_EXTENSION *ext = X509_get_ext(xs, j);
 
-        if (OBJ_cmp(ext->object, oid) == 0) {
+        if (OBJ_cmp(X509_EXTENSION_get_object(ext), oid) == 0) {
             BIO *bio = BIO_new(BIO_s_mem());
 
             /* We want to obtain a string representation of the extensions
@@ -1262,7 +1278,7 @@ void ssl_var_log_config_register(apr_pool_t *p)
  */
 static const char *ssl_var_log_handler_c(request_rec *r, char *a)
 {
-    SSLConnRec *sslconn = myConnConfig(r->connection);
+    SSLConnRec *sslconn = ssl_get_effective_config(r->connection);
     char *result;
 
     if (sslconn == NULL || sslconn->ssl == NULL)

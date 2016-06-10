@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="EUC-KR" ?>
 <!DOCTYPE sitemap SYSTEM "./style/sitemap.dtd">
 <?xml-stylesheet type="text/xsl" href="./style/manual.ko.xsl"?>
-<!-- English Revision: 151408:1562300 (outdated) -->
+<!-- English Revision: 151408:1732099 (outdated) -->
 
 <!--
  Licensed to the Apache Software Foundation (ASF) under one or more
@@ -59,7 +59,7 @@
 <page href="filter.html">필터</page>
 <page href="suexec.html">suEXEC 지원</page>
 <page href="misc/perf-tuning.html">성능향상 힌트</page>
-<page href="misc/rewriteguide.html">URL 재작성(rewriting) 지침서</page>
+<page href="rewrite/">URL 재작성(rewriting) 지침서</page>
 </category>
 
 <category id="vhosts">

@@ -140,26 +140,18 @@ static void handle_policy(request_rec *r, policy_result result,
 
     switch (result) {
     case policy_log: {
-        ap_log_rerror(
-                APLOG_MARK,
-                APLOG_WARNING,
-                0,
-                r,
-                "mod_policy: violation: %s, uri: %s",
-                message, r->uri);
+        ap_log_rerror(APLOG_MARK, APLOG_WARNING, 0, r, APLOGNO(03041)
+                      "mod_policy: violation: %s, uri: %s",
+                      message, r->uri);
         apr_table_addn(r->headers_out, "Warning", apr_psprintf(r->pool,
                 "299 %s \"%s\"", ap_get_server_name(r), message));
         break;
     }
     case policy_enforce: {
 
-        ap_log_rerror(
-                APLOG_MARK,
-                APLOG_ERR,
-                0,
-                r,
-                "mod_policy: violation, rejecting request: %s, uri: %s",
-                message, r->uri);
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(03042)
+                      "mod_policy: violation, rejecting request: %s, uri: %s",
+                      message, r->uri);
         apr_table_addn(r->err_headers_out, "Warning", apr_psprintf(r->pool,
                 "299 %s \"Rejected: %s\"", ap_get_server_name(r), message));
         apr_table_setn(r->notes, "error-notes",
@@ -544,12 +536,7 @@ static apr_status_t policy_nocache_out_filter(ap_filter_t *f,
             char *header = apr_pstrdup(r->pool, pragma_header);
             const char *token = apr_strtok(header, ", ", &last);
             while (token) {
-                /* handle most common quickest case... */
-                if (!strcmp(token, "no-cache")) {
-                    fail = 1;
-                }
-                /* ...then try slowest case */
-                else if (!strcasecmp(token, "no-cache")) {
+                if (!ap_cstr_casecmp(token, "no-cache")) {
                     fail = 1;
                 }
                 token = apr_strtok(NULL, ", ", &last);
@@ -563,15 +550,7 @@ static apr_status_t policy_nocache_out_filter(ap_filter_t *f,
                 switch (token[0]) {
                 case 'n':
                 case 'N': {
-                    /* handle most common quickest cases... */
-                    if (!strcmp(token, "no-cache")) {
-                        fail = 1;
-                    }
-                    else if (!strcmp(token, "no-store")) {
-                        fail = 1;
-                    }
-                    /* ...then try slowest cases */
-                    else if (!strncasecmp(token, "no-cache", 8)) {
+                    if (!ap_cstr_casecmpn(token, "no-cache", 8)) {
                         if (token[8] == '=') {
                         }
                         else if (!token[8]) {
@@ -579,19 +558,14 @@ static apr_status_t policy_nocache_out_filter(ap_filter_t *f,
                         }
                         break;
                     }
-                    else if (!strcasecmp(token, "no-store")) {
+                    else if (!ap_cstr_casecmp(token, "no-store")) {
                         fail = 1;
                     }
                     break;
                 }
                 case 'p':
                 case 'P': {
-                    /* handle most common quickest cases... */
-                    if (!strcmp(token, "private")) {
-                        fail = 1;
-                    }
-                    /* ...then try slowest cases */
-                    else if (!strncasecmp(token, "private", 7)) {
+                    if (!ap_cstr_casecmpn(token, "private", 7)) {
                         if (token[7] == '=') {
                         }
                         else if (!token[7]) {
@@ -662,13 +636,7 @@ static apr_status_t policy_maxage_out_filter(ap_filter_t *f,
                 switch (token[0]) {
                 case 'm':
                 case 'M': {
-                    /* handle most common quickest cases... */
-                    if (!strncmp(token, "max-age", 7)) {
-                        max_age = 1;
-                        max_age_value = apr_atoi64(token + 8);
-                    }
-                    /* ...then try slowest cases */
-                    else if (!strncasecmp(token, "max-age", 7)) {
+                    if (!ap_cstr_casecmpn(token, "max-age", 7)) {
                         if (token[7] == '=') {
                             max_age = 1;
                             max_age_value = apr_atoi64(token + 8);
@@ -679,14 +647,7 @@ static apr_status_t policy_maxage_out_filter(ap_filter_t *f,
                 }
                 case 's':
                 case 'S': {
-                    if (!strncmp(token, "s-maxage", 8)) {
-                        if (token[8] == '=') {
-                            s_maxage = 1;
-                            s_maxage_value = apr_atoi64(token + 9);
-                        }
-                        break;
-                    }
-                    else if (!strncasecmp(token, "s-maxage", 8)) {
+                    if (!ap_cstr_casecmpn(token, "s-maxage", 8)) {
                         if (token[8] == '=') {
                             s_maxage = 1;
                             s_maxage_value = apr_atoi64(token + 9);

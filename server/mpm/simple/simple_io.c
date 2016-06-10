@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "mpm_common.h"
 #include "httpd.h"
 #include "http_log.h"
 #include "ap_listen.h"
@@ -92,37 +93,15 @@ static apr_status_t simple_io_process(simple_conn_t * scon)
         }
 
         if (scon->cs.state == CONN_STATE_WRITE_COMPLETION) {
-            apr_hash_index_t *rindex;
-            apr_status_t rv = APR_SUCCESS;
-            int data_in_output_filters = 0;
+            int not_complete_yet;
 
-            rindex = apr_hash_first(NULL, c->filters);
-            while (rindex) {
-                ap_filter_t *f = apr_hash_this_val(rindex);
+            ap_update_child_status(c->sbh, SERVER_BUSY_WRITE, NULL);
+            not_complete_yet = ap_run_output_pending(c);
 
-                if (!APR_BRIGADE_EMPTY(f->bb)) {
-
-                    rv = ap_pass_brigade(f, c->empty);
-                    apr_brigade_cleanup(c->empty);
-                    if (APR_SUCCESS != rv) {
-                        ap_log_cerror(
-                                APLOG_MARK, APLOG_DEBUG, rv, c, APLOGNO(00249)
-                                "write failure in '%s' output filter", f->frec->name);
-                        break;
-                    }
-
-                    if (ap_filter_should_yield(f)) {
-                        data_in_output_filters = 1;
-                    }
-                }
-
-                rindex = apr_hash_next(rindex);
-            }
-
-            if (rv != APR_SUCCESS) {
+            if (not_complete_yet > OK) {
                 scon->cs.state = CONN_STATE_LINGER;
             }
-            else if (data_in_output_filters) {
+            else if (not_complete_yet == OK) {
                 /* Still in WRITE_COMPLETION_STATE:
                  * Set a write timeout for this connection, and let the
                  * event thread poll for writeability.
@@ -154,7 +133,7 @@ static apr_status_t simple_io_process(simple_conn_t * scon)
             else if (c->keepalive != AP_CONN_KEEPALIVE || c->aborted) {
                 scon->cs.state = CONN_STATE_LINGER;
             }
-            else if (c->data_in_input_filters) {
+            else if (c->data_in_input_filters || ap_run_input_pending(c) == OK) {
                 scon->cs.state = CONN_STATE_READ_REQUEST_LINE;
             }
             else {

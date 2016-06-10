@@ -20,7 +20,7 @@
 module AP_MODULE_DECLARE_DATA proxy_wstunnel_module;
 
 typedef struct {
-    signed char is_async;
+    int mpm_can_poll;
     apr_time_t idle_timeout;
     apr_time_t async_delay;
 } proxyws_dir_conf;
@@ -31,18 +31,15 @@ typedef struct ws_baton_t {
     apr_socket_t *server_soc;
     apr_socket_t *client_soc;
     apr_pollset_t *pollset;
-    apr_bucket_brigade *bb;
+    apr_bucket_brigade *bb_i;
+    apr_bucket_brigade *bb_o;
     apr_pool_t *subpool;        /* cleared before each suspend, destroyed when request ends */
     char *scheme;               /* required to release the proxy connection */
 } ws_baton_t;
 
-static apr_status_t proxy_wstunnel_transfer(request_rec *r,
-                                            conn_rec *c_i, conn_rec *c_o,
-                                            apr_bucket_brigade *bb,
-                                            const char *name, int *sent);
 static void proxy_wstunnel_callback(void *b);
 
-static int proxy_wstunnel_pump(ws_baton_t *baton, apr_time_t timeout, int try_async) {
+static int proxy_wstunnel_pump(ws_baton_t *baton, apr_time_t timeout, int try_poll) {
     request_rec *r = baton->r;
     conn_rec *c = r->connection;
     proxy_conn_rec *conn = baton->proxy_connrec;
@@ -54,7 +51,8 @@ static int proxy_wstunnel_pump(ws_baton_t *baton, apr_time_t timeout, int try_as
     apr_pollset_t *pollset = baton->pollset;
     apr_socket_t *client_socket = baton->client_soc;
     apr_status_t rv;
-    apr_bucket_brigade *bb = baton->bb;
+    apr_bucket_brigade *bb_i = baton->bb_i;
+    apr_bucket_brigade *bb_o = baton->bb_o;
     int done = 0, replied = 0;
 
     do { 
@@ -64,7 +62,7 @@ static int proxy_wstunnel_pump(ws_baton_t *baton, apr_time_t timeout, int try_as
                 continue;
             }
             else if (APR_STATUS_IS_TIMEUP(rv)) { 
-                if (try_async) { 
+                if (try_poll) {
                     ap_log_rerror(APLOG_MARK, APLOG_TRACE1, 0, r, APLOGNO(02542) "Attempting to go async");
                     return SUSPENDED;
                 }
@@ -89,8 +87,12 @@ static int proxy_wstunnel_pump(ws_baton_t *baton, apr_time_t timeout, int try_as
                 if (pollevent & (APR_POLLIN | APR_POLLHUP)) {
                     ap_log_rerror(APLOG_MARK, APLOG_TRACE1, 0, r, APLOGNO(02446)
                             "sock was readable");
-                    done |= proxy_wstunnel_transfer(r, backconn, c, bb, "sock",
-                                                    NULL) != APR_SUCCESS;
+                    done |= ap_proxy_transfer_between_connections(r, backconn,
+                                                                  c, bb_i, bb_o,
+                                                                  "sock", NULL,
+                                                                  AP_IOBUFSIZE,
+                                                                  0)
+                                                                 != APR_SUCCESS;
                 }
                 else if (pollevent & APR_POLLERR) {
                     ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, APLOGNO(02447)
@@ -109,8 +111,13 @@ static int proxy_wstunnel_pump(ws_baton_t *baton, apr_time_t timeout, int try_as
                 if (pollevent & (APR_POLLIN | APR_POLLHUP)) {
                     ap_log_rerror(APLOG_MARK, APLOG_TRACE1, 0, r, APLOGNO(02448)
                             "client was readable");
-                    done |= proxy_wstunnel_transfer(r, c, backconn, bb, "client",
-                                                    &replied) != APR_SUCCESS;
+                    done |= ap_proxy_transfer_between_connections(r, c, backconn,
+                                                                  bb_o, bb_i,
+                                                                  "client",
+                                                                  &replied,
+                                                                  AP_IOBUFSIZE,
+                                                                  0)
+                                                                 != APR_SUCCESS;
                 }
                 else if (pollevent & APR_POLLERR) {
                     ap_log_rerror(APLOG_MARK, APLOG_TRACE1, 0, r, APLOGNO(02607)
@@ -175,15 +182,28 @@ static void proxy_wstunnel_cancel_callback(void *b)
  */
 static void proxy_wstunnel_callback(void *b) { 
     int status;
-    apr_socket_t *sockets[3] = {NULL, NULL, NULL};
     ws_baton_t *baton = (ws_baton_t*)b;
     proxyws_dir_conf *dconf = ap_get_module_config(baton->r->per_dir_config, &proxy_wstunnel_module);
     apr_pool_clear(baton->subpool);
-    status = proxy_wstunnel_pump(baton, dconf->async_delay, dconf->is_async);
+    status = proxy_wstunnel_pump(baton, dconf->async_delay, dconf->mpm_can_poll);
     if (status == SUSPENDED) {
-        sockets[0] = baton->client_soc;
-        sockets[1] = baton->server_soc;
-        ap_mpm_register_socket_callback_timeout(sockets, baton->subpool, 1, 
+        apr_pollfd_t *pfd;
+
+        apr_array_header_t *pfds = apr_array_make(baton->subpool, 2, sizeof(apr_pollfd_t));
+
+        pfd = apr_array_push(pfds);
+        pfd->desc_type = APR_POLL_SOCKET;
+        pfd->reqevents = APR_POLLIN | APR_POLLERR | APR_POLLHUP;
+        pfd->desc.s = baton->client_soc;
+        pfd->p = baton->subpool;
+
+        pfd = apr_array_push(pfds);
+        pfd->desc_type = APR_POLL_SOCKET;
+        pfd->reqevents = APR_POLLIN | APR_POLLERR | APR_POLLHUP;
+        pfd->desc.s = baton->server_soc;
+        pfd->p = baton->subpool;
+
+        ap_mpm_register_poll_callback_timeout(pfds,
             proxy_wstunnel_callback, 
             proxy_wstunnel_cancel_callback, 
             baton, 
@@ -211,12 +231,12 @@ static int proxy_wstunnel_canon(request_rec *r, char *url)
     apr_port_t port, def_port;
 
     /* ap_port_of_scheme() */
-    if (strncasecmp(url, "ws:", 3) == 0) {
+    if (ap_cstr_casecmpn(url, "ws:", 3) == 0) {
         url += 3;
         scheme = "ws:";
         def_port = apr_uri_port_of_scheme("http");
     }
-    else if (strncasecmp(url, "wss:", 4) == 0) {
+    else if (ap_cstr_casecmpn(url, "wss:", 4) == 0) {
         url += 4;
         scheme = "wss:";
         def_port = apr_uri_port_of_scheme("https");
@@ -267,63 +287,6 @@ static int proxy_wstunnel_canon(request_rec *r, char *url)
     return OK;
 }
 
-
-static apr_status_t proxy_wstunnel_transfer(request_rec *r,
-                                            conn_rec *c_i, conn_rec *c_o,
-                                            apr_bucket_brigade *bb,
-                                            const char *name, int *sent)
-{
-    apr_status_t rv;
-#ifdef DEBUGGING
-    apr_off_t len;
-#endif
-
-    do {
-        apr_brigade_cleanup(bb);
-        rv = ap_get_brigade(c_i->input_filters, bb, AP_MODE_READBYTES,
-                            APR_NONBLOCK_READ, AP_IOBUFSIZE);
-        if (rv == APR_SUCCESS) {
-            if (c_o->aborted) {
-                return APR_EPIPE;
-            }
-            if (APR_BRIGADE_EMPTY(bb)) {
-                break;
-            }
-#ifdef DEBUGGING
-            len = -1;
-            apr_brigade_length(bb, 0, &len);
-            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02440)
-                          "read %" APR_OFF_T_FMT
-                          " bytes from %s", len, name);
-#endif
-            if (sent) {
-                *sent = 1;
-            }
-            rv = ap_pass_brigade(c_o->output_filters, bb);
-            if (rv == APR_SUCCESS) {
-                ap_fflush(c_o->output_filters, bb);
-            }
-            else {
-                ap_log_rerror(APLOG_MARK, APLOG_ERR, rv, r, APLOGNO(02441)
-                              "error on %s - ap_pass_brigade",
-                              name);
-            }
-        } else if (!APR_STATUS_IS_EAGAIN(rv) && !APR_STATUS_IS_EOF(rv)) {
-            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, rv, r, APLOGNO(02442)
-                          "error on %s - ap_get_brigade",
-                          name);
-        }
-    } while (rv == APR_SUCCESS);
-
-    ap_log_rerror(APLOG_MARK, APLOG_TRACE2, rv, r, "wstunnel_transfer complete");
-
-    if (APR_STATUS_IS_EAGAIN(rv)) {
-        rv = APR_SUCCESS;
-    }
-
-    return rv;
-}
-
 /*
  * process the request and write the response.
  */
@@ -348,7 +311,6 @@ static int proxy_wstunnel_request(apr_pool_t *p, request_rec *r,
     apr_bucket_brigade *bb = apr_brigade_create(p, c->bucket_alloc);
     apr_socket_t *client_socket = ap_get_conn_socket(c);
     ws_baton_t *baton = apr_pcalloc(r->pool, sizeof(ws_baton_t));
-    apr_socket_t *sockets[3] = {NULL, NULL, NULL};
     int status;
     proxyws_dir_conf *dconf = ap_get_module_config(r->per_dir_config, &proxy_wstunnel_module);
 
@@ -368,9 +330,11 @@ static int proxy_wstunnel_request(apr_pool_t *p, request_rec *r,
     e = apr_bucket_pool_create(buf, strlen(buf), p, c->bucket_alloc);
     APR_BRIGADE_INSERT_TAIL(header_brigade, e);
 
-    if ((rv = ap_proxy_pass_brigade(c->bucket_alloc, r, conn, backconn,
+    if ((rv = ap_proxy_pass_brigade(backconn->bucket_alloc, r, conn, backconn,
                                     header_brigade, 1)) != OK)
         return rv;
+
+    apr_brigade_cleanup(header_brigade);
 
     ap_log_rerror(APLOG_MARK, APLOG_TRACE2, 0, r, "setting up poll()");
 
@@ -413,20 +377,35 @@ static int proxy_wstunnel_request(apr_pool_t *p, request_rec *r,
     baton->client_soc = client_socket;
     baton->server_soc = sock;
     baton->proxy_connrec = conn;
-    baton->bb = bb;
+    baton->bb_o = bb;
+    baton->bb_i = header_brigade;
     baton->scheme = scheme;
     apr_pool_create(&baton->subpool, r->pool);
 
-    if (!dconf->is_async) { 
-        status = proxy_wstunnel_pump(baton, dconf->idle_timeout, dconf->is_async);
+    if (!dconf->mpm_can_poll) {
+        status = proxy_wstunnel_pump(baton, dconf->idle_timeout, dconf->mpm_can_poll);
     }  
     else { 
-        status = proxy_wstunnel_pump(baton, dconf->async_delay, dconf->is_async); 
+        status = proxy_wstunnel_pump(baton, dconf->async_delay, dconf->mpm_can_poll);
         apr_pool_clear(baton->subpool);
         if (status == SUSPENDED) {
-            sockets[0] = baton->client_soc;
-            sockets[1] = baton->server_soc;
-            rv = ap_mpm_register_socket_callback_timeout(sockets, baton->subpool, 1, 
+            apr_pollfd_t *pfd;
+
+            apr_array_header_t *pfds = apr_array_make(baton->subpool, 2, sizeof(apr_pollfd_t));
+
+            pfd = apr_array_push(pfds);
+            pfd->desc_type = APR_POLL_SOCKET;
+            pfd->reqevents = APR_POLLIN | APR_POLLERR | APR_POLLHUP;
+            pfd->desc.s = baton->client_soc;
+            pfd->p = baton->subpool;
+
+            pfd = apr_array_push(pfds);
+            pfd->desc_type = APR_POLL_SOCKET;
+            pfd->reqevents = APR_POLLIN | APR_POLLERR | APR_POLLHUP;
+            pfd->desc.s = baton->server_soc;
+            pfd->p = baton->subpool;
+
+            rv = ap_mpm_register_poll_callback_timeout(pfds,
                          proxy_wstunnel_callback, 
                          proxy_wstunnel_cancel_callback, 
                          baton, 
@@ -468,17 +447,16 @@ static int proxy_wstunnel_handler(request_rec *r, proxy_worker *worker,
     proxy_conn_rec *backend = NULL;
     const char *upgrade;
     char *scheme;
-    int retry;
-    conn_rec *c = r->connection;
     apr_pool_t *p = r->pool;
+    char *locurl = url;
     apr_uri_t *uri;
     int is_ssl = 0;
 
-    if (strncasecmp(url, "wss:", 4) == 0) {
+    if (ap_cstr_casecmpn(url, "wss:", 4) == 0) {
         scheme = "WSS";
         is_ssl = 1;
     }
-    else if (strncasecmp(url, "ws:", 3) == 0) {
+    else if (ap_cstr_casecmpn(url, "ws:", 3) == 0) {
         scheme = "WS";
     }
     else {
@@ -487,7 +465,7 @@ static int proxy_wstunnel_handler(request_rec *r, proxy_worker *worker,
     }
 
     upgrade = apr_table_get(r->headers_in, "Upgrade");
-    if (!upgrade || strcasecmp(upgrade, "WebSocket") != 0) {
+    if (!upgrade || ap_cstr_casecmp(upgrade, "WebSocket") != 0) {
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02900)
                       "declining URL %s  (not WebSocket)", url);
         return DECLINED;
@@ -497,56 +475,48 @@ static int proxy_wstunnel_handler(request_rec *r, proxy_worker *worker,
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02451) "serving URL %s", url);
 
     /* create space for state information */
-    status = ap_proxy_acquire_connection(scheme, &backend, worker,
-                                         r->server);
+    status = ap_proxy_acquire_connection(scheme, &backend, worker, r->server);
     if (status != OK) {
-        if (backend) {
-            backend->close = 1;
-            ap_proxy_release_connection(scheme, backend, r->server);
-        }
-        return status;
+        goto cleanup;
     }
 
     backend->is_ssl = is_ssl;
     backend->close = 0;
 
-    retry = 0;
-    while (retry < 2) {
-        char *locurl = url;
-        /* Step One: Determine Who To Connect To */
-        status = ap_proxy_determine_connection(p, r, conf, worker, backend,
-                                               uri, &locurl, proxyname, proxyport,
-                                               server_portstr,
-                                               sizeof(server_portstr));
-
-        if (status != OK)
-            break;
-
-        /* Step Two: Make the Connection */
-        if (ap_proxy_connect_backend(scheme, backend, worker, r->server)) {
-            ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(02452)
-                          "failed to make connection to backend: %s",
-                          backend->hostname);
-            status = HTTP_SERVICE_UNAVAILABLE;
-            break;
-        }
-        /* Step Three: Create conn_rec */
-        if (!backend->connection) {
-            if ((status = ap_proxy_connection_create(scheme, backend,
-                                                     c, r->server)) != OK)
-                break;
-        }
-
-        backend->close = 1; /* must be after ap_proxy_determine_connection */
-
-        /* Step Three: Process the Request */
-        status = proxy_wstunnel_request(p, r, backend, worker, conf, uri, locurl,
-                                      server_portstr, scheme);
-        break;
+    /* Step One: Determine Who To Connect To */
+    status = ap_proxy_determine_connection(p, r, conf, worker, backend,
+                                           uri, &locurl, proxyname, proxyport,
+                                           server_portstr,
+                                           sizeof(server_portstr));
+    if (status != OK) {
+        goto cleanup;
     }
 
+    /* Step Two: Make the Connection */
+    if (ap_proxy_connect_backend(scheme, backend, worker, r->server)) {
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(02452)
+                      "failed to make connection to backend: %s",
+                      backend->hostname);
+        status = HTTP_SERVICE_UNAVAILABLE;
+        goto cleanup;
+    }
+
+    /* Step Three: Create conn_rec */
+    if (!backend->connection) {
+        status = ap_proxy_connection_create_ex(scheme, backend, r);
+        if (status  != OK) {
+            goto cleanup;
+        }
+    }
+
+    /* Step Three: Process the Request */
+    status = proxy_wstunnel_request(p, r, backend, worker, conf, uri, locurl,
+                                  server_portstr, scheme);
+
+cleanup:
     /* Do not close the socket */
-    if (status != SUSPENDED) { 
+    if (backend && status != SUSPENDED) { 
+        backend->close = 1;
         ap_proxy_release_connection(scheme, backend, r->server);
     }
     return status;
@@ -558,6 +528,8 @@ static void *create_proxyws_dir_config(apr_pool_t *p, char *dummy)
         (proxyws_dir_conf *) apr_pcalloc(p, sizeof(proxyws_dir_conf));
 
     new->idle_timeout = -1; /* no timeout */
+
+    ap_mpm_query(AP_MPMQ_CAN_POLL, &new->mpm_can_poll);
 
     return (void *) new;
 }
@@ -579,15 +551,11 @@ static const char * proxyws_set_aysnch_delay(cmd_parms *cmd, void *conf, const c
 
 static const command_rec ws_proxy_cmds[] =
 {
-    AP_INIT_FLAG("ProxyWebsocketAsync", ap_set_flag_slot_char, (void*)APR_OFFSETOF(proxyws_dir_conf, is_async), 
-                 RSRC_CONF|ACCESS_CONF,
-                 "on if idle websockets connections should be monitored asyncronously"),
-
     AP_INIT_TAKE1("ProxyWebsocketIdleTimeout", proxyws_set_idle, NULL, RSRC_CONF|ACCESS_CONF,
                  "timeout for activity in either direction, unlimited by default"),
 
     AP_INIT_TAKE1("ProxyWebsocketAsyncDelay", proxyws_set_aysnch_delay, NULL, RSRC_CONF|ACCESS_CONF,
-                 "amount of time to poll before going asyncronous"),
+                 "amount of time to poll before going asynchronous"),
     {NULL}
 };
 

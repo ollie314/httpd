@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE sitemap SYSTEM "./style/sitemap.dtd">
 <?xml-stylesheet type="text/xsl" href="./style/manual.ja.xsl"?>
-<!-- English Revision: 587444:1562300 (outdated) -->
+<!-- English Revision: 587444:1732099 (outdated) -->
 
 <!--
  Licensed to the Apache Software Foundation (ASF) under one or more
@@ -61,7 +61,7 @@
 <page href="filter.html">フィルタ</page>
 <page href="suexec.html">suEXEC サポート</page>
 <page href="misc/perf-tuning.html">性能に関するヒント</page>
-<page href="misc/rewriteguide.html">URL リライトガイド</page>
+<page href="rewrite/">URL リライトガイド</page>
 </category>
 
 <category id="vhosts">

@@ -19,7 +19,7 @@
 <div id="page-header">
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossaire</a> | <a href="../sitemap.html">Plan du site</a></p>
 <p class="apache">Serveur Apache HTTP Version 2.5</p>
-<img alt="" src="../images/feather.gif" /></div>
+<img alt="" src="../images/feather.png" /></div>
 <div class="up"><a href="./"><img title="&lt;-" alt="&lt;-" src="../images/left.gif" /></a></div>
 <div id="path">
 <a href="http://www.apache.org/">Apache</a> &gt; <a href="http://httpd.apache.org/">Serveur HTTP</a> &gt; <a href="http://httpd.apache.org/docs/">Documentation</a> &gt; <a href="../">Version 2.5</a> &gt; <a href="./">Modules</a></div>
@@ -143,19 +143,20 @@
 <li><img alt="" src="../images/down.gif" /> <a href="#proxytimeout">ProxyTimeout</a></li>
 <li><img alt="" src="../images/down.gif" /> <a href="#proxyvia">ProxyVia</a></li>
 </ul>
-<h3>Voir aussi</h3>
+<h3>Traitement des bugs</h3><ul class="seealso"><li><a href="https://www.apache.org/dist/httpd/CHANGES_2.4">Journal des modifications de httpd</a></li><li><a href="https://bz.apache.org/bugzilla/buglist.cgi?bug_status=__open__&amp;list_id=144532&amp;product=Apache%20httpd-2&amp;query_format=specific&amp;order=changeddate%20DESC%2Cpriority%2Cbug_severity&amp;component=mod_proxy">Problèmes connus</a></li><li><a href="https://bz.apache.org/bugzilla/enter_bug.cgi?product=Apache%20httpd-2&amp;component=mod_proxy">Signaler un bug</a></li></ul><h3>Voir aussi</h3>
 <ul class="seealso">
 <li><code class="module"><a href="../mod/mod_cache.html">mod_cache</a></code></li>
 <li><code class="module"><a href="../mod/mod_proxy_ajp.html">mod_proxy_ajp</a></code></li>
+<li><code class="module"><a href="../mod/mod_proxy_balancer.html">mod_proxy_balancer</a></code></li>
 <li><code class="module"><a href="../mod/mod_proxy_connect.html">mod_proxy_connect</a></code></li>
 <li><code class="module"><a href="../mod/mod_proxy_fcgi.html">mod_proxy_fcgi</a></code></li>
 <li><code class="module"><a href="../mod/mod_proxy_ftp.html">mod_proxy_ftp</a></code></li>
+<li><code class="module"><a href="../mod/mod_proxy_hcheck.html">mod_proxy_hcheck</a></code></li>
 <li><code class="module"><a href="../mod/mod_proxy_http.html">mod_proxy_http</a></code></li>
 <li><code class="module"><a href="../mod/mod_proxy_scgi.html">mod_proxy_scgi</a></code></li>
 <li><code class="module"><a href="../mod/mod_proxy_wstunnel.html">mod_proxy_wstunnel</a></code></li>
-<li><code class="module"><a href="../mod/mod_proxy_balancer.html">mod_proxy_balancer</a></code></li>
 <li><code class="module"><a href="../mod/mod_ssl.html">mod_ssl</a></code></li>
-</ul><ul class="seealso"><li><a href="#comments_section">Commentaires</a></li></ul></div>
+<li><a href="#comments_section">Commentaires</a></li></ul></div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="section">
 <h2><a name="forwardreverse" id="forwardreverse">Mandataires directs et
@@ -371,6 +372,16 @@ ProxyPass "/examples" "http://backend.example.com/examples" timeout=10</pre>
       répartiteur permet d'identifier de manière unique le worker de
       répartition. La directive <code class="directive"><a href="#balancermember">BalancerMember</a></code> permet d'ajouter des
       membres au répartiteur.</p>
+
+      <div class="note"><h3>Résolution DNS pour les domaines originaux</h3>
+      <p>La résolution DNS du domaine s'effectue lorsque le socket vers le
+      serveur original est créé pour la première fois. Lorsque le pooling de
+      connexions est utilisé, la résolution DNS n'est effectuée à nouveau que
+      lorsque le <code>ttl</code> de la connexion est écoulé (veuillez vérifier
+      les paramètres de la directive <code class="directive"><a href="#proxypass">ProxyPass</a></code>). Cela signifie que httpd
+      n'effectue aucune mise en cache des résolutions DNS.
+        </p>
+      </div>
 
     </div><div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
 <div class="section">
@@ -969,9 +980,9 @@ mandatées</td></tr>
     générer une réponse de redirection vers le même hôte suffixé par le
     <var>Domaine</var> spécifié.</p>
 
-    <div class="example"><h3>Exemple</h3><pre class="prettyprint lang-config">      ProxyRemote  *  http://firewall.example.com:81<br />
-      NoProxy         .example.com 192.168.112.0/21<br />
-      ProxyDomain     .example.com</pre>
+    <div class="example"><h3>Exemple</h3><pre class="prettyprint lang-config">ProxyRemote  "*"  "http://firewall.example.com:81"
+NoProxy           ".example.com" "192.168.112.0/21"
+ProxyDomain       ".example.com"</pre>
 </div>
 
 </div>
@@ -1439,15 +1450,19 @@ ProxyPass "/mirror/foo" "http://backend.example.com"</pre>
         <td>-</td>
         <td>Valeur constituée d'une simple lettre et définissant l'état
 	initial de ce serveur cible.
-	 <table>
-         <tr><td>D: le serveur cible est désactivé et n'accepte aucune requête.</td></tr>
-         <tr><td>S: le serveur cible est arrêté.</td></tr>
-         <tr><td>I: le serveur cible est en mode "erreurs ignorées",
+	 <table class="bordered">
+         <tr><td><code>D</code></td><td>le serveur cible est
+	 désactivé et n'accepte aucune requête ; sa
+	 réactivation sera automatiquement relancée.</td></tr>
+         <tr><td><code>S</code></td><td>le serveur cible est arrêté
+	 ; il n'accepte plus de requête et sa réactivation ne sera pas
+	 automatiquement relancée.</td></tr>
+         <tr><td><code>I</code></td><td>le serveur cible est en mode "erreurs ignorées",
 	 et sera toujours considéré comme disponible.</td></tr>
-         <tr><td>H: le serveur cible est en mode d'attente et ne sera
+         <tr><td><code>H</code></td><td>le serveur cible est en mode d'attente et ne sera
 	 utilisé que si aucun autre serveur n'est disponible.</td></tr>
-         <tr><td>E: le serveur cible est en erreur.</td></tr>
-         <tr><td>N: le serveur cible est en mode vidage, n'acceptera que
+         <tr><td><code>E</code></td><td>le serveur cible est en erreur.</td></tr>
+         <tr><td><code>N</code></td><td>le serveur cible est en mode vidage, n'acceptera que
 	 les sessions persistantes qui lui appartiennent, et refusera
 	 toutes les autres requêtes.</td></tr>
         </table>
@@ -1469,6 +1484,11 @@ ProxyPass "/mirror/foo" "http://backend.example.com"</pre>
 	de connexions associées en secondes. Une fois cette
 	limite atteinte, une connexion ne sera pas réutilisée ; elle
 	sera fermée après un délai variable.
+    </td></tr>
+    <tr><td>flusher</td>
+        <td>flush</td>
+        <td><p>Le fournisseur utilisé par <code class="module"><a href="../mod/mod_proxy_fdpass.html">mod_proxy_fdpass</a></code>.
+	Se référer à la documentation de ce module pour plus de détails.</p>
     </td></tr>
 
     </table>
@@ -2257,7 +2277,7 @@ var comments_identifier = 'http://httpd.apache.org/docs/trunk/mod/mod_proxy.html
     }
 })(window, document);
 //--><!]]></script></div><div id="footer">
-<p class="apache">Copyright 2015 The Apache Software Foundation.<br />Autorisé sous <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+<p class="apache">Copyright 2016 The Apache Software Foundation.<br />Autorisé sous <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
 <p class="menu"><a href="../mod/">Modules</a> | <a href="../mod/quickreference.html">Directives</a> | <a href="http://wiki.apache.org/httpd/FAQ">FAQ</a> | <a href="../glossary.html">Glossaire</a> | <a href="../sitemap.html">Plan du site</a></p></div><script type="text/javascript"><!--//--><![CDATA[//><!--
 if (typeof(prettyPrint) !== 'undefined') {
     prettyPrint();

@@ -93,6 +93,8 @@ AC_DEFUN([APACHE_GEN_CONFIG_VARS],[
   APACHE_SUBST(MK_IMPLIB)
   APACHE_SUBST(MKDEP)
   APACHE_SUBST(INSTALL_PROG_FLAGS)
+  APACHE_SUBST(MPM_MODULES)
+  APACHE_SUBST(ENABLED_MPM_MODULE)
   APACHE_SUBST(DSO_MODULES)
   APACHE_SUBST(ENABLED_DSO_MODULES)
   APACHE_SUBST(LOAD_ALL_MODULES)
@@ -295,10 +297,10 @@ DISTCLEAN_TARGETS = modules.mk
 static =
 shared = $libname
 EOF
-            DSO_MODULES="$DSO_MODULES mpm_$1"
+            MPM_MODULES="$MPM_MODULES mpm_$1"
             # add default MPM to LoadModule list
             if test $1 = $default_mpm; then
-                ENABLED_DSO_MODULES="${ENABLED_DSO_MODULES},mpm_$1"
+                ENABLED_MPM_MODULE="mpm_$1"
             fi
         fi
         $4
@@ -507,6 +509,8 @@ AC_DEFUN([APACHE_CHECK_OPENSSL],[
     ap_openssl_found=""
     ap_openssl_base=""
     ap_openssl_libs=""
+    ap_openssl_mod_cflags=""
+    ap_openssl_mod_ldflags=""
 
     dnl Determine the OpenSSL base directory, if any
     AC_MSG_CHECKING([for user-provided OpenSSL base directory])
@@ -596,7 +600,7 @@ AC_DEFUN([APACHE_CHECK_OPENSSL],[
       dnl Run library and function checks
       liberrors=""
       AC_CHECK_HEADERS([openssl/engine.h])
-      AC_CHECK_FUNCS([SSLeay_version SSL_CTX_new], [], [liberrors="yes"])
+      AC_CHECK_FUNCS([SSL_CTX_new], [], [liberrors="yes"])
       AC_CHECK_FUNCS([ENGINE_init ENGINE_load_builtin_engines RAND_egd])
       if test "x$liberrors" != "x"; then
         AC_MSG_WARN([OpenSSL libraries are unusable])
@@ -609,9 +613,15 @@ AC_DEFUN([APACHE_CHECK_OPENSSL],[
     CPPFLAGS="$saved_CPPFLAGS"
     LIBS="$saved_LIBS"
     LDFLAGS="$saved_LDFLAGS"
+
+    dnl cache MOD_LDFLAGS, MOD_CFLAGS
+    ap_openssl_mod_cflags=$MOD_CFLAGS
+    ap_openssl_mod_ldflags=$MOD_LDFLAGS
   ])
   if test "x$ac_cv_openssl" = "xyes"; then
     AC_DEFINE(HAVE_OPENSSL, 1, [Define if OpenSSL is available])
+    APR_ADDTO(MOD_LDFLAGS, [$ap_openssl_mod_ldflags])
+    APR_ADDTO(MOD_CFLAGS, [$ap_openssl_mod_cflags])
   fi
 ])
 

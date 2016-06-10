@@ -216,7 +216,7 @@ apr_status_t ctutil_read_file(apr_pool_t *p,
         rv = APR_ENOSPC;
         ap_log_error(APLOG_MARK, APLOG_ERR, rv, s,
                      APLOGNO(02781) "size %" APR_OFF_T_FMT " of %s exceeds "
-                     "limit (%" APR_SIZE_T_FMT ")", finfo.size, fn, limit);
+                     "limit (%" APR_OFF_T_FMT ")", finfo.size, fn, limit);
         apr_file_close(f);
         return rv;
     }
@@ -467,9 +467,11 @@ void ctutil_log_array(const char *file, int line, int module_index,
     const char **elts = (const char **)arr->elts;
     int i;
 
+    /* Intentional no APLOGNO */
     ap_log_error(file, line, module_index, level,
                  0, s, "%s", desc);
     for (i = 0; i < arr->nelts; i++) {
+        /* Intentional no APLOGNO */
         ap_log_error(file, line, module_index, level,
                      0, s, ">>%s", elts[i]);
     }
@@ -509,7 +511,7 @@ apr_status_t ctutil_deserialize_uint16(const unsigned char **mem,
                                        apr_uint16_t *pval)
 {
     apr_status_t rv;
-    apr_uint64_t val64;
+    apr_uint64_t val64 = 0;
 
     rv = deserialize_uint(mem, avail, 16, &val64);
     *pval = (apr_uint16_t)val64;

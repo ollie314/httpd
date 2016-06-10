@@ -180,7 +180,7 @@ static int scgi_canon(request_rec *r, char *url)
     const char *err, *path;
     apr_port_t port, def_port;
 
-    if (strncasecmp(url, SCHEME "://", sizeof(SCHEME) + 2)) {
+    if (ap_cstr_casecmpn(url, SCHEME "://", sizeof(SCHEME) + 2)) {
         return DECLINED;
     }
     url += sizeof(SCHEME); /* Keep slashes */
@@ -434,7 +434,7 @@ static int pass_response(request_rec *r, proxy_conn_rec *conn)
         if (location && *location == '/') {
             scgi_request_config *req_conf = apr_palloc(r->pool,
                                                        sizeof(*req_conf));
-            if (strcasecmp(location_header, "Location")) {
+            if (ap_cstr_casecmp(location_header, "Location")) {
                 if (err) {
                     apr_table_unset(r->err_headers_out, location_header);
                 }
@@ -509,7 +509,7 @@ static int scgi_request_status(int *status, request_rec *r)
                     *status = HTTP_INTERNAL_SERVER_ERROR;
                     return *status;
                 }
-            } while(0);
+            } while (0);
 
             return OK;
             /* break; */
@@ -530,10 +530,10 @@ static int scgi_handler(request_rec *r, proxy_worker *worker,
     int status;
     proxy_conn_rec *backend = NULL;
     apr_pool_t *p = r->pool;
-    apr_uri_t *uri = apr_palloc(r->pool, sizeof(*uri));
+    apr_uri_t *uri;
     char dummy;
 
-    if (strncasecmp(url, SCHEME "://", sizeof(SCHEME) + 2)) {
+    if (ap_cstr_casecmpn(url, SCHEME "://", sizeof(SCHEME) + 2)) {
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(00865)
                       "declining URL %s", url);
         return DECLINED;
@@ -548,6 +548,7 @@ static int scgi_handler(request_rec *r, proxy_worker *worker,
     backend->is_ssl = 0;
 
     /* Step One: Determine Who To Connect To */
+    uri = apr_palloc(p, sizeof(*uri));
     status = ap_proxy_determine_connection(p, r, conf, worker, backend,
                                            uri, &url, proxyname, proxyport,
                                            &dummy, 1);

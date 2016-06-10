@@ -1306,9 +1306,9 @@ static int prefork_open_logs(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp,
 
     if ((num_listensocks = ap_setup_listeners(ap_server_conf)) < 1) {
         ap_log_error(APLOG_MARK, APLOG_ALERT | level_flags, 0,
-                     (startup ? NULL : s),
+                     (startup ? NULL : s), APLOGNO(03279)
                      "no listening sockets available, shutting down");
-        return DONE;
+        return !OK;
     }
 
     if (one_process) {
@@ -1321,19 +1321,18 @@ static int prefork_open_logs(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp,
     if ((rv = ap_duplicate_listeners(pconf, ap_server_conf,
                                      &listen_buckets, &num_buckets))) {
         ap_log_error(APLOG_MARK, APLOG_CRIT | level_flags, rv,
-                     (startup ? NULL : s),
+                     (startup ? NULL : s), APLOGNO(03280)
                      "could not duplicate listeners");
-        return DONE;
+        return !OK;
     }
     all_buckets = apr_pcalloc(pconf, num_buckets *
                                      sizeof(prefork_child_bucket));
     for (i = 0; i < num_buckets; i++) {
-        if (!one_process && /* no POD in one_process mode */
-                (rv = ap_mpm_pod_open(pconf, &all_buckets[i].pod))) {
+        if ((rv = ap_mpm_pod_open(pconf, &all_buckets[i].pod))) {
             ap_log_error(APLOG_MARK, APLOG_CRIT | level_flags, rv,
-                         (startup ? NULL : s),
+                         (startup ? NULL : s), APLOGNO(03281)
                          "could not open pipe-of-death");
-            return DONE;
+            return !OK;
         }
         /* Initialize cross-process accept lock (safe accept needed only) */
         if ((rv = SAFE_ACCEPT((apr_snprintf(id, sizeof id, "%i", i),
@@ -1341,9 +1340,9 @@ static int prefork_open_logs(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp,
                                                     NULL, AP_ACCEPT_MUTEX_TYPE,
                                                     id, s, pconf, 0))))) {
             ap_log_error(APLOG_MARK, APLOG_CRIT | level_flags, rv,
-                         (startup ? NULL : s),
+                         (startup ? NULL : s), APLOGNO(03282)
                          "could not create accept mutex");
-            return DONE;
+            return !OK;
         }
         all_buckets[i].listeners = listen_buckets[i];
     }
@@ -1423,10 +1422,8 @@ static int prefork_check_config(apr_pool_t *p, apr_pool_t *plog,
         if (startup) {
             ap_log_error(APLOG_MARK, APLOG_WARNING | APLOG_STARTUP, 0, NULL, APLOGNO(00175)
                          "WARNING: ServerLimit of %d exceeds compile-time "
-                         "limit of", server_limit);
-            ap_log_error(APLOG_MARK, APLOG_WARNING | APLOG_STARTUP, 0, NULL,
-                         " %d servers, decreasing to %d.",
-                         MAX_SERVER_LIMIT, MAX_SERVER_LIMIT);
+                         "limit of %d servers, decreasing to %d.",
+                         server_limit, MAX_SERVER_LIMIT, MAX_SERVER_LIMIT);
         } else {
             ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s, APLOGNO(00176)
                          "ServerLimit of %d exceeds compile-time limit "
@@ -1467,13 +1464,9 @@ static int prefork_check_config(apr_pool_t *p, apr_pool_t *plog,
         if (startup) {
             ap_log_error(APLOG_MARK, APLOG_WARNING | APLOG_STARTUP, 0, NULL, APLOGNO(00180)
                          "WARNING: MaxRequestWorkers of %d exceeds ServerLimit "
-                         "value of", ap_daemons_limit);
-            ap_log_error(APLOG_MARK, APLOG_WARNING | APLOG_STARTUP, 0, NULL,
-                         " %d servers, decreasing MaxRequestWorkers to %d.",
-                         server_limit, server_limit);
-            ap_log_error(APLOG_MARK, APLOG_WARNING | APLOG_STARTUP, 0, NULL,
-                         " To increase, please see the ServerLimit "
-                         "directive.");
+                         "value of %d servers, decreasing MaxRequestWorkers to %d. "
+                         "To increase, please see the ServerLimit directive.",
+                         ap_daemons_limit, server_limit, server_limit);
         } else {
             ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s, APLOGNO(00181)
                          "MaxRequestWorkers of %d exceeds ServerLimit value "
@@ -1513,11 +1506,8 @@ static int prefork_check_config(apr_pool_t *p, apr_pool_t *plog,
         if (startup) {
             ap_log_error(APLOG_MARK, APLOG_WARNING | APLOG_STARTUP, 0, NULL, APLOGNO(00186)
                          "WARNING: MinSpareServers of %d not allowed, "
-                         "increasing to 1", ap_daemons_min_free);
-            ap_log_error(APLOG_MARK, APLOG_WARNING | APLOG_STARTUP, 0, NULL,
-                         " to avoid almost certain server failure.");
-            ap_log_error(APLOG_MARK, APLOG_WARNING | APLOG_STARTUP, 0, NULL,
-                         " Please read the documentation.");
+                         "increasing to 1 to avoid almost certain server failure. "
+                         "Please read the documentation.", ap_daemons_min_free);
         } else {
             ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s, APLOGNO(00187)
                          "MinSpareServers of %d not allowed, increasing to 1",

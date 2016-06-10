@@ -1041,9 +1041,12 @@ static apr_status_t cache_save_filter(ap_filter_t *f, apr_bucket_brigade *in)
         /* if a broken Expires header is present, don't cache it */
         reason = apr_pstrcat(p, "Broken expires header: ", exps, NULL);
     }
-    else if (!dconf->store_expired && exp != APR_DATE_BAD
+    else if (!control.s_maxage && !control.max_age
+            && !dconf->store_expired && exp != APR_DATE_BAD
             && exp < r->request_time) {
-        /* if a Expires header is in the past, don't cache it */
+        /* if a Expires header is in the past, don't cache it 
+         * Unless CC: s-maxage or max-age is present
+         */
         reason = "Expires header already expired; not cacheable";
     }
     else if (!dconf->store_expired && (control.must_revalidate
@@ -1397,7 +1400,26 @@ static apr_status_t cache_save_filter(ap_filter_t *f, apr_bucket_brigade *in)
                 "replacing with now");
     }
 
+
+    /* CC has priority over Expires.  */
+    if (control.s_maxage || control.max_age) {
+        apr_int64_t x;
+
+        x = control.s_maxage ? control.s_maxage_value : control.max_age_value;
+        x = x * MSEC_ONE_SEC;
+
+        if (x < dconf->minex) {
+            x = dconf->minex;
+        }
+        if (x > dconf->maxex) {
+            x = dconf->maxex;
+        }
+        exp = date + x;
+    }
+
     /* if no expiry date then
+     *   if Cache-Control: s-maxage
+     *      expiry date = date + smaxage
      *   if Cache-Control: max-age
      *      expiry date = date + max-age
      *   else if lastmod
@@ -1405,28 +1427,9 @@ static apr_status_t cache_save_filter(ap_filter_t *f, apr_bucket_brigade *in)
      *   else
      *      expire date = date + defaultexpire
      */
+
     if (exp == APR_DATE_BAD) {
-
-        if (control.max_age) {
-            apr_int64_t x;
-
-            errno = 0;
-            x = control.max_age_value;
-            if (errno) {
-                x = dconf->defex;
-            }
-            else {
-                x = x * MSEC_ONE_SEC;
-            }
-            if (x < dconf->minex) {
-                x = dconf->minex;
-            }
-            if (x > dconf->maxex) {
-                x = dconf->maxex;
-            }
-            exp = date + x;
-        }
-        else if ((lastmod != APR_DATE_BAD) && (lastmod < date)) {
+        if ((lastmod != APR_DATE_BAD) && (lastmod < date)) {
             /* if lastmod == date then you get 0*conf->factor which results in
              * an expiration time of now. This causes some problems with
              * freshness calculations, so we choose the else path...
@@ -1567,6 +1570,9 @@ static apr_status_t cache_save_filter(ap_filter_t *f, apr_bucket_brigade *in)
 
         /* let someone else attempt to cache */
         cache_remove_lock(conf, cache, r, NULL);
+
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, r, APLOGNO(02971)
+                    "cache: serving %s (revalidated)", r->uri);
 
         return ap_pass_brigade(f->next, bb);
     }

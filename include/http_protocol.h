@@ -54,6 +54,13 @@ AP_DECLARE_DATA extern ap_filter_rec_t *ap_old_write_func;
  */
 
 /**
+ * Read an empty request and set reasonable defaults.
+ * @param c The current connection
+ * @return The new request_rec
+ */
+AP_DECLARE(request_rec *) ap_create_request(conn_rec *c);
+
+/**
  * Read a request and fill in the fields.
  * @param c The current connection
  * @return The new request_rec
@@ -502,7 +509,7 @@ AP_DECLARE(int) ap_should_client_block(request_rec *r);
  */
 AP_DECLARE(long) ap_get_client_block(request_rec *r, char *buffer, apr_size_t bufsiz);
 
-/*
+/**
  * Map specific APR codes returned by the filter stack to HTTP error
  * codes, or the default status code provided. Use it as follows:
  *
@@ -762,7 +769,7 @@ AP_DECLARE_HOOK(int,protocol_propose,(conn_rec *c, request_rec *r,
  * @param c The current connection
  * @param r The current request or NULL
  * @param s The server/virtual host selected
- * @param choices A list of protocol identifiers, normally the clients whishes
+ * @param choices A list of protocol identifiers, normally the client's wishes
  * @param proposals the list of protocol identifiers proposed by the hooks
  * @return OK or DECLINED
  */
@@ -788,14 +795,19 @@ AP_DECLARE_HOOK(const char *,protocol_get,(const conn_rec *c))
  * upgrade to - besides the protocol currently active on the connection. These
  * values may be used to announce to a client what choices it has.
  *
+ * If report_all == 0, only protocols more preferable than the one currently
+ * being used, are reported. Otherwise, all available protocols beside the
+ * current one are being reported.
+ *
  * @param c The current connection
  * @param r The current request or NULL
  * @param s The server/virtual host selected or NULL
+ * @param report_all include also protocols less preferred than the current one
  * @param pupgrades on return, possible protocols to upgrade to in descending order 
  *                 of preference. Maybe NULL if none are available.    
  */
 AP_DECLARE(apr_status_t) ap_get_protocol_upgrades(conn_rec *c, request_rec *r, 
-                                                  server_rec *s, 
+                                                  server_rec *s, int report_all, 
                                                   const apr_array_header_t **pupgrades);
                                                   
 /**
@@ -810,7 +822,7 @@ AP_DECLARE(apr_status_t) ap_get_protocol_upgrades(conn_rec *c, request_rec *r,
  * @param c The current connection
  * @param r The current request or NULL
  * @param s The server/virtual host selected
- * @param choices A list of protocol identifiers, normally the clients whishes
+ * @param choices A list of protocol identifiers, normally the client's wishes
  * @return The selected protocol or NULL if no protocol could be agreed upon
  */
 AP_DECLARE(const char *) ap_select_protocol(conn_rec *c, request_rec *r, 

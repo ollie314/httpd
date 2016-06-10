@@ -537,7 +537,8 @@ static int status_handler(request_rec *r)
         int busy_workers = 0, idle_workers = 0;
         if (!short_report)
             ap_rputs("\n\n<table rules=\"all\" cellpadding=\"1%\">\n"
-                     "<tr><th rowspan=\"2\">PID</th>"
+                     "<tr><th rowspan=\"2\">Slot</th>"
+		         "<th rowspan=\"2\">PID</th>"
                          "<th colspan=\"2\">Connections</th>\n"
                          "<th colspan=\"2\">Threads</th>"
                          "<th colspan=\"4\">Async connections</th></tr>\n"
@@ -554,11 +555,12 @@ static int status_handler(request_rec *r)
                 busy_workers     += thread_busy_buffer[i];
                 idle_workers     += thread_idle_buffer[i];
                 if (!short_report)
-                    ap_rprintf(r, "<tr><td>%" APR_PID_T_FMT "</td><td>%u</td>"
-                                      "<td>%s</td><td>%u</td><td>%u</td>"
+                    ap_rprintf(r, "<tr><td>%u</td><td>%" APR_PID_T_FMT "</td>"
+                                      "<td>%u</td><td>%s</td><td>%u</td>"
                                       "<td>%u</td><td>%u</td><td>%u</td>"
+                                      "<td>%u</td>"
                                       "</tr>\n",
-                               ps_record->pid, ps_record->connections,
+                               i, ps_record->pid, ps_record->connections,
                                ps_record->not_accepting ? "no" : "yes",
                                thread_busy_buffer[i], thread_idle_buffer[i],
                                ps_record->write_completion,
@@ -662,7 +664,7 @@ static int status_handler(request_rec *r)
 #endif
                      "<th>SS</th><th>Req</th>"
                      "<th>Conn</th><th>Child</th><th>Slot</th>"
-                     "<th>Client</th><th>VHost</th>"
+                     "<th>Client</th><th>Protocol</th><th>VHost</th>"
                      "<th>Request</th></tr>\n\n", r);
 
         for (i = 0; i < server_limit; ++i) {
@@ -776,12 +778,14 @@ static int status_handler(request_rec *r)
                     format_byte_out(r, bytes);
                     ap_rputs(")\n", r);
                     ap_rprintf(r,
-                               " <i>%s {%s}</i> <b>[%s]</b><br />\n\n",
+                               " <i>%s {%s}</i> <i>(%s)</i> <b>[%s]</b><br />\n\n",
                                ap_escape_html(r->pool,
                                               ws_record->client),
                                ap_escape_html(r->pool,
                                               ap_escape_logitem(r->pool,
                                                                 ws_record->request)),
+                               ap_escape_html(r->pool,
+                                              ws_record->protocol),
                                ap_escape_html(r->pool,
                                               ws_record->vhost));
                 }
@@ -860,10 +864,12 @@ static int status_handler(request_rec *r)
                                (float)conn_bytes / KBYTE, (float) my_bytes / MBYTE,
                                (float)bytes / MBYTE);
 
-                    ap_rprintf(r, "</td><td>%s</td><td nowrap>%s</td>"
+                    ap_rprintf(r, "</td><td>%s</td><td>%s</td><td nowrap>%s</td>"
                                   "<td nowrap>%s</td></tr>\n\n",
                                ap_escape_html(r->pool,
                                               ws_record->client),
+                               ap_escape_html(r->pool,
+                                              ws_record->protocol),
                                ap_escape_html(r->pool,
                                               ws_record->vhost),
                                ap_escape_html(r->pool,

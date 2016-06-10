@@ -43,11 +43,11 @@ static int proxy_http_canon(request_rec *r, char *url)
     apr_port_t port, def_port;
 
     /* ap_port_of_scheme() */
-    if (strncasecmp(url, "http:", 5) == 0) {
+    if (ap_cstr_casecmpn(url, "http:", 5) == 0) {
         url += 5;
         scheme = "http";
     }
-    else if (strncasecmp(url, "https:", 6) == 0) {
+    else if (ap_cstr_casecmpn(url, "https:", 6) == 0) {
         url += 6;
         scheme = "https";
     }
@@ -671,55 +671,6 @@ static int spool_reqbody_cl(apr_pool_t *p,
     return OK;
 }
 
-/*
- * Transform buckets from one bucket allocator to another one by creating a
- * transient bucket for each data bucket and let it use the data read from
- * the old bucket. Metabuckets are transformed by just recreating them.
- * Attention: Currently only the following bucket types are handled:
- *
- * All data buckets
- * FLUSH
- * EOS
- *
- * If an other bucket type is found its type is logged as a debug message
- * and APR_EGENERAL is returned.
- */
-static apr_status_t proxy_buckets_lifetime_transform(request_rec *r,
-        apr_bucket_brigade *from, apr_bucket_brigade *to)
-{
-    apr_bucket *e;
-    apr_bucket *new;
-    const char *data;
-    apr_size_t bytes;
-    apr_status_t rv = APR_SUCCESS;
-
-    apr_brigade_cleanup(to);
-    for (e = APR_BRIGADE_FIRST(from);
-         e != APR_BRIGADE_SENTINEL(from);
-         e = APR_BUCKET_NEXT(e)) {
-        if (!APR_BUCKET_IS_METADATA(e)) {
-            apr_bucket_read(e, &data, &bytes, APR_BLOCK_READ);
-            new = apr_bucket_transient_create(data, bytes, r->connection->bucket_alloc);
-            APR_BRIGADE_INSERT_TAIL(to, new);
-        }
-        else if (APR_BUCKET_IS_FLUSH(e)) {
-            new = apr_bucket_flush_create(r->connection->bucket_alloc);
-            APR_BRIGADE_INSERT_TAIL(to, new);
-        }
-        else if (APR_BUCKET_IS_EOS(e)) {
-            new = apr_bucket_eos_create(r->connection->bucket_alloc);
-            APR_BRIGADE_INSERT_TAIL(to, new);
-        }
-        else {
-            ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(00964)
-                          "Unhandled bucket type of type %s in"
-                          " proxy_buckets_lifetime_transform", e->type->name);
-            rv = APR_EGENERAL;
-        }
-    }
-    return rv;
-}
-
 enum rb_methods {
     RB_INIT = 0,
     RB_STREAM_CL,
@@ -792,7 +743,7 @@ static int ap_proxy_http_prefetch(apr_pool_t *p, request_rec *r,
      * encoding has been done by the extensions' handler, and
      * do not modify add_te_chunked's logic
      */
-    if (*old_te_val && strcasecmp(*old_te_val, "chunked") != 0) {
+    if (*old_te_val && ap_cstr_casecmp(*old_te_val, "chunked") != 0) {
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(01093)
                       "%s Transfer-Encoding is not supported", *old_te_val);
         return HTTP_INTERNAL_SERVER_ERROR;
@@ -1113,21 +1064,20 @@ static void process_proxy_header(request_rec *r, proxy_dir_conf *c,
     };
     int i;
     for (i = 0; date_hdrs[i]; ++i) {
-        if (!strcasecmp(date_hdrs[i], key)) {
+        if (!ap_cstr_casecmp(date_hdrs[i], key)) {
             apr_table_add(r->headers_out, key,
                           date_canon(r->pool, value));
             return;
         }
     }
     for (i = 0; transform_hdrs[i].name; ++i) {
-        if (!strcasecmp(transform_hdrs[i].name, key)) {
+        if (!ap_cstr_casecmp(transform_hdrs[i].name, key)) {
             apr_table_add(r->headers_out, key,
                           (*transform_hdrs[i].func)(r, c, value));
             return;
        }
     }
     apr_table_add(r->headers_out, key, value);
-    return;
 }
 
 /*
@@ -1198,10 +1148,11 @@ static void ap_proxy_read_headers(request_rec *r, request_rec *rr,
                                       r->uri, r->method);
                         *pread_len = len;
                         return;
-                    } else {
-                         ap_log_rerror(APLOG_MARK, APLOG_WARNING, 0, r, APLOGNO(01099)
-                                       "No HTTP headers returned by %s (%s)",
-                                       r->uri, r->method);
+                    }
+                    else {
+                        ap_log_rerror(APLOG_MARK, APLOG_WARNING, 0, r, APLOGNO(01099)
+                                      "No HTTP headers returned by %s (%s)",
+                                      r->uri, r->method);
                         return;
                     }
                 }
@@ -1326,11 +1277,7 @@ int ap_proxy_http_process_response(apr_pool_t * p, request_rec *r,
 
     dconf = ap_get_module_config(r->per_dir_config, &proxy_module);
 
-    do_100_continue = (worker->s->ping_timeout_set
-                       && (worker->s->ping_timeout >= 0)
-                       && (PROXYREQ_REVERSE == r->proxyreq)
-                       && !(apr_table_get(r->subprocess_env, "force-proxy-request-1.0"))
-                       && ap_request_has_body(r));
+    do_100_continue = PROXY_DO_100_CONTINUE(worker, r);
 
     bb = apr_brigade_create(p, c->bucket_alloc);
     pass_bb = apr_brigade_create(p, c->bucket_alloc);
@@ -1548,6 +1495,7 @@ int ap_proxy_http_process_response(apr_pool_t * p, request_rec *r,
             if (toclose) {
                 backend->close = 1;
                 if (toclose < 0) {
+                    proxy_run_detach_backend(r, backend);
                     return ap_proxyerror(r, HTTP_BAD_GATEWAY,
                                          "Malformed connection header");
                 }
@@ -1854,7 +1802,7 @@ int ap_proxy_http_process_response(apr_pool_t * p, request_rec *r,
                     }
 
                     /* Switch the allocator lifetime of the buckets */
-                    proxy_buckets_lifetime_transform(r, bb, pass_bb);
+                    ap_proxy_buckets_lifetime_transform(r, bb, pass_bb);
 
                     /* found the last brigade? */
                     if (APR_BUCKET_IS_EOS(APR_BRIGADE_LAST(pass_bb))) {
@@ -2004,12 +1952,12 @@ static int proxy_http_handler(request_rec *r, proxy_worker *worker,
      * and avoid a memory leak
      */
     apr_pool_t *p = r->pool;
-    apr_uri_t *uri = apr_palloc(p, sizeof(*uri));
+    apr_uri_t *uri;
 
     /* find the scheme */
     u = strchr(url, ':');
     if (u == NULL || u[1] != '/' || u[2] != '/' || u[3] == '\0')
-       return DECLINED;
+        return DECLINED;
     if ((u - url) > 14)
         return HTTP_BAD_REQUEST;
     scheme = apr_pstrmemdup(p, url, u - url);
@@ -2070,6 +2018,7 @@ static int proxy_http_handler(request_rec *r, proxy_worker *worker,
     }
 
     /* Step One: Determine Who To Connect To */
+    uri = apr_palloc(p, sizeof(*uri));
     if ((status = ap_proxy_determine_connection(p, r, conf, worker, backend,
                                             uri, &locurl, proxyname,
                                             proxyport, server_portstr,
@@ -2135,8 +2084,8 @@ static int proxy_http_handler(request_rec *r, proxy_worker *worker,
         /* Step Three: Create conn_rec */
         backconn = backend->connection;
         if (!backconn) {
-            if ((status = ap_proxy_connection_create(proxy_function, backend,
-                                                     c, r->server)) != OK)
+            if ((status = ap_proxy_connection_create_ex(proxy_function,
+                                                        backend, r)) != OK)
                 break;
             backconn = backend->connection;
 
@@ -2149,21 +2098,6 @@ static int proxy_http_handler(request_rec *r, proxy_worker *worker,
                 apr_table_setn(backend->connection->notes,
                                "proxy-request-hostname",
                                backend->ssl_hostname);
-            }
-
-            /* Step Three-and-a-Half: See if the socket is still connected (if
-             * desired). Note: Since ap_proxy_connect_backend just above does
-             * the same check (unconditionally), this step is not required when
-             * backend's socket/connection is reused (ie. no Step Three).
-             */
-            if (worker->s->ping_timeout_set && worker->s->ping_timeout < 0 &&
-                    !ap_proxy_is_socket_connected(backend->sock)) {
-                backend->close = 1;
-                ap_log_rerror(APLOG_MARK, APLOG_INFO, status, r, APLOGNO(02535)
-                              "socket check failed to %pI (%s)",
-                              worker->cp->addr, worker->s->hostname);
-                retry++;
-                continue;
             }
         }
 
@@ -2183,8 +2117,7 @@ static int proxy_http_handler(request_rec *r, proxy_worker *worker,
                                             flushall)) != OK) {
             proxy_run_detach_backend(r, backend);
             if ((status == HTTP_SERVICE_UNAVAILABLE) &&
-                 worker->s->ping_timeout_set &&
-                 worker->s->ping_timeout >= 0) {
+                    worker->s->ping_timeout_set) {
                 backend->close = 1;
                 ap_log_rerror(APLOG_MARK, APLOG_INFO, status, r, APLOGNO(01115)
                               "HTTP: 100-Continue failed to %pI (%s)",

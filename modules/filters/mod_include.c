@@ -347,8 +347,6 @@ static void debug_dump_tree(include_ctx_t *ctx, parse_node_t *root)
     if (root->right) root->right->dump_done = 0;
 
     debug_printf(ctx, "     --- End Parse Tree ---\n\n");
-
-    return;
 }
 
 #define DEBUG_INIT(ctx, filter, brigade) do { \
@@ -600,6 +598,7 @@ static void add_include_vars(request_rec *r)
     apr_table_setn(e, "DATE_GMT", LAZY_VALUE);
     apr_table_setn(e, "LAST_MODIFIED", LAZY_VALUE);
     apr_table_setn(e, "DOCUMENT_URI", r->uri);
+    apr_table_setn(e, "DOCUMENT_ARGS", r->args ? r->args : "");
     if (r->path_info && *r->path_info) {
         apr_table_setn(e, "DOCUMENT_PATH_INFO", r->path_info);
     }
@@ -1170,7 +1169,7 @@ static int parse_expr(include_ctx_t *ctx, const char *expr, int *was_error)
     parse_node_t *new, *root = NULL, *current = NULL;
     request_rec *r = ctx->r;
     request_rec *rr = NULL;
-    const char *error = "Invalid expression \"%s\" in file %s";
+    const char *error = APLOGNO(03188) "Invalid expression \"%s\" in file %s";
     const char *parse = expr;
     unsigned regex = 0;
 
@@ -1211,6 +1210,8 @@ static int parse_expr(include_ctx_t *ctx, const char *expr, int *was_error)
                 continue;
 
             default:
+                /* Intentional no APLOGNO */
+                /* error text provides APLOGNO */
                 ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, error, expr,
                               r->filename);
                 *was_error = 1;
@@ -1336,7 +1337,7 @@ static int parse_expr(include_ctx_t *ctx, const char *expr, int *was_error)
                 continue;
             }
 
-            error = "Unmatched ')' in \"%s\" in file %s";
+            error = APLOGNO(03189) "Unmatched ')' in \"%s\" in file %s";
             break;
 
         case TOKEN_NOT:
@@ -1361,6 +1362,8 @@ static int parse_expr(include_ctx_t *ctx, const char *expr, int *was_error)
             break;
         }
 
+        /* Intentional no APLOGNO */
+        /* error text provides APLOGNO */
         ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, error, expr, r->filename);
         *was_error = 1;
         return 0;
@@ -1557,18 +1560,20 @@ static int parse_expr(include_ctx_t *ctx, const char *expr, int *was_error)
 
         case TOKEN_RE:
             if (!error) {
-                error = "No operator before regex in expr \"%s\" in file %s";
+                error = APLOGNO(03190) "No operator before regex in expr \"%s\" in file %s";
             }
         case TOKEN_LBRACE:
             if (!error) {
-                error = "Unmatched '(' in \"%s\" in file %s";
+                error = APLOGNO(03191) "Unmatched '(' in \"%s\" in file %s";
             }
         default:
             if (!error) {
-                error = "internal parser error in \"%s\" in file %s";
+                error = APLOGNO(03192) "internal parser error in \"%s\" in file %s";
             }
 
-            ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, error, expr,r->filename);
+            /* Intentional no APLOGNO */
+            /* error text provides APLOGNO */
+            ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, error, expr, r->filename);
             *was_error = 1;
             return 0;
         }
@@ -1677,8 +1682,6 @@ static void ap_ssi_get_tag_and_value(include_ctx_t *ctx, char **tag,
     if (dodecode && *tag_val) {
         decodehtml(*tag_val);
     }
-
-    return;
 }
 
 static int find_file(request_rec *r, const char *directive, const char *tag,
@@ -1724,6 +1727,8 @@ static int find_file(request_rec *r, const char *directive, const char *tag,
 
         if (error_fmt) {
             ret = -1;
+            /* Intentional no APLOGNO */
+            /* error_fmt provides APLOGNO */
             ap_log_rerror(APLOG_MARK, APLOG_ERR,
                           rv, r, error_fmt, to_send, r->filename);
         }
@@ -1756,6 +1761,15 @@ static int find_file(request_rec *r, const char *directive, const char *tag,
                       "to tag %s in %s", tag, directive, r->filename);
         return -1;
     }
+}
+
+/*
+ * <!--#comment blah blah blah ... -->
+ */
+static apr_status_t handle_comment(include_ctx_t *ctx, ap_filter_t *f,
+                                   apr_bucket_brigade *bb)
+{
+    return APR_SUCCESS;
 }
 
 /*
@@ -1868,6 +1882,8 @@ static apr_status_t handle_include(include_ctx_t *ctx, ap_filter_t *f,
         }
 
         if (error_fmt) {
+            /* Intentional no APLOGNO */
+            /* error text is also sent to client */
             ap_log_rerror(APLOG_MARK, APLOG_ERR, rv, r, error_fmt, tag_val,
                     r->filename, status ? status : rr ? rr->status : 0);
             if (last_error) {
@@ -1951,25 +1967,25 @@ static apr_status_t handle_echo(include_ctx_t *ctx, ap_filter_t *f,
                 token = apr_strtok(d, ", \t", &last);
 
                 while (token) {
-                    if (!strcasecmp(token, "none")) {
+                    if (!ap_cstr_casecmp(token, "none")) {
                         /* do nothing */
                     }
-                    else if (!strcasecmp(token, "url")) {
+                    else if (!ap_cstr_casecmp(token, "url")) {
                         char *buf = apr_pstrdup(ctx->pool, echo_text);
                         ap_unescape_url(buf);
                         echo_text = buf;
                     }
-                    else if (!strcasecmp(token, "urlencoded")) {
+                    else if (!ap_cstr_casecmp(token, "urlencoded")) {
                         char *buf = apr_pstrdup(ctx->pool, echo_text);
                         ap_unescape_urlencoded(buf);
                         echo_text = buf;
                     }
-                    else if (!strcasecmp(token, "entity")) {
+                    else if (!ap_cstr_casecmp(token, "entity")) {
                         char *buf = apr_pstrdup(ctx->pool, echo_text);
                         decodehtml(buf);
                         echo_text = buf;
                     }
-                    else if (!strcasecmp(token, "base64")) {
+                    else if (!ap_cstr_casecmp(token, "base64")) {
                         echo_text = ap_pbase64decode(ctx->dpool, echo_text);
                     }
                     else {
@@ -1987,19 +2003,19 @@ static apr_status_t handle_echo(include_ctx_t *ctx, ap_filter_t *f,
                 token = apr_strtok(e, ", \t", &last);
 
                 while (token) {
-                    if (!strcasecmp(token, "none")) {
+                    if (!ap_cstr_casecmp(token, "none")) {
                         /* do nothing */
                     }
-                    else if (!strcasecmp(token, "url")) {
+                    else if (!ap_cstr_casecmp(token, "url")) {
                         echo_text = ap_escape_uri(ctx->dpool, echo_text);
                     }
-                    else if (!strcasecmp(token, "urlencoded")) {
+                    else if (!ap_cstr_casecmp(token, "urlencoded")) {
                         echo_text = ap_escape_urlencoded(ctx->dpool, echo_text);
                     }
-                    else if (!strcasecmp(token, "entity")) {
+                    else if (!ap_cstr_casecmp(token, "entity")) {
                         echo_text = ap_escape_html2(ctx->dpool, echo_text, 0);
                     }
-                    else if (!strcasecmp(token, "base64")) {
+                    else if (!ap_cstr_casecmp(token, "base64")) {
                         char *buf;
                         buf = ap_pbase64encode(ctx->dpool, (char *)echo_text);
                         echo_text = buf;
@@ -2589,25 +2605,25 @@ static apr_status_t handle_set(include_ctx_t *ctx, ap_filter_t *f,
                 token = apr_strtok(d, ", \t", &last);
 
                 while (token) {
-                    if (!strcasecmp(token, "none")) {
+                    if (!ap_cstr_casecmp(token, "none")) {
                         /* do nothing */
                     }
-                    else if (!strcasecmp(token, "url")) {
+                    else if (!ap_cstr_casecmp(token, "url")) {
                         char *buf = apr_pstrdup(ctx->pool, parsed_string);
                         ap_unescape_url(buf);
                         parsed_string = buf;
                     }
-                    else if (!strcasecmp(token, "urlencoded")) {
+                    else if (!ap_cstr_casecmp(token, "urlencoded")) {
                         char *buf = apr_pstrdup(ctx->pool, parsed_string);
                         ap_unescape_urlencoded(buf);
                         parsed_string = buf;
                     }
-                    else if (!strcasecmp(token, "entity")) {
+                    else if (!ap_cstr_casecmp(token, "entity")) {
                         char *buf = apr_pstrdup(ctx->pool, parsed_string);
                         decodehtml(buf);
                         parsed_string = buf;
                     }
-                    else if (!strcasecmp(token, "base64")) {
+                    else if (!ap_cstr_casecmp(token, "base64")) {
                         parsed_string = ap_pbase64decode(ctx->dpool, parsed_string);
                     }
                     else {
@@ -2625,19 +2641,19 @@ static apr_status_t handle_set(include_ctx_t *ctx, ap_filter_t *f,
                 token = apr_strtok(e, ", \t", &last);
 
                 while (token) {
-                    if (!strcasecmp(token, "none")) {
+                    if (!ap_cstr_casecmp(token, "none")) {
                         /* do nothing */
                     }
-                    else if (!strcasecmp(token, "url")) {
+                    else if (!ap_cstr_casecmp(token, "url")) {
                         parsed_string = ap_escape_uri(ctx->dpool, parsed_string);
                     }
-                    else if (!strcasecmp(token, "urlencoded")) {
+                    else if (!ap_cstr_casecmp(token, "urlencoded")) {
                         parsed_string = ap_escape_urlencoded(ctx->dpool, parsed_string);
                     }
-                    else if (!strcasecmp(token, "entity")) {
+                    else if (!ap_cstr_casecmp(token, "entity")) {
                         parsed_string = ap_escape_html2(ctx->dpool, parsed_string, 0);
                     }
-                    else if (!strcasecmp(token, "base64")) {
+                    else if (!ap_cstr_casecmp(token, "base64")) {
                         char *buf;
                         buf = ap_pbase64encode(ctx->dpool, (char *)parsed_string);
                         parsed_string = buf;
@@ -4154,6 +4170,7 @@ static int include_post_config(apr_pool_t *p, apr_pool_t *plog,
         ssi_pfn_register("endif", handle_endif);
         ssi_pfn_register("fsize", handle_fsize);
         ssi_pfn_register("config", handle_config);
+        ssi_pfn_register("comment", handle_comment);
         ssi_pfn_register("include", handle_include);
         ssi_pfn_register("flastmod", handle_flastmod);
         ssi_pfn_register("printenv", handle_printenv);

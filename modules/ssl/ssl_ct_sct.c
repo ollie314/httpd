@@ -25,19 +25,27 @@ APLOG_USE_MODULE(ssl_ct);
 static apr_status_t verify_signature(sct_fields_t *sctf,
                                      EVP_PKEY *pkey)
 {
-    EVP_MD_CTX ctx;
+    EVP_MD_CTX *ctx;
     int rc;
 
     if (sctf->signed_data == NULL) {
         return APR_EINVAL;
     }
 
-    EVP_MD_CTX_init(&ctx);
-    ap_assert(1 == EVP_VerifyInit(&ctx, EVP_sha256()));
-    ap_assert(1 == EVP_VerifyUpdate(&ctx, sctf->signed_data,
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    ctx = EVP_MD_CTX_create();
+#else
+    ctx = EVP_MD_CTX_new();
+#endif
+    ap_assert(1 == EVP_VerifyInit(ctx, EVP_sha256()));
+    ap_assert(1 == EVP_VerifyUpdate(ctx, sctf->signed_data,
                                     sctf->signed_data_len));
-    rc = EVP_VerifyFinal(&ctx, sctf->sig, sctf->siglen, pkey);
-    EVP_MD_CTX_cleanup(&ctx);
+    rc = EVP_VerifyFinal(ctx, sctf->sig, sctf->siglen, pkey);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    EVP_MD_CTX_destroy(ctx);
+#else
+    EVP_MD_CTX_free(ctx);
+#endif
 
     return rc == 1 ? APR_SUCCESS : APR_EINVAL;
 }
@@ -71,13 +79,11 @@ apr_status_t sct_verify_signature(conn_rec *c, sct_fields_t *sctf,
             }
             rv = verify_signature(sctf, pubkey);
             if (rv != APR_SUCCESS) {
-                ap_log_cerror(APLOG_MARK, 
-                              APLOG_ERR,
-                              rv, c,
-                              APLOGNO(02767) "verify_signature failed");
+                ap_log_cerror(APLOG_MARK, APLOG_ERR, rv, c, APLOGNO(02767)
+                              "verify_signature failed");
             }
             else {
-                ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c,
+                ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, c, APLOGNO(03037)
                               "verify_signature succeeded");
             }
             return rv;
@@ -194,7 +200,7 @@ apr_status_t sct_parse(const char *source,
         apr_size_t avail;
         int der_length;
         unsigned char *mem;
-        unsigned char *orig_mem;
+        unsigned char *orig_mem = NULL;
 
         der_length = i2d_X509(cc->leaf, NULL);
         if (der_length < 0) {
@@ -250,7 +256,9 @@ apr_status_t sct_parse(const char *source,
             ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s,
                          APLOGNO(02773) "Failed to reconstruct signed data for "
                          "SCT");
-            free(orig_mem);
+            if (orig_mem != NULL) {
+                free(orig_mem);
+            }
         }
         else {
             if (avail != 0) {
@@ -266,18 +274,16 @@ apr_status_t sct_parse(const char *source,
         }
     }
 
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s,
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, APLOGNO(03038)
                  "SCT from %s: version %d timestamp %s hash alg %d sig alg %d",
                  source, fields->version, fields->timestr,
                  fields->hash_alg, fields->sig_alg);
-#if AP_MODULE_MAGIC_AT_LEAST(20130702,2)
     ap_log_data(APLOG_MARK, APLOG_DEBUG, s, "Log Id",
                 fields->logid, sizeof(fields->logid),
                 AP_LOG_DATA_SHOW_OFFSET);
     ap_log_data(APLOG_MARK, APLOG_DEBUG, s, "Signature",
                 fields->sig, fields->siglen,
                 AP_LOG_DATA_SHOW_OFFSET);
-#endif /* httpd has ap_log_*data() */
 
     ap_assert(!(fields->signed_data && rv != APR_SUCCESS));
 
