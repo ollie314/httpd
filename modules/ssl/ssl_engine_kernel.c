@@ -114,6 +114,7 @@ static int has_buffered_data(request_rec *r)
     return result;
 }
 
+#ifdef HAVE_TLSEXT
 static int ap_array_same_str_set(apr_array_header_t *s1, apr_array_header_t *s2)
 {
     int i;
@@ -215,6 +216,7 @@ static int ssl_server_compatible(server_rec *s1, server_rec *s2)
     
     return 1;
 }
+#endif
 
 /*
  *  Post Read Request Handler
@@ -727,6 +729,7 @@ int ssl_hook_Access(request_rec *r)
                      * on this connection.
                      */
                     apr_table_setn(r->notes, "ssl-renegotiate-forbidden", "verify-client");
+                    SSL_set_verify(ssl, verify_old, ssl_callback_SSLVerify);
                     return HTTP_FORBIDDEN;
                 }
                 /* optimization */
@@ -883,7 +886,14 @@ int ssl_hook_Access(request_rec *r)
 
             cert = SSL_get_peer_certificate(ssl);
 
-            if (!cert_stack && cert) {
+            if (!cert_stack || (sk_X509_num(cert_stack) == 0)) {
+                if (!cert) {
+                    ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(02222)
+                                  "Cannot find peer certificate chain");
+
+                    return HTTP_FORBIDDEN;
+                }
+
                 /* client cert is in the session cache, but there is
                  * no chain, since ssl3_get_client_certificate()
                  * sk_X509_shift-ed the peer cert out of the chain.
@@ -891,13 +901,6 @@ int ssl_hook_Access(request_rec *r)
                  */
                 cert_stack = sk_X509_new_null();
                 sk_X509_push(cert_stack, cert);
-            }
-
-            if (!cert_stack || (sk_X509_num(cert_stack) == 0)) {
-                ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(02222)
-                              "Cannot find peer certificate chain");
-
-                return HTTP_FORBIDDEN;
             }
 
             if (!(cert_store ||
@@ -1018,7 +1021,7 @@ int ssl_hook_Access(request_rec *r)
                 return HTTP_FORBIDDEN;
             }
 
-            /* Full renegotiation successfull, we now have handshaken with
+            /* Full renegotiation successful, we now have handshaken with
              * this server's parameters.
              */
             sslconn->server = r->server;
@@ -1160,7 +1163,7 @@ int ssl_hook_Access(request_rec *r)
  *  Fake a Basic authentication from the X509 client certificate.
  *
  *  This must be run fairly early on to prevent a real authentication from
- *  occuring, in particular it must be run before anything else that
+ *  occurring, in particular it must be run before anything else that
  *  authenticates a user.  This means that the Module statement for this
  *  module should be LAST in the Configuration file.
  */
@@ -2303,7 +2306,9 @@ int ssl_callback_SessionTicket(SSL *ssl,
         }
 
         memcpy(keyname, ticket_key->key_name, 16);
-        RAND_bytes(iv, EVP_MAX_IV_LENGTH);
+        if (RAND_bytes(iv, EVP_MAX_IV_LENGTH) != 1) {
+            return -1;
+        }
         EVP_EncryptInit_ex(cipher_ctx, EVP_aes_128_cbc(), NULL,
                            ticket_key->aes_key, iv);
         HMAC_Init_ex(hctx, ticket_key->hmac_secret, 16, tlsext_tick_md(), NULL);

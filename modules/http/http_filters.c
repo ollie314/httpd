@@ -1246,9 +1246,9 @@ AP_CORE_DECLARE_NONSTD(apr_status_t) ap_http_header_filter(ap_filter_t *f,
     }
 
     conf = ap_get_core_module_config(r->server->module_config);
-    if (conf->http_conformance & AP_HTTP_CONFORMANCE_STRICT) {
+    if (conf->http_conformance != AP_HTTP_CONFORMANCE_UNSAFE) {
         int ok = check_headers(r);
-        if (!ok && !(conf->http_conformance & AP_HTTP_CONFORMANCE_LOGONLY)) {
+        if (!ok) {
             ap_die(HTTP_INTERNAL_SERVER_ERROR, r);
             return AP_FILTER_ERROR;
         }
@@ -1319,7 +1319,7 @@ AP_CORE_DECLARE_NONSTD(apr_status_t) ap_http_header_filter(ap_filter_t *f,
     }
 
     /*
-     * Control cachability for non-cachable responses if not already set by
+     * Control cachability for non-cacheable responses if not already set by
      * some other part of the server configuration.
      */
     if (r->no_cache && !apr_table_get(r->headers_out, "Expires")) {

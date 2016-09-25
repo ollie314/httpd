@@ -525,14 +525,35 @@
  *                         and optional ssl_engine_set() to mod_ssl.h.
  * 20160315.3 (2.5.0-dev)  Add childtags to dav_error.
  * 20160608.1 (2.5.0-dev)  Rename ap_casecmpstr[n]() to ap_cstr_casecmp[n]()
+ * 20160608.2 (2.5.0-dev)  Add dav_get_provider_name.
+ * 20160608.3 (2.5.0-dev)  Add dav_begin_multistatus, dav_send_one_response,
+ *                         dav_finish_multistatus, dav_send_multistatus,
+ *                         dav_handle_err, dav_failed_proppatch,
+ *                         dav_success_proppatch.
+ * 20160608.4 (2.5.0-dev)  Add dav_acl_provider, dav_acl_provider_register
+ *                         dav_get_acl_providers.
+ * 20160608.5 (2.5.0-dev)  Add ap_proxy_check_backend(), and tmp_bb to
+ *                         struct proxy_conn_rec.
+ * 20160608.6 (2.5.0-dev)  Add ap_scan_http_field_content, ap_scan_http_token
+ *                         and ap_get_http_token
+ * 20160608.7 (2.5.0-dev)  Add ap_check_pipeline().
+ * 20160608.8 (2.5.0-dev)  Rename ap_proxy_check_backend() to
+ *                         ap_proxy_check_connection().
+ * 20160608.9 (2.5.0-dev)  Renamed AP_HTTP_CONFORMANCE_LIBERAL to 
+ *                         AP_HTTP_CONFORMANCE_UNSAFE, and
+ *                         eliminated AP_HTTP_CONFORMANCE_LOGONLY
+ * 20160617.1 (2.5.0-dev)  Added http_whitespace and http_methods to
+ *                         core_server_config
+ * 20160629.1 (2.5.0-dev)  Dropped http_whitespace from core_server_config
+ * 20160629.2 (2.5.0-dev)  Replaced fold w/multiple flags for ap_[r]getline()
  */
 
 #define MODULE_MAGIC_COOKIE 0x41503235UL /* "AP25" */
 
 #ifndef MODULE_MAGIC_NUMBER_MAJOR
-#define MODULE_MAGIC_NUMBER_MAJOR 20160608
+#define MODULE_MAGIC_NUMBER_MAJOR 20160629
 #endif
-#define MODULE_MAGIC_NUMBER_MINOR 1                 /* 0...n */
+#define MODULE_MAGIC_NUMBER_MINOR 2                 /* 0...n */
 
 /**
  * Determine if the server's current MODULE_MAGIC_NUMBER is at least a

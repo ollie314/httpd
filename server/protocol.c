@@ -204,7 +204,7 @@ AP_DECLARE(apr_time_t) ap_rationalize_mtime(request_rec *r, apr_time_t mtime)
  * APR_ENOSPC is returned if there is not enough buffer space.
  * Other errors may be returned on other errors.
  *
- * The LF is *not* returned in the buffer.  Therefore, a *read of 0
+ * The [CR]LF are *not* returned in the buffer.  Therefore, a *read of 0
  * indicates that an empty line was read.
  *
  * Notes: Because the buffer uses 1 char for NUL, the most we can return is
@@ -215,13 +215,15 @@ AP_DECLARE(apr_time_t) ap_rationalize_mtime(request_rec *r, apr_time_t mtime)
  */
 AP_DECLARE(apr_status_t) ap_rgetline_core(char **s, apr_size_t n,
                                           apr_size_t *read, request_rec *r,
-                                          int fold, apr_bucket_brigade *bb)
+                                          int flags, apr_bucket_brigade *bb)
 {
     apr_status_t rv;
     apr_bucket *e;
     apr_size_t bytes_handled = 0, current_alloc = 0;
     char *pos, *last_char = *s;
     int do_alloc = (*s == NULL), saw_eos = 0;
+    int fold = flags & AP_GETLINE_FOLD;
+    int crlf = flags & AP_GETLINE_CRLF;
 
     /*
      * Initialize last_char as otherwise a random value will be compared
@@ -325,6 +327,13 @@ AP_DECLARE(apr_status_t) ap_rgetline_core(char **s, apr_size_t n,
         if (last_char && (*last_char == APR_ASCII_LF)) {
             break;
         }
+    }
+
+    if (crlf && (last_char <= *s || last_char[-1] != APR_ASCII_CR)) {
+        *last_char = '\0';
+        bytes_handled = last_char - *s;
+        *read = bytes_handled;
+        return APR_EINVAL;
     }
 
     /* Now NUL-terminate the string at the end of the line;
@@ -471,7 +480,7 @@ AP_DECLARE(apr_status_t) ap_rgetline(char **s, apr_size_t n,
 }
 #endif
 
-AP_DECLARE(int) ap_getline(char *s, int n, request_rec *r, int fold)
+AP_DECLARE(int) ap_getline(char *s, int n, request_rec *r, int flags)
 {
     char *tmp_s = s;
     apr_status_t rv;
@@ -479,7 +488,7 @@ AP_DECLARE(int) ap_getline(char *s, int n, request_rec *r, int fold)
     apr_bucket_brigade *tmp_bb;
 
     tmp_bb = apr_brigade_create(r->pool, r->connection->bucket_alloc);
-    rv = ap_rgetline(&tmp_s, n, &len, r, fold, tmp_bb);
+    rv = ap_rgetline(&tmp_s, n, &len, r, flags, tmp_bb);
     apr_brigade_destroy(tmp_bb);
 
     /* Map the out-of-space condition to the old API. */
@@ -559,19 +568,30 @@ AP_CORE_DECLARE(void) ap_parse_uri(request_rec *r, const char *uri)
     }
 }
 
+/* get the length of the field name for logging, but no more than 80 bytes */
+#define LOG_NAME_MAX_LEN 80
+static int field_name_len(const char *field)
+{
+    const char *end = ap_strchr_c(field, ':');
+    if (end == NULL || end - field > LOG_NAME_MAX_LEN)
+        return LOG_NAME_MAX_LEN;
+    return end - field;
+}
+
 static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
 {
-    const char *ll;
-    const char *uri;
-    const char *pro;
-
-    unsigned int major = 1, minor = 0;   /* Assume HTTP/1.0 if non-"HTTP" protocol */
-    char http[5];
+    enum {
+        rrl_none, rrl_badmethod, rrl_badwhitespace, rrl_excesswhitespace,
+        rrl_missinguri, rrl_baduri, rrl_badprotocol, rrl_trailingtext,
+        rrl_badmethod09, rrl_reject09
+    } deferred_error = rrl_none;
+    char *ll;
+    char *uri;
     apr_size_t len;
     int num_blank_lines = DEFAULT_LIMIT_BLANK_LINES;
     core_server_config *conf = ap_get_core_module_config(r->server->module_config);
-    int strict = conf->http_conformance & AP_HTTP_CONFORMANCE_STRICT;
-    int enforce_strict = !(conf->http_conformance & AP_HTTP_CONFORMANCE_LOGONLY);
+    int strict = (conf->http_conformance != AP_HTTP_CONFORMANCE_UNSAFE);
+    int stricturi = (conf->http_stricturi != AP_HTTP_URI_UNSAFE);
 
     /* Read past empty lines until we get a real request line,
      * a read error, the connection closes (EOF), or we timeout.
@@ -596,7 +616,7 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
          */
         r->the_request = NULL;
         rv = ap_rgetline(&(r->the_request), (apr_size_t)(r->server->limit_req_line + 2),
-                         &len, r, 0, bb);
+                         &len, r, strict ? AP_GETLINE_CRLF : 0, bb);
 
         if (rv != APR_SUCCESS) {
             r->request_time = apr_time_now();
@@ -627,120 +647,281 @@ static int read_request_line(request_rec *r, apr_bucket_brigade *bb)
     }
 
     r->request_time = apr_time_now();
-    ll = r->the_request;
-    r->method = ap_getword_white(r->pool, &ll);
 
-    uri = ap_getword_white(r->pool, &ll);
+    r->method = r->the_request;
 
-    if (!*r->method || !*uri) {
-        r->status    = HTTP_BAD_REQUEST;
-        r->proto_num = HTTP_VERSION(1,0);
-        r->protocol  = "HTTP/1.0";
-        return 0;
+    /* If there is whitespace before a method, skip it and mark in error */
+    if (apr_isspace(*r->method)) {
+        deferred_error = rrl_badwhitespace; 
+        for ( ; apr_isspace(*r->method); ++r->method)
+            ; 
     }
 
-    /* Provide quick information about the request method as soon as known */
-
-    r->method_number = ap_method_number_of(r->method);
-    if (r->method_number == M_GET && r->method[0] == 'H') {
-        r->header_only = 1;
+    /* Scan the method up to the next whitespace, ensure it contains only
+     * valid http-token characters, otherwise mark in error
+     */
+    if (strict) {
+        ll = (char*) ap_scan_http_token(r->method);
+        if (((ll == r->method) || (*ll && !apr_isspace(*ll)))
+                && deferred_error == rrl_none) {
+            deferred_error = rrl_badmethod;
+            ll = strpbrk(ll, "\t\n\v\f\r ");
+        }
+    }
+    else {
+        ll = strpbrk(r->method, "\t\n\v\f\r ");
     }
 
-    ap_parse_uri(r, uri);
-    if (r->status != HTTP_OK) {
-        r->proto_num = HTTP_VERSION(1,0);
-        r->protocol  = "HTTP/1.0";
-        return 0;
+    /* Verify method terminated with a single SP, or mark as specific error */
+    if (!ll) {
+        if (deferred_error == rrl_none)
+            deferred_error = rrl_missinguri;
+        r->protocol = uri = "";
+        len = 0;
+        goto rrl_done;
+    }
+    else if (strict && ll[0] && (ll[0] != ' ' || apr_isspace(ll[1]))
+                 && deferred_error == rrl_none) {
+        deferred_error = rrl_excesswhitespace; 
     }
 
-    if (ll[0]) {
+    /* Advance uri pointer over leading whitespace, NUL terminate the method
+     * If non-SP whitespace is encountered, mark as specific error
+     */
+    for (uri = ll; apr_isspace(*uri); ++uri) 
+        if (ap_strchr_c("\t\n\v\f\r", *uri)
+                && deferred_error == rrl_none)
+            deferred_error = rrl_badwhitespace; 
+    *ll = '\0';
+
+    if (!*uri && deferred_error == rrl_none)
+        deferred_error = rrl_missinguri;
+
+    /* Scan the URI up to the next whitespace, ensure it contains only
+     * valid RFC3986 characters, otherwise mark in error
+     */
+    if (stricturi) {
+        ll = (char*) ap_scan_http_uri_safe(uri);
+        if (ll == uri || (*ll && !apr_isspace(*ll))) {
+            deferred_error = rrl_baduri;
+            ll = strpbrk(ll, "\t\n\v\f\r ");
+        }
+    }
+    else {
+        ll = strpbrk(uri, "\t\n\v\f\r ");
+    }
+
+    /* Verify method terminated with a single SP, or mark as specific error */
+    if (!ll) {
+        r->protocol = "";
+        len = 0;
+        goto rrl_done;
+    }
+    else if (strict && ll[0] && (ll[0] != ' ' || apr_isspace(ll[1]))
+            && deferred_error == rrl_none) {
+        deferred_error = rrl_excesswhitespace; 
+    }
+
+    /* Advance protocol pointer over leading whitespace, NUL terminate the uri
+     * If non-SP whitespace is encountered, mark as specific error
+     */
+    for (r->protocol = ll; apr_isspace(*r->protocol); ++r->protocol) 
+        if (ap_strchr_c("\t\n\v\f\r", *r->protocol)
+                && deferred_error == rrl_none)
+            deferred_error = rrl_badwhitespace; 
+    *ll = '\0';
+
+    /* Scan the protocol up to the next whitespace, validation comes later */
+    if (!(ll = strpbrk(r->protocol, " \t\n\v\f\r"))) {
+        len = strlen(r->protocol);
+        goto rrl_done;
+    }
+    len = ll - r->protocol;
+
+    /* Advance over trailing whitespace, if found mark in error,
+     * determine if trailing text is found, unconditionally mark in error,
+     * finally NUL terminate the protocol string
+     */
+    if (strict && *ll) {
+        deferred_error = rrl_excesswhitespace;
+    }
+    else {
+        for ( ; apr_isspace(*ll); ++ll)
+            if (ap_strchr_c("\t\n\v\f\r", *ll)
+                    && deferred_error == rrl_none)
+                deferred_error = rrl_badwhitespace; 
+        if (*ll && deferred_error == rrl_none)
+            deferred_error = rrl_trailingtext;
+    }
+    *((char *)r->protocol + len) = '\0';
+
+rrl_done:
+    /* For internal integrety and palloc efficiency, reconstruct the_request
+     * in one palloc, using only single SP characters, per spec.
+     */
+    r->the_request = apr_pstrcat(r->pool, r->method, *uri ? " " : NULL, uri,
+                                 *r->protocol ? " " : NULL, r->protocol, NULL);
+
+    if (len == 8
+            && r->protocol[0] == 'H' && r->protocol[1] == 'T'
+            && r->protocol[2] == 'T' && r->protocol[3] == 'P'
+            && r->protocol[4] == '/' && apr_isdigit(r->protocol[5])
+            && r->protocol[6] == '.' && apr_isdigit(r->protocol[7])
+            && r->protocol[5] != '0') {
         r->assbackwards = 0;
-        pro = ll;
-        len = strlen(ll);
+        r->proto_num = HTTP_VERSION(r->protocol[5] - '0', r->protocol[7] - '0');
+    }
+    else if (len == 8
+                 && (r->protocol[0] == 'H' || r->protocol[0] == 'h')
+                 && (r->protocol[1] == 'T' || r->protocol[1] == 't')
+                 && (r->protocol[2] == 'T' || r->protocol[2] == 't')
+                 && (r->protocol[3] == 'P' || r->protocol[3] == 'p')
+                 && r->protocol[4] == '/' && apr_isdigit(r->protocol[5])
+                 && r->protocol[6] == '.' && apr_isdigit(r->protocol[7])
+                 && r->protocol[5] != '0') {
+        r->assbackwards = 0;
+        r->proto_num = HTTP_VERSION(r->protocol[5] - '0', r->protocol[7] - '0');
+        if (strict && deferred_error == rrl_none)
+            deferred_error = rrl_badprotocol;
+        else
+            memcpy((char*)r->protocol, "HTTP", 4);
+    }
+    else if (r->protocol[0]) {
+        r->assbackwards = 0;
+        r->proto_num = HTTP_VERSION(1,0);
+        /* Defer setting the r->protocol string till error msg is composed */
+        if (strict && deferred_error == rrl_none)
+            deferred_error = rrl_badprotocol;
+        else
+            r->protocol  = "HTTP/1.0";
     }
     else {
         r->assbackwards = 1;
-        pro = "HTTP/0.9";
-        len = 8;
-        if (conf->http09_enable == AP_HTTP09_DISABLE) {
-                r->status = HTTP_VERSION_NOT_SUPPORTED;
-                r->protocol = apr_pstrmemdup(r->pool, pro, len);
-                /* If we deny 0.9, send error message with 1.x */
-                r->assbackwards = 0;
-                r->proto_num = HTTP_VERSION(0, 9);
-                r->connection->keepalive = AP_CONN_CLOSE;
-                ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02401)
-                              "HTTP/0.9 denied by server configuration");
-                return 0;
-        }
+        r->protocol = "HTTP/0.9";
+        r->proto_num = HTTP_VERSION(0, 9);
     }
-    r->protocol = apr_pstrmemdup(r->pool, pro, len);
 
-    /* Avoid sscanf in the common case */
-    if (len == 8
-        && pro[0] == 'H' && pro[1] == 'T' && pro[2] == 'T' && pro[3] == 'P'
-        && pro[4] == '/' && apr_isdigit(pro[5]) && pro[6] == '.'
-        && apr_isdigit(pro[7])) {
-        r->proto_num = HTTP_VERSION(pro[5] - '0', pro[7] - '0');
+    /* Determine the method_number and parse the uri prior to invoking error
+     * handling, such that these fields are available for subsitution
+     */
+    r->method_number = ap_method_number_of(r->method);
+    if (r->method_number == M_GET && r->method[0] == 'H')
+        r->header_only = 1;
+
+    ap_parse_uri(r, uri);
+
+    /* With the request understood, we can consider HTTP/0.9 specific errors */
+    if (r->proto_num == HTTP_VERSION(0, 9) && deferred_error == rrl_none) {
+        if (conf->http09_enable == AP_HTTP09_DISABLE)
+            deferred_error = rrl_reject09;
+        else if (strict && (r->method_number != M_GET || r->header_only))
+            deferred_error = rrl_badmethod09;
     }
-    else {
-        if (strict) {
+
+    /* Now that the method, uri and protocol are all processed,
+     * we can safely resume any deferred error reporting
+     */
+    if (deferred_error != rrl_none) {
+        if (deferred_error == rrl_badmethod)
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03445)
+                          "HTTP Request Line; Invalid method token: '%.*s'",
+                          field_name_len(r->method), r->method);
+        else if (deferred_error == rrl_badmethod09)
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03444)
+                          "HTTP Request Line; Invalid method token: '%.*s'"
+                          " (only GET is allowed for HTTP/0.9 requests)",
+                          field_name_len(r->method), r->method);
+        else if (deferred_error == rrl_missinguri)
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03446)
+                          "HTTP Request Line; Missing URI");
+        else if (deferred_error == rrl_baduri)
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03454)
+                          "HTTP Request Line; URI incorrectly encoded: '%.*s'",
+                          field_name_len(r->uri), r->uri);
+        else if (deferred_error == rrl_badwhitespace)
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03447)
+                          "HTTP Request Line; Invalid whitespace");
+        else if (deferred_error == rrl_excesswhitespace)
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03448)
+                          "HTTP Request Line; Excess whitespace "
+                          "(disallowed by HttpProtocolOptions Strict");
+        else if (deferred_error == rrl_trailingtext)
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03449)
+                          "HTTP Request Line; Extraneous text found '%.*s' "
+                          "(perhaps whitespace was injected?)",
+                          field_name_len(ll), ll);
+        else if (deferred_error == rrl_reject09)
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02401)
+                          "HTTP Request Line; Rejected HTTP/0.9 request");
+        else if (deferred_error == rrl_badprotocol)
             ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02418)
-                          "Invalid protocol '%s'", r->protocol);
-            if (enforce_strict) {
-                r->proto_num = HTTP_VERSION(1,0);
-                r->protocol  = "HTTP/1.0";
-                r->connection->keepalive = AP_CONN_CLOSE;
-                r->status = HTTP_BAD_REQUEST;
-                return 0;
-            }
-        }
-        if (3 == sscanf(r->protocol, "%4s/%u.%u", http, &major, &minor)
-            && (ap_cstr_casecmp("http", http) == 0)
-            && (minor < HTTP_VERSION(1, 0)) ) { /* don't allow HTTP/0.1000 */
-            r->proto_num = HTTP_VERSION(major, minor);
-        }
-        else {
-            r->proto_num = HTTP_VERSION(1, 0);
-        }
+                          "HTTP Request Line; Unrecognized protocol '%.*s' "
+                          "(perhaps whitespace was injected?)",
+                          field_name_len(r->protocol), r->protocol);
+        r->status = HTTP_BAD_REQUEST;
+        goto rrl_failed;
+    }
+
+    if (conf->http_methods == AP_HTTP_METHODS_REGISTERED
+            && r->method_number == M_INVALID) {
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02423)
+                      "HTTP Request Line; Unrecognized HTTP method: '%.*s' "
+                      "(disallowed by RegisteredMethods)",
+                      field_name_len(r->method), r->method);
+        r->status = HTTP_NOT_IMPLEMENTED;
+        /* This can't happen in an HTTP/0.9 request, we verified GET above */
+        return 0;
+    }
+
+    if (r->status != HTTP_OK) {
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03450)
+                      "HTTP Request Line; Unable to parse URI: '%.*s'",
+                      field_name_len(r->uri), r->uri);
+        goto rrl_failed;
     }
 
     if (strict) {
-        int err = 0;
-        if (ap_has_cntrl(r->the_request)) {
+        /* No sense re-testing here for what was evaulated above */
+        if (!stricturi && ap_has_cntrl(r->the_request)) {
             ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02420)
-                          "Request line must not contain control characters");
-            err = HTTP_BAD_REQUEST;
+                          "HTTP Request Line; URI must not contain control"
+                          " characters");
+            r->status = HTTP_BAD_REQUEST;
+            goto rrl_failed;
         }
         if (r->parsed_uri.fragment) {
             /* RFC3986 3.5: no fragment */
             ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02421)
-                          "URI must not contain a fragment");
-            err = HTTP_BAD_REQUEST;
+                          "HTTP Request Line; URI must not contain a fragment");
+            r->status = HTTP_BAD_REQUEST;
+            goto rrl_failed;
         }
-        else if (r->parsed_uri.user || r->parsed_uri.password) {
+        if (r->parsed_uri.user || r->parsed_uri.password) {
             ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02422)
-                          "URI must not contain a username/password");
-            err = HTTP_BAD_REQUEST;
-        }
-        else if (r->method_number == M_INVALID) {
-            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02423)
-                          "Invalid HTTP method string: %s", r->method);
-            err = HTTP_NOT_IMPLEMENTED;
-        }
-        else if (r->assbackwards == 0 && r->proto_num < HTTP_VERSION(1, 0)) {
-            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02424)
-                          "HTTP/0.x does not take a protocol");
-            err = HTTP_BAD_REQUEST;
-        }
-
-        if (err && enforce_strict) {
-            r->status = err;
-            return 0;
+                          "HTTP Request Line; URI must not contain a "
+                          "username/password");
+            r->status = HTTP_BAD_REQUEST;
+            goto rrl_failed;
         }
     }
 
     return 1;
+
+rrl_failed:
+    if (r->proto_num == HTTP_VERSION(0, 9)) {
+        /* Send all parsing and protocol error response with 1.x behavior,
+         * and reserve 505 errors for actual HTTP protocols presented.
+         * As called out in RFC7230 3.5, any errors parsing the protocol
+         * from the request line are nearly always misencoded HTTP/1.x
+         * requests. Only a valid 0.9 request with no parsing errors
+         * at all may be treated as a simple request, if allowed.
+         */
+        r->assbackwards = 0;
+        r->connection->keepalive = AP_CONN_CLOSE;
+        r->proto_num = HTTP_VERSION(1, 0);
+        r->protocol  = "HTTP/1.0";
+    }
+    return 0;
 }
 
 static int table_do_fn_check_lengths(void *r_, const char *key,
@@ -752,24 +933,11 @@ static int table_do_fn_check_lengths(void *r_, const char *key,
 
     r->status = HTTP_BAD_REQUEST;
     apr_table_setn(r->notes, "error-notes",
-                   apr_pstrcat(r->pool, "Size of a request header field "
-                               "after merging exceeds server limit.<br />"
-                               "\n<pre>\n",
-                               ap_escape_html(r->pool, key),
-                               "</pre>\n", NULL));
-    ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00560) "Request header "
-                  "exceeds LimitRequestFieldSize after merging: %s", key);
+                   "Size of a request header field exceeds server limit.");
+    ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00560) "Request "
+                  "header exceeds LimitRequestFieldSize after merging: %.*s",
+                  field_name_len(key), key);
     return 0;
-}
-
-/* get the length of the field name for logging, but no more than 80 bytes */
-#define LOG_NAME_MAX_LEN 80
-static int field_name_len(const char *field)
-{
-    const char *end = ap_strchr_c(field, ':');
-    if (end == NULL || end - field > LOG_NAME_MAX_LEN)
-        return LOG_NAME_MAX_LEN;
-    return end - field;
 }
 
 AP_DECLARE(void) ap_get_mime_headers_core(request_rec *r, apr_bucket_brigade *bb)
@@ -783,6 +951,7 @@ AP_DECLARE(void) ap_get_mime_headers_core(request_rec *r, apr_bucket_brigade *bb
     int fields_read = 0;
     char *tmp_field;
     core_server_config *conf = ap_get_core_module_config(r->server->module_config);
+    int strict = (conf->http_conformance != AP_HTTP_CONFORMANCE_UNSAFE);
 
     /*
      * Read header lines until we get the empty separator line, a read error,
@@ -790,11 +959,10 @@ AP_DECLARE(void) ap_get_mime_headers_core(request_rec *r, apr_bucket_brigade *bb
      */
     while(1) {
         apr_status_t rv;
-        int folded = 0;
 
         field = NULL;
         rv = ap_rgetline(&field, r->server->limit_req_fieldsize + 2,
-                         &len, r, 0, bb);
+                         &len, r, strict ? AP_GETLINE_CRLF : 0, bb);
 
         if (rv != APR_SUCCESS) {
             if (APR_STATUS_IS_TIMEUP(rv)) {
@@ -809,183 +977,218 @@ AP_DECLARE(void) ap_get_mime_headers_core(request_rec *r, apr_bucket_brigade *bb
              * exceeds the configured limit for a field size.
              */
             if (rv == APR_ENOSPC) {
-                const char *field_escaped;
-                if (field && len) {
-                    /* ensure ap_escape_html will terminate correctly */
-                    field[len - 1] = '\0';
-                    field_escaped = ap_escape_html(r->pool, field);
-                }
-                else {
-                    field_escaped = field = "";
-                }
-
                 apr_table_setn(r->notes, "error-notes",
-                               apr_psprintf(r->pool,
-                                           "Size of a request header field "
-                                           "exceeds server limit.<br />\n"
-                                           "<pre>\n%.*s\n</pre>\n", 
-                                           field_name_len(field_escaped),
-                                           field_escaped));
+                               "Size of a request header field "
+                               "exceeds server limit.");
                 ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00561)
                               "Request header exceeds LimitRequestFieldSize%s"
                               "%.*s",
-                              *field ? ": " : "",
-                              field_name_len(field), field);
+                              (field && *field) ? ": " : "",
+                              (field) ? field_name_len(field) : 0,
+                              (field) ? field : "");
             }
             return;
         }
 
-        if (last_field != NULL) {
-            if ((len > 0) && ((*field == '\t') || *field == ' ')) {
-                /* This line is a continuation of the preceding line(s),
-                 * so append it to the line that we've set aside.
-                 * Note: this uses a power-of-two allocator to avoid
-                 * doing O(n) allocs and using O(n^2) space for
-                 * continuations that span many many lines.
-                 */
-                apr_size_t fold_len = last_len + len + 1; /* trailing null */
+        /* For all header values, and all obs-fold lines, the presence of
+         * additional whitespace is a no-op, so collapse trailing whitespace
+         * to save buffer allocation and optimize copy operations.
+         * Do not remove the last single whitespace under any condition.
+         */
+        while (len > 1 && (field[len-1] == '\t' || field[len-1] == ' ')) {
+            field[--len] = '\0';
+        } 
 
-                if (fold_len >= (apr_size_t)(r->server->limit_req_fieldsize)) {
-                    const char *field_escaped;
+        if (*field == '\t' || *field == ' ') {
 
-                    r->status = HTTP_BAD_REQUEST;
-                    /* report what we have accumulated so far before the
-                     * overflow (last_field) as the field with the problem
-                     */
-                    field_escaped = ap_escape_html(r->pool, last_field);
-                    apr_table_setn(r->notes, "error-notes",
-                                   apr_psprintf(r->pool,
-                                               "Size of a request header field "
-                                               "after folding "
-                                               "exceeds server limit.<br />\n"
-                                               "<pre>\n%.*s\n</pre>\n", 
-                                               field_name_len(field_escaped), 
-                                               field_escaped));
-                    ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00562)
-                                  "Request header exceeds LimitRequestFieldSize "
-                                  "after folding: %.*s",
-                                  field_name_len(last_field), last_field);
-                    return;
-                }
+            /* Append any newly-read obs-fold line onto the preceding
+             * last_field line we are processing
+             */
+            apr_size_t fold_len;
 
-                if (fold_len > alloc_len) {
-                    char *fold_buf;
-                    alloc_len += alloc_len;
-                    if (fold_len > alloc_len) {
-                        alloc_len = fold_len;
-                    }
-                    fold_buf = (char *)apr_palloc(r->pool, alloc_len);
-                    memcpy(fold_buf, last_field, last_len);
-                    last_field = fold_buf;
-                }
-                memcpy(last_field + last_len, field, len +1); /* +1 for nul */
-                last_len += len;
-                folded = 1;
+            if (last_field == NULL) {
+                r->status = HTTP_BAD_REQUEST;
+                ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03442)
+                              "Line folding encountered before first"
+                              " header line");
+                return;
             }
-            else /* not a continuation line */ {
 
-                if (r->server->limit_req_fields
-                    && (++fields_read > r->server->limit_req_fields)) {
-                    r->status = HTTP_BAD_REQUEST;
-                    apr_table_setn(r->notes, "error-notes",
-                                   "The number of request header fields "
-                                   "exceeds this server's limit.");
-                    ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00563)
-                                  "Number of request headers exceeds "
-                                  "LimitRequestFields");
-                    return;
+            if (field[1] == '\0') {
+                r->status = HTTP_BAD_REQUEST;
+                ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03443)
+                              "Empty folded line encountered");
+                return;
+            }
+
+            /* Leading whitespace on an obs-fold line can be
+             * similarly discarded */
+            while (field[1] == '\t' || field[1] == ' ') {
+                ++field; --len;
+            }
+
+            /* This line is a continuation of the preceding line(s),
+             * so append it to the line that we've set aside.
+             * Note: this uses a power-of-two allocator to avoid
+             * doing O(n) allocs and using O(n^2) space for
+             * continuations that span many many lines.
+             */
+            fold_len = last_len + len + 1; /* trailing null */
+
+            if (fold_len >= (apr_size_t)(r->server->limit_req_fieldsize)) {
+                r->status = HTTP_BAD_REQUEST;
+                /* report what we have accumulated so far before the
+                 * overflow (last_field) as the field with the problem
+                 */
+                apr_table_setn(r->notes, "error-notes",
+                               "Size of a request header field "
+                               "exceeds server limit.");
+                ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00562)
+                              "Request header exceeds LimitRequestFieldSize "
+                              "after folding: %.*s",
+                              field_name_len(last_field), last_field);
+                return;
+            }
+
+            if (fold_len > alloc_len) {
+                char *fold_buf;
+                alloc_len += alloc_len;
+                if (fold_len > alloc_len) {
+                    alloc_len = fold_len;
                 }
+                fold_buf = (char *)apr_palloc(r->pool, alloc_len);
+                memcpy(fold_buf, last_field, last_len);
+                last_field = fold_buf;
+            }
+            memcpy(last_field + last_len, field, len +1); /* +1 for nul */
+            /* Replace obs-fold w/ SP per RFC 7230 3.2.4 */
+            last_field[last_len] = ' ';
+            last_len += len;
 
-                if (!(value = strchr(last_field, ':'))) { /* Find ':' or    */
-                    r->status = HTTP_BAD_REQUEST;      /* abort bad request */
-                    apr_table_setn(r->notes, "error-notes",
-                                   apr_psprintf(r->pool,
-                                               "Request header field is "
-                                               "missing ':' separator.<br />\n"
-                                               "<pre>\n%.*s</pre>\n", 
-                                               (int)LOG_NAME_MAX_LEN,
-                                               ap_escape_html(r->pool,
-                                                              last_field)));
-                    ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00564)
+            /* We've appended this obs-fold line to last_len, proceed to
+             * read the next input line
+             */
+            continue;
+        }
+        else if (last_field != NULL) {
+
+            /* Process the previous last_field header line with all obs-folded
+             * segments already concatinated (this is not operating on the
+             * most recently read input line).
+             */
+
+            if (r->server->limit_req_fields
+                    && (++fields_read > r->server->limit_req_fields)) {
+                r->status = HTTP_BAD_REQUEST;
+                apr_table_setn(r->notes, "error-notes",
+                               "The number of request header fields "
+                               "exceeds this server's limit.");
+                ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00563)
+                              "Number of request headers exceeds "
+                              "LimitRequestFields");
+                return;
+            }
+
+            if (!strict)
+            {
+                /* Not Strict ('Unsafe' mode), using the legacy parser */
+
+                if (!(value = strchr(last_field, ':'))) { /* Find ':' or */
+                    r->status = HTTP_BAD_REQUEST;   /* abort bad request */
+                    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(00564)
                                   "Request header field is missing ':' "
                                   "separator: %.*s", (int)LOG_NAME_MAX_LEN,
                                   last_field);
                     return;
                 }
 
-                tmp_field = value - 1; /* last character of field-name */
+                /* last character of field-name */
+                tmp_field = value - (value > last_field ? 1 : 0);
 
                 *value++ = '\0'; /* NUL-terminate at colon */
 
+                if (strpbrk(last_field, "\t\n\v\f\r ")) {
+                    r->status = HTTP_BAD_REQUEST;
+                    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03452)
+                                  "Request header field name presented"
+                                  " invalid whitespace");
+                    return;
+                }
+
                 while (*value == ' ' || *value == '\t') {
-                    ++value;            /* Skip to start of value   */
+                     ++value;            /* Skip to start of value   */
                 }
 
-                /* Strip LWS after field-name: */
-                while (tmp_field > last_field
-                       && (*tmp_field == ' ' || *tmp_field == '\t')) {
-                    *tmp_field-- = '\0';
+                if (strpbrk(value, "\n\v\f\r")) {
+                    r->status = HTTP_BAD_REQUEST;
+                    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03451)
+                                  "Request header field value presented"
+                                  " bad whitespace");
+                    return;
                 }
 
-                /* Strip LWS after field-value: */
-                tmp_field = last_field + last_len - 1;
-                while (tmp_field > value
-                       && (*tmp_field == ' ' || *tmp_field == '\t')) {
-                    *tmp_field-- = '\0';
+                if (tmp_field == last_field) {
+                    r->status = HTTP_BAD_REQUEST;
+                    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(03453)
+                                  "Request header field name was empty");
+                    return;
+                }
+            }
+            else /* Using strict RFC7230 parsing */
+            {
+                /* Ensure valid token chars before ':' per RFC 7230 3.2.4 */
+                value = (char *)ap_scan_http_token(last_field);
+                if ((value == last_field) || *value != ':') {
+                    r->status = HTTP_BAD_REQUEST;
+                    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02426)
+                                  "Request header field name is malformed: "
+                                  "%.*s", (int)LOG_NAME_MAX_LEN, last_field);
+                    return;
                 }
 
-                if (conf->http_conformance & AP_HTTP_CONFORMANCE_STRICT) {
-                    int err = 0;
+                *value++ = '\0'; /* NUL-terminate last_field name at ':' */
 
-                    if (*last_field == '\0') {
-                        err = HTTP_BAD_REQUEST;
-                        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(02425)
-                                      "Empty request header field name not allowed");
-                    }
-                    else if (ap_has_cntrl(last_field)) {
-                        err = HTTP_BAD_REQUEST;
-                        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(02426)
-                                      "[HTTP strict] Request header field name contains "
-                                      "control character: %.*s",
-                                      (int)LOG_NAME_MAX_LEN, last_field);
-                    }
-                    else if (ap_has_cntrl(value)) {
-                        err = HTTP_BAD_REQUEST;
-                        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(02427)
-                                      "Request header field '%.*s' contains "
-                                      "control character", (int)LOG_NAME_MAX_LEN,
-                                      last_field);
-                    }
-                    if (err && !(conf->http_conformance & AP_HTTP_CONFORMANCE_LOGONLY)) {
-                        r->status = err;
-                        return;
-                    }
+                while (*value == ' ' || *value == '\t') {
+                    ++value;     /* Skip LWS of value */
                 }
-                apr_table_addn(r->headers_in, last_field, value);
 
-                /* reset the alloc_len so that we'll allocate a new
-                 * buffer if we have to do any more folding: we can't
-                 * use the previous buffer because its contents are
-                 * now part of r->headers_in
+                /* Find invalid, non-HT ctrl char, or the trailing NULL */
+                tmp_field = (char *)ap_scan_http_field_content(value);
+
+                /* Reject value for all garbage input (CTRLs excluding HT)
+                 * e.g. only VCHAR / SP / HT / obs-text are allowed per
+                 * RFC7230 3.2.6 - leave all more explicit rule enforcement
+                 * for specific header handler logic later in the cycle
                  */
-                alloc_len = 0;
+                if (*tmp_field != '\0') {
+                    r->status = HTTP_BAD_REQUEST;
+                    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02427)
+                                  "Request header value is malformed: "
+                                  "%.*s", (int)LOG_NAME_MAX_LEN, value);
+                    return;
+                }
+            }
 
-            } /* end if current line is not a continuation starting with tab */
+            apr_table_addn(r->headers_in, last_field, value);
+
+            /* This last_field header is now stored in headers_in,
+             * resume processing of the current input line.
+             */
         }
 
-        /* Found a blank line, stop. */
+        /* Found the terminating empty end-of-headers line, stop. */
         if (len == 0) {
             break;
         }
 
-        /* Keep track of this line so that we can parse it on
-         * the next loop iteration.  (In the folded case, last_field
-         * has been updated already.)
+        /* Keep track of this new header line so that we can extend it across
+         * any obs-fold or parse it on the next loop iteration. We referenced
+         * our previously allocated buffer in r->headers_in,
+         * so allocate a fresh buffer if required.
          */
-        if (!folded) {
-            last_field = field;
-            last_len = len;
-        }
+        alloc_len = 0;
+        last_field = field;
+        last_len = len;
     }
 
     /* Combine multiple message-header fields with the same
@@ -1089,8 +1292,8 @@ request_rec *ap_read_request(conn_rec *conn)
                               r->server->limit_req_line);
             }
             else if (r->method == NULL) {
-                ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00566)
-                              "request failed: invalid characters in URI");
+                ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(00566)
+                              "request failed: malformed request line");
             }
             access_status = r->status;
             r->status = HTTP_OK;
@@ -1129,7 +1332,7 @@ request_rec *ap_read_request(conn_rec *conn)
 
         ap_get_mime_headers_core(r, tmp_bb);
         if (r->status != HTTP_OK) {
-            ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00567)
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(00567)
                           "request failed: error reading the headers");
             ap_send_error_response(r, 0);
             ap_update_child_status(conn->sbh, SERVER_BUSY_LOG, r);
@@ -1148,7 +1351,7 @@ request_rec *ap_read_request(conn_rec *conn)
              */
             if (!(ap_cstr_casecmp(tenc, "chunked") == 0 /* fast path */
                     || ap_find_last_token(r->pool, tenc, "chunked"))) {
-                ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(02539)
+                ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02539)
                               "client sent unknown Transfer-Encoding "
                               "(%s): %s", tenc, r->uri);
                 r->status = HTTP_BAD_REQUEST;
@@ -1167,25 +1370,6 @@ request_rec *ap_read_request(conn_rec *conn)
              * MUST remove the received Content-Length field".
              */
             apr_table_unset(r->headers_in, "Content-Length");
-        }
-    }
-    else {
-        if (r->header_only) {
-            /*
-             * Client asked for headers only with HTTP/0.9, which doesn't send
-             * headers! Have to dink things just to make sure the error message
-             * comes through...
-             */
-            ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00568)
-                          "client sent invalid HTTP/0.9 request: HEAD %s",
-                          r->uri);
-            r->header_only = 0;
-            r->status = HTTP_BAD_REQUEST;
-            ap_send_error_response(r, 0);
-            ap_update_child_status(conn->sbh, SERVER_BUSY_LOG, r);
-            ap_run_log_transaction(r);
-            apr_brigade_destroy(tmp_bb);
-            goto traceout;
         }
     }
 
@@ -1219,7 +1403,7 @@ request_rec *ap_read_request(conn_rec *conn)
          * a Host: header, and the server MUST respond with 400 if it doesn't.
          */
         access_status = HTTP_BAD_REQUEST;
-        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r, APLOGNO(00569)
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(00569)
                       "client sent HTTP/1.1 request without hostname "
                       "(see RFC2616 section 14.23): %s", r->uri);
     }
@@ -2023,12 +2207,7 @@ AP_DECLARE(apr_status_t) ap_get_protocol_upgrades(conn_rec *c, request_rec *r,
                                       sizeof(char *));
             for (i = 0; i < conf->protocols->nelts; i++) {
                 const char *p = APR_ARRAY_IDX(conf->protocols, i, char *);
-                /* special quirk for HTTP/2 which does not allow 'h2' to
-                 * be part of an Upgrade: header */
-                if (!strcmp("h2", p)) {
-                    continue;
-                }
-                else if (strcmp(existing, p)) {
+                if (strcmp(existing, p)) {
                     /* not the one we have and possible, add in this order */
                     APR_ARRAY_PUSH(upgrades, const char*) = p;
                 }

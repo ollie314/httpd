@@ -176,6 +176,11 @@ cookiename	mod/mod_usertrack.html#cookiename
 cookiestyle	mod/mod_usertrack.html#cookiestyle
 cookietracking	mod/mod_usertrack.html#cookietracking
 coredumpdirectory	mod/mpm_common.html#coredumpdirectory
+cryptocipher	mod/mod_crypto.html#cryptocipher
+cryptodriver	mod/mod_crypto.html#cryptodriver
+cryptoiv	mod/mod_crypto.html#cryptoiv
+cryptokey	mod/mod_crypto.html#cryptokey
+cryptosize	mod/mod_crypto.html#cryptosize
 ctauditstorage	mod/mod_ssl_ct.html#ctauditstorage
 ctlogclient	mod/mod_ssl_ct.html#ctlogclient
 ctlogconfigdb	mod/mod_ssl_ct.html#ctlogconfigdb
@@ -263,6 +268,7 @@ globallog	mod/mod_log_config.html#globallog
 gprofdir	mod/core.html#gprofdir
 gracefulshutdowntimeout	mod/mpm_common.html#gracefulshutdowntimeout
 group	mod/mod_unixd.html#group
+h2copyfiles	mod/mod_http2.html#h2copyfiles
 h2direct	mod/mod_http2.html#h2direct
 h2maxsessionstreams	mod/mod_http2.html#h2maxsessionstreams
 h2maxworkeridleseconds	mod/mod_http2.html#h2maxworkeridleseconds

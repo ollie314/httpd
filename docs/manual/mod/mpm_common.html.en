@@ -130,7 +130,7 @@ after a crash</td></tr>
 
     <p>There are already two modules, <code>mod_whatkilledus</code> and
     <code>mod_backtrace</code> that make use of this hook. Please have a
-    look at Jeff Trawick's <a href="http://people.apache.org/~trawick/exception_hook.html">EnableExceptionHook site</a> for more information about these.</p>
+    look at Jeff Trawick's <a href="https://emptyhammock.com/projects/httpd/diag/">EnableExceptionHook site</a> for more information about these.</p>
 
 </div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
@@ -265,7 +265,7 @@ listeners' buckets</td></tr>
 <tr><th><a href="directive-dict.html#Module">Module:</a></th><td><code class="module"><a href="../mod/event.html">event</a></code>, <code class="module"><a href="../mod/worker.html">worker</a></code>, <code class="module"><a href="../mod/prefork.html">prefork</a></code></td></tr>
 <tr><th><a href="directive-dict.html#Compatibility">Compatibility:</a></th><td>Available in Apache HTTP Server 2.4.17, with a kernel supporting
 the socket option <code>SO_REUSEPORT</code> and distributing new connections
-evenly accross listening processes' (or threads') sockets using it (eg. Linux
+evenly across listening processes' (or threads') sockets using it (eg. Linux
 3.9 and later, but not the current implementations of <code>SO_REUSEPORT</code>
 in *BSDs.</td></tr>
 </table>
@@ -296,6 +296,12 @@ in *BSDs.</td></tr>
     The right <var>ratio</var> to obtain maximum performance needs to be calculated
     for each target system, testing multiple values and observing the variations in your 
     key performance metrics.</p>
+
+    <p>This directive influences the calculation of the 
+    <code class="directive"><a href="#minsparethreads">MinSpareThreads</a></code> and 
+    <code class="directive"><a href="#maxsparethreads">MaxSpareThreads</a></code> lower bound values.
+    The number of children processes needs to be a multiple of the number 
+    of buckets to optimally accept connections.</p>
 
 </div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>
@@ -395,7 +401,9 @@ simultaneously</td></tr>
     <code>MaxSpareThreads 250</code>. These MPMs deal with idle threads
     on a server-wide basis. If there are too many idle threads in the
     server then child processes are killed until the number of idle
-    threads is less than this number.</p>
+    threads is less than this number. Additional processes/threads
+    might be created if <code class="directive"><a href="#listencoresbucketsratio">ListenCoresBucketsRatio</a></code> 
+    is enabled.</p>
 
     <p>For <code class="module"><a href="../mod/mpm_netware.html">mpm_netware</a></code> the default is
     <code>MaxSpareThreads 100</code>. Since this MPM runs a
@@ -445,7 +453,7 @@ spikes</td></tr>
     <code>MinSpareThreads 75</code> and deal with idle threads on a server-wide
     basis. If there aren't enough idle threads in the server then child
     processes are created until the number of idle threads is greater
-    than <var>number</var>. Please also note that additional processes/threads
+    than <var>number</var>. Additional processes/threads
     might be created if <code class="directive"><a href="#listencoresbucketsratio">ListenCoresBucketsRatio</a></code> 
     is enabled.</p>
 

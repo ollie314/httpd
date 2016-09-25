@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE manualpage SYSTEM "../style/manualpage.dtd">
 <?xml-stylesheet type="text/xsl" href="../style/manual.ja.xsl"?>
-<!-- English Revision: 545841:1673945 (outdated) -->
+<!-- English Revision: 545841:1751930 (outdated) -->
 
 <!--
  Licensed to the Apache Software Foundation (ASF) under one or more
@@ -548,7 +548,7 @@ foreach $key (keys %ENV) {
     CGI の仕様を読むべきです。オリジナルバージョンを
     <a href="http://hoohoo.ncsa.uiuc.edu/cgi/interface.html">NCSA</a>
     で、アップデートされたドラフトを
-    <a href="http://web.golux.com/coar/cgi/">Common Gateway Interface RFC
+    <a href="http://www.ietf.org/rfc/rfc3875">Common Gateway Interface RFC
     プロジェクト</a>で参照することができます。</p>
 
     <p>CGI の問題について、加わっているメーリングリストまたはニュース

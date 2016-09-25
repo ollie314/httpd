@@ -46,7 +46,7 @@
 <li><img alt="" src="./images/down.gif" /> <a href="#other">Other</a></li>
 <li><img alt="" src="./images/down.gif" /> <a href="#sslrequire">Comparison with SSLRequire</a></li>
 <li><img alt="" src="./images/down.gif" /> <a href="#compatibility">Version History</a></li>
-</ul><h3>See also</h3><ul class="seealso"><li><code class="directive"><a href="./mod/core.html#if">&lt;If&gt;</a></code></li><li><code class="directive"><a href="./mod/core.html#elseif">&lt;ElseIf&gt;</a></code></li><li><code class="directive"><a href="./mod/core.html#else">&lt;Else&gt;</a></code></li><li><code class="directive"><a href="./mod/core.html#errordocument">ErrorDocument</a></code></li><li><code class="directive"><a href="./mod/mod_alias.html#alias">Alias</a></code></li><li><code class="directive"><a href="./mod/mod_alias.html#scriptalias">ScriptAlias</a></code></li><li><code class="directive"><a href="./mod/mod_alias.html#redirect">Redirect</a></code></li><li><code class="directive"><a href="./mod/mod_auth_basic.html#authbasicfake">AuthBasicFake</a></code></li><li><code class="directive"><a href="./mod/mod_auth_form.html#authformloginrequiredlocation">AuthFormLoginRequiredLocation</a></code></li><li><code class="directive"><a href="./mod/mod_auth_form.html#authformloginsuccesslocation">AuthFormLoginSuccessLocation</a></code></li><li><code class="directive"><a href="./mod/mod_auth_form.html#authformlogoutlocation">AuthFormLogoutLocation</a></code></li><li><code class="directive"><a href="./mod/mod_authn_core.html#authname">AuthName</a></code></li><li><code class="directive"><a href="./mod/mod_authn_core.html#authtype">AuthType</a></code></li><li><code class="directive"><a href="./mod/mod_rewrite.html#rewritecond">RewriteCond</a></code></li><li><code class="directive"><a href="./mod/mod_setenvif.html#setenvifexpr">SetEnvIfExpr</a></code></li><li><code class="directive"><a href="./mod/mod_headers.html#header">Header</a></code></li><li><code class="directive"><a href="./mod/mod_headers.html#requestheader">RequestHeader</a></code></li><li><code class="directive"><a href="./mod/mod_filter.html#filterprovider">FilterProvider</a></code></li><li><a href="mod/mod_authz_core.html#reqexpr">Require expr</a></li><li><a href="mod/mod_authnz_ldap.html#requser">Require ldap-user</a></li><li><a href="mod/mod_authnz_ldap.html#reqgroup">Require ldap-group</a></li><li><a href="mod/mod_authnz_ldap.html#reqdn">Require ldap-dn</a></li><li><a href="mod/mod_authnz_ldap.html#reqattribute">Require ldap-attribute</a></li><li><a href="mod/mod_authnz_ldap.html#reqfilter">Require ldap-filter</a></li><li><a href="mod/mod_authnz_ldap.html#reqsearch">Require ldap-search</a></li><li><a href="mod/mod_authz_dbd.html#reqgroup">Require dbd-group</a></li><li><a href="mod/mod_authz_dbm.html#reqgroup">Require dbm-group</a></li><li><a href="mod/mod_authz_groupfile.html#reqgroup">Require group</a></li><li><a href="mod/mod_authz_host.html#reqhost">Require host</a></li><li><code class="directive"><a href="./mod/mod_ssl.html#sslrequire">SSLRequire</a></code></li><li><code class="directive"><a href="./mod/mod_log_debug.html#logmessage">LogMessage</a></code></li><li><code class="module"><a href="./mod/mod_include.html">mod_include</a></code></li><li><a href="#comments_section">Comments</a></li></ul></div>
+</ul><h3>See also</h3><ul class="seealso"><li><code class="directive"><a href="./mod/core.html#if">&lt;If&gt;</a></code></li><li><code class="directive"><a href="./mod/core.html#elseif">&lt;ElseIf&gt;</a></code></li><li><code class="directive"><a href="./mod/core.html#else">&lt;Else&gt;</a></code></li><li><code class="directive"><a href="./mod/core.html#errordocument">ErrorDocument</a></code></li><li><code class="directive"><a href="./mod/mod_alias.html#alias">Alias</a></code></li><li><code class="directive"><a href="./mod/mod_alias.html#scriptalias">ScriptAlias</a></code></li><li><code class="directive"><a href="./mod/mod_alias.html#redirect">Redirect</a></code></li><li><code class="directive"><a href="./mod/mod_auth_basic.html#authbasicfake">AuthBasicFake</a></code></li><li><code class="directive"><a href="./mod/mod_auth_form.html#authformloginrequiredlocation">AuthFormLoginRequiredLocation</a></code></li><li><code class="directive"><a href="./mod/mod_auth_form.html#authformloginsuccesslocation">AuthFormLoginSuccessLocation</a></code></li><li><code class="directive"><a href="./mod/mod_auth_form.html#authformlogoutlocation">AuthFormLogoutLocation</a></code></li><li><code class="directive"><a href="./mod/mod_authn_core.html#authname">AuthName</a></code></li><li><code class="directive"><a href="./mod/mod_authn_core.html#authtype">AuthType</a></code></li><li><code class="directive"><a href="./mod/mod_rewrite.html#rewritecond">RewriteCond</a></code></li><li><code class="directive"><a href="./mod/mod_setenvif.html#setenvifexpr">SetEnvIfExpr</a></code></li><li><code class="directive"><a href="./mod/mod_headers.html#header">Header</a></code></li><li><code class="directive"><a href="./mod/mod_headers.html#requestheader">RequestHeader</a></code></li><li><code class="directive"><a href="./mod/mod_filter.html#filterprovider">FilterProvider</a></code></li><li><code class="directive"><a href="./mod/mod_crypto.html#cryptokey">CryptoKey</a></code></li><li><code class="directive"><a href="./mod/mod_crypto.html#cryptoiv">CryptoIV</a></code></li><li><a href="mod/mod_authz_core.html#reqexpr">Require expr</a></li><li><a href="mod/mod_authnz_ldap.html#requser">Require ldap-user</a></li><li><a href="mod/mod_authnz_ldap.html#reqgroup">Require ldap-group</a></li><li><a href="mod/mod_authnz_ldap.html#reqdn">Require ldap-dn</a></li><li><a href="mod/mod_authnz_ldap.html#reqattribute">Require ldap-attribute</a></li><li><a href="mod/mod_authnz_ldap.html#reqfilter">Require ldap-filter</a></li><li><a href="mod/mod_authnz_ldap.html#reqsearch">Require ldap-search</a></li><li><a href="mod/mod_authz_dbd.html#reqgroup">Require dbd-group</a></li><li><a href="mod/mod_authz_dbm.html#reqgroup">Require dbm-group</a></li><li><a href="mod/mod_authz_groupfile.html#reqgroup">Require group</a></li><li><a href="mod/mod_authz_host.html#reqhost">Require host</a></li><li><code class="directive"><a href="./mod/mod_ssl.html#sslrequire">SSLRequire</a></code></li><li><code class="directive"><a href="./mod/mod_log_debug.html#logmessage">LogMessage</a></code></li><li><code class="module"><a href="./mod/mod_include.html">mod_include</a></code></li><li><a href="#comments_section">Comments</a></li></ul></div>
 <div class="top"><a href="#page-header"><img alt="top" src="./images/up.gif" /></a></div>
 <div class="section">
 <h2><a name="grammar" id="grammar">Grammar in Backus-Naur Form notation</a></h2>
@@ -269,12 +269,12 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
 <tr><td><code>TIME_YEAR</code></td>
         <td>The current year (e.g. <code>2010</code>)</td></tr>
 <tr class="odd"><td><code>TIME_MON</code></td>
-        <td>The current month (<code>1</code>, ..., <code>12</code>)</td></tr>
+        <td>The current month (<code>01</code>, ..., <code>12</code>)</td></tr>
 <tr><td><code>TIME_DAY</code></td>
-        <td>The current day of the month</td></tr>
+        <td>The current day of the month (<code>01</code>, ...)</td></tr>
 <tr class="odd"><td><code>TIME_HOUR</code></td>
         <td>The hour part of the current time
-            (<code>0</code>, ..., <code>23</code>)</td></tr>
+            (<code>00</code>, ..., <code>23</code>)</td></tr>
 <tr><td><code>TIME_MIN</code></td>
         <td>The minute part of the current time </td></tr>
 <tr class="odd"><td><code>TIME_SEC</code></td>
@@ -437,7 +437,7 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
     a string. Functions names are not case sensitive.
     Modules may register additional functions.</p>
 
-    <table class="bordered"><tr class="header"><th>Name</th><th>Description</th><th>Restricted</th></tr>
+    <table class="bordered"><tr class="header"><th>Name</th><th>Description</th><th>Special notes</th></tr>
 <tr><td><code>req</code>, <code>http</code></td>
         <td>Get HTTP request header; header names may be added to the Vary
             header, see below</td><td /></tr>
@@ -449,15 +449,16 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
             during <code class="directive">&lt;If&gt;</code>)</td><td /></tr>
 <tr class="odd"><td><code>reqenv</code></td>
         <td>Lookup request environment variable (as a shortcut,
-        <code>v</code> can be used too to access
-        variables)</td><td /></tr>
+        <code>v</code> can also be used to access variables). 
+        </td>
+        <td>ordering</td></tr>
 <tr><td><code>osenv</code></td>
         <td>Lookup operating system environment variable</td><td /></tr>
 <tr class="odd"><td><code>note</code></td>
-        <td>Lookup request note</td><td /></tr>
+        <td>Lookup request note</td><td>ordering</td></tr>
 <tr><td><code>env</code></td>
         <td>Return first match of <code>note</code>, <code>reqenv</code>,
-            <code>osenv</code></td><td /></tr>
+            <code>osenv</code></td><td>ordering</td></tr>
 <tr class="odd"><td><code>tolower</code></td>
         <td>Convert string to lower case</td><td /></tr>
 <tr><td><code>toupper</code></td>
@@ -480,13 +481,13 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
             encoding</td><td /></tr>
 <tr class="odd"><td><code>file</code></td>
         <td>Read contents from a file (including line endings, when present)
-        </td><td>yes</td></tr>
+        </td><td>restricted</td></tr>
 <tr><td><code>filemod</code></td>
         <td>Return last modification time of a file (or 0 if file does not exist
-            or is not regular file)</td><td>yes</td></tr>
+            or is not regular file)</td><td>restricted</td></tr>
 <tr class="odd"><td><code>filesize</code></td>
         <td>Return size of a file (or 0 if file does not exist or is not
-            regular file)</td><td>yes</td></tr>
+            regular file)</td><td>restricted</td></tr>
 <tr><td><code>ldap</code></td>
         <td>Escape characters as required by LDAP distinguished name escaping
             (RFC4514) and LDAP filter escaping (RFC4515).</td><td /></tr>
@@ -495,8 +496,28 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
             in the string with "to".</td><td /></tr>
 </table>
 
-    <p>The functions marked as "restricted" are not available in some modules
-    like <code class="module"><a href="./mod/mod_include.html">mod_include</a></code>.</p>
+    <p>The functions marked as "restricted" in the final column are not 
+    available in some modules like <code class="module"><a href="./mod/mod_include.html">mod_include</a></code>.</p>
+
+    <p>The functions marked as "ordering" in the final column require some
+    consideration for the ordering of different components of the server,
+    especially when the function is used within the 
+    &lt;<code class="directive"><a href="./mod/core.html#if">If</a></code>&gt; directive which is
+    evaluated relatively early.</p>
+    <div class="note">
+    <h3>Environment variable ordering</h3>
+    When environment variables are looked up within an 
+    &lt;<code class="directive"><a href="./mod/core.html#if">If</a></code>&gt; condition, it's important 
+    to consider how extremely early in request processing that this 
+    resolution occurs. As a guideline, any directive defined outside of virtual host 
+    context (directory, location, htaccess) is not likely to have yet had a 
+    chance to execute. <code class="directive"><a href="./mod/mod_setenvif.html#setenvif">SetEnvIf</a></code>
+    in virtual host scope is one directive that runs prior to this resolution
+    <br />
+    <br />
+    When <code>reqenv</code> is used outside of &lt;<code class="directive"><a href="./mod/core.html#if">If</a></code>&gt;, the resolution will generally occur later, but the 
+    exact timing depends on the directive the expression has been used within.
+    </div>
 
     <p>When the functions <code>req</code> or <code>http</code> are used,
     the header name will automatically be added to the Vary header of the
@@ -520,12 +541,12 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
 <div class="section">
 <h2><a name="examples" id="examples">Example expressions</a></h2>
 
-	
+    
     <p>The following examples show how expressions might be used to
     evaluate requests:</p>
 
-	
-	<pre class="prettyprint lang-config"># Compare the host name to example.com and redirect to www.example.com if it matches
+    
+    <pre class="prettyprint lang-config"># Compare the host name to example.com and redirect to www.example.com if it matches
 &lt;If "%{HTTP_HOST} == 'example.com'"&gt;
     Redirect permanent "/" "http://www.example.com/"
 &lt;/If&gt;
@@ -575,7 +596,7 @@ listfunction ::= listfuncname "<strong>(</strong>" word "<strong>)</strong>"</pr
 Header set foo-checksum "expr=%{md5:foo}"
 
 # This delays the evaluation of the condition clause compared to &lt;If&gt;
-Header always set CustomHeader my-value "expr=%{REQUEST_URI} =~ m#^/special_path.php$#"</pre>
+Header always set CustomHeader my-value "expr=%{REQUEST_URI} =~ m#^/special_path\.php$#"</pre>
 
 </div><div class="top"><a href="#page-header"><img alt="top" src="./images/up.gif" /></a></div>
 <div class="section">

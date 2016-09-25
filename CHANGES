@@ -1,21 +1,86 @@
                                                          -*- coding: utf-8 -*-
 Changes with Apache 2.5.0
 
-  *) mod_proxy_http2: properly care for HTTP2 flow control of the frontend
-     connection is HTTP/1.1. [Patch supplied by Evgeny Kotkov]
-     
+  *) mod_brotli: Add a new module for dynamic Brotli (RFC 7932) compression.
+     [Evgeny Kotkov]
+
+  *) core: Permit unencoded ';' characters to appear in proxy requests and
+     Location: response headers. Corresponds to modern browser behavior.
+     [William Rowe]
+
+  *) mpm_winnt: Prevent a denial of service when the 'data' AcceptFilter is in
+     use by replacing it with the 'connect' filter. PR 59970. [Jacob Champion]
+
+  *) mod_proxy_hcheck: Set health check URI and expression correctly for health
+     check worker. PR 60038 [zdeno <zdeno@scnet.sk>]
+
+  *) mod_cache: Use the actual URI path and query-string for identifying the
+     cached entity (key), such that rewrites are taken into account when
+     running afterwards (CacheQuickHandler off).  PR 21935.  [Yann Ylavic]
+
+  *) mod_ssl: Fix quick renegotiation (OptRenegotiaton) with no intermediate
+     in the client certificate chain.  PR 55786.  [Yann Ylavic]
+
+  *) mod_reqtimeout: Fix body timeout disabling for CONNECT requests to avoid
+     triggering mod_proxy_connect's AH01018 once the tunnel is established.
+     [Yann Ylavic]
+
+  *) mod_proxy_balancer: Prevent redirect loops between workers within a
+     balancer by limiting the number of redirects to the number balancer
+     members. PR 59864 [Ruediger Pluem]
+
+  *) mod_proxy: Correctly consider error response codes by the backend when
+     processing failonstatus. PR 59869 [Ruediger Pluem]
+
+  *) mod_proxy_fcgi: avoid loops when ProxyErrorOverride is enabled
+     and the error documents are proxied. PR 55415. [Luca Toscano]
+
+  *) mod_proxy_fcgi: read the whole FCGI response even when the content has
+     not been modified (HTTP 304) to avoid subsequent bogus reads and
+     confusing error messages logged. [Luca Toscano]
+
+  *) mod_crypto: Add the all purpose crypto filters with support for HLS.
+     [Graham Leggett]
+
+  *) ab: Add option -I to use the Server Name Indication (SNI) extension on
+     outgoing TLS connections, according to the Host header (if any) or the
+     requested URL's hostname otherwise.  [Yann Ylavic]
+
+  *) mod_ssl: reset client-verify state of ssl when aborting renegotiations.
+     [Erki Aring <erki@example.ee>, Stefan Eissing]
+
+  *) mod_proxy_{http,ajp,fcgi}: don't reuse backend connections with data
+     available before the request is sent.  PR 57832.  [Yann Ylavic]
+
+  *) mod_sed: Fix 'x' command processing. [Christophe Jaillet]
+
+  *) core: Drop an invalid Last-Modified header value coming
+     from a FCGI/CGI script instead of replacing it with Unix epoch.
+     Warn the users about Last-Modified header value replacements
+     and violations of the RFC.
+     [Yann Ylavic, Luca Toscano, William Rowe, Jacob Champion]
+
+  *) mod_dav: Allow other modules to become providers and add ACLs
+     to the DAV response.
+     [Jari Urpalainen <jari.urpalainen nokia.com>, Graham Leggett]
+
+  *) mod_dav: Add dav_begin_multistatus, dav_send_one_response,
+     dav_finish_multistatus, dav_send_multistatus, dav_handle_err,
+     dav_failed_proppatch, dav_success_proppatch to mod_dav.h.
+     [Jari Urpalainen <jari.urpalainen nokia.com>, Graham Leggett]
+
+  *) core: Add -DDUMP_INCLUDES configtest option to show the tree
+     of Included configuration files.  [Jacob Champion <champion.pxi gmail.com>]
+
   *) mod_dav: Add support for childtags to dav_error.
      [Jari Urpalainen <jari.urpalainen nokia.com>]
-
-  *) abs: include OpenSSL_Applink when compiling on Visual Studio 2015 
-          and up. PR59630 [Jan Ehrhardt <phpdev ehrhardt.nl>]
 
   *) mod_proxy, mod_ssl: Handle SSLProxy* directives in <Proxy> sections,
      allowing per backend TLS configuration.  [Yann Ylavic]
 
   *) core: explicitly exclude 'h2' from protocols announced via an Upgrade: 
      header as commanded by http-wg. [Stefan Eissing]
-     
+
   *) http: Respond with "408 Request Timeout" when a timeout occurs while
      reading the request body.  [Yann Ylavic]
 
@@ -60,7 +125,7 @@ Changes with Apache 2.5.0
      [Yehuda Katz <yehuda ymkatz.net>, Jim Jagielski]
 
   *) mod_ssl: Add support for OpenSSL 1.1.0. [Rainer Jung]
- 
+
   *) mod_filter: Fix AddOutputFilterByType with non-content-level filters.
      PR58856 [Micha Lenk <micha lenk.info>]
 

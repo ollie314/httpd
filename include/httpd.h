@@ -310,7 +310,7 @@ extern "C" {
 
 /**
  * APR_HAS_LARGE_FILES introduces the problem of spliting sendfile into
- * mutiple buckets, no greater than MAX(apr_size_t), and more granular
+ * multiple buckets, no greater than MAX(apr_size_t), and more granular
  * than that in case the brigade code/filters attempt to read it directly.
  * ### 16mb is an invention, no idea if it is reasonable.
  */
@@ -355,7 +355,7 @@ extern "C" {
  * use by modules.  The difference between #AP_DECLARE and
  * #AP_DECLARE_NONSTD is that the latter is required for any functions
  * which use varargs or are used via indirect function call.  This
- * is to accomodate the two calling conventions in windows dlls.
+ * is to accommodate the two calling conventions in windows dlls.
  */
 # define AP_DECLARE_NONSTD(type)    type
 #endif
@@ -612,9 +612,15 @@ AP_DECLARE(const char *) ap_get_server_built(void);
 #define M_MKACTIVITY            23
 #define M_BASELINE_CONTROL      24
 #define M_MERGE                 25
-#define M_INVALID               26      /** no valid method */
-#define M_BREW                  27      /** RFC 2324: HTCPCP/1.0 */
-#define M_WHEN                  28      /** RFC 2324: HTCPCP/1.0 */
+/* Additional methods must be registered by the implementor, we have only
+ * room for 64 bit-wise methods available, so do not squander them (more of
+ * the above methods should probably move here)
+ */
+/* #define M_BREW                  nn */     /** RFC 2324: HTCPCP/1.0 */
+/* #define M_WHEN                  nn */     /** RFC 2324: HTCPCP/1.0 */
+#define M_INVALID               26      /** invalid method value terminates the
+                                         *  listed ap_method_registry_init()
+                                         */
 
 /**
  * METHODS needs to be equal to the number of bits
@@ -1625,6 +1631,38 @@ AP_DECLARE(int) ap_find_etag_weak(apr_pool_t *p, const char *line, const char *t
  * @return 1 if found, 0 if not found.
  */
 AP_DECLARE(int) ap_find_etag_strong(apr_pool_t *p, const char *line, const char *tok);
+
+/* Scan a string for field content chars, as defined by RFC7230 section 3.2
+ * including VCHAR/obs-text, as well as HT and SP
+ * @param ptr The string to scan
+ * @return A pointer to the first (non-HT) ASCII ctrl character.
+ * @note lws and trailing whitespace are scanned, the caller is responsible
+ * for trimming leading and trailing whitespace
+ */
+AP_DECLARE(const char *) ap_scan_http_field_content(const char *ptr);
+
+/* Scan a string for token characters, as defined by RFC7230 section 3.2.6 
+ * @param ptr The string to scan
+ * @return A pointer to the first non-token character.
+ */
+AP_DECLARE(const char *) ap_scan_http_token(const char *ptr);
+
+/* Scan a string for valid URI characters per RFC3986, and 
+ * return a pointer to the first non-URI character encountered.
+ * @param ptr The string to scan
+ * @return A pointer to the first non-token character.
+ */
+AP_DECLARE(const char *) ap_scan_http_uri_safe(const char *ptr);
+
+/* Retrieve a token, advancing the pointer to the first non-token character
+ * and returning a copy of the token string.
+ * @param ptr The string to scan. On return, this points to the first non-token
+ *  character encountered, or NULL if *ptr was not a token character
+ * @return A copy of the token string
+ * @note The caller must handle leading and trailing whitespace as applicable
+ *  and evaluate the terminating character.
+ */
+AP_DECLARE(char *) ap_get_http_token(apr_pool_t *p, const char **ptr);
 
 /**
  * Retrieve an array of tokens in the format "1#token" defined in RFC2616. Only

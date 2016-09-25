@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE modulesynopsis SYSTEM "../style/modulesynopsis.dtd">
 <?xml-stylesheet type="text/xsl" href="../style/manual.tr.xsl"?>
-<!-- English Revision: 1308409:1737809 (outdated) -->
+<!-- English Revision: 1308409:1755322 (outdated) -->
 <!-- =====================================================
  Translated by: Nilgün Belma Bugüner <nilgun belgeler.org>
    Reviewed by: Orhan Berent <berent belgeler.org>
@@ -184,7 +184,7 @@
   [<var>protokol</var>]</syntax>
 <contextlist><context>server config</context></contextlist>
 <modulelist><module>mpm_netware</module><module>mpm_winnt</module>
-<module>mpmt_os2</module><module>perchild</module>
+<module>mpmt_os2</module>
 <module>prefork</module><module>worker</module><module>event</module>
 </modulelist>
 <compatibility>Apache HTTP Sunucusu 2.0’dan beri gerekli yönergelerden

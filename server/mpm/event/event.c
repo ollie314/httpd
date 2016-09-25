@@ -378,7 +378,7 @@ typedef struct event_retained_data {
 #endif
     int hold_off_on_exponential_spawning;
     /*
-     * Current number of listeners buckets and maximum reached accross
+     * Current number of listeners buckets and maximum reached across
      * restarts (to size retained data according to dynamic num_buckets,
      * eg. idle_spawn_rate).
      */
@@ -623,27 +623,6 @@ static void event_note_child_started(int slot, pid_t pid)
     ap_run_child_status(ap_server_conf,
                         ap_scoreboard_image->parent[slot].pid,
                         retained->my_generation, slot, MPM_CHILD_STARTED);
-}
-
-static void event_note_child_lost_slot(int slot, pid_t newpid)
-{
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, ap_server_conf, APLOGNO(00458)
-                 "pid %" APR_PID_T_FMT " taking over scoreboard slot from "
-                 "%" APR_PID_T_FMT "%s",
-                 newpid,
-                 ap_scoreboard_image->parent[slot].pid,
-                 ap_scoreboard_image->parent[slot].quiescing ?
-                 " (quiescing)" : "");
-    ap_run_child_status(ap_server_conf,
-                        ap_scoreboard_image->parent[slot].pid,
-                        ap_scoreboard_image->parent[slot].generation,
-                        slot, MPM_CHILD_LOST_SLOT);
-    /* Don't forget about this exiting child process, or we
-     * won't be able to kill it if it doesn't exit by the
-     * time the server is shut down.
-     */
-    ap_register_extra_mpm_process(ap_scoreboard_image->parent[slot].pid,
-                                  ap_scoreboard_image->parent[slot].generation);
 }
 
 static const char *event_get_name(void)
@@ -1279,18 +1258,12 @@ static void close_listeners(int process_slot, int *closed)
 {
     if (!*closed) {
         int i;
-        worker_score *ws;
         disable_listensocks(process_slot);
         ap_close_listeners_ex(my_bucket->listeners);
         *closed = 1;
         dying = 1;
         ap_scoreboard_image->parent[process_slot].quiescing = 1;
         for (i = 0; i < threads_per_child; ++i) {
-            ws = ap_get_scoreboard_worker_from_indexes(process_slot, i);
-            if (ws->pid != ap_my_pid) {
-                /* scoreboard slot still in use by previous generation */
-                continue;
-            }
             ap_update_child_status_from_indexes(process_slot, i,
                                                 SERVER_GRACEFUL, NULL);
         }
@@ -2727,6 +2700,15 @@ static int make_child(server_rec * s, int slot, int bucket)
         retained->max_daemons_limit = slot + 1;
     }
 
+    if (ap_scoreboard_image->parent[slot].pid != 0) {
+        /* XXX replace with assert or remove ? */
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, ap_server_conf, APLOGNO(03455)
+                 "BUG: Scoreboard slot %d should be empty but is "
+                 "in use by pid %" APR_PID_T_FMT,
+                 slot, ap_scoreboard_image->parent[slot].pid);
+        return -1;
+    }
+
     if (one_process) {
         my_bucket = &all_buckets[0];
 
@@ -2780,13 +2762,6 @@ static int make_child(server_rec * s, int slot, int bucket)
         return -1;
     }
 
-    if (ap_scoreboard_image->parent[slot].pid != 0) {
-        /* This new child process is squatting on the scoreboard
-         * entry owned by an exiting child process, which cannot
-         * exit until all active requests complete.
-         */
-        event_note_child_lost_slot(slot, pid);
-    }
     ap_scoreboard_image->parent[slot].quiescing = 0;
     ap_scoreboard_image->parent[slot].not_accepting = 0;
     ap_scoreboard_image->parent[slot].bucket = bucket;
@@ -2813,22 +2788,14 @@ static void startup_children(int number_to_start)
 static void perform_idle_server_maintenance(int child_bucket, int num_buckets)
 {
     int i, j;
-    int idle_thread_count;
+    int idle_thread_count = 0;
     worker_score *ws;
     process_score *ps;
-    int free_length;
-    int totally_free_length = 0;
+    int free_length = 0;
     int free_slots[MAX_SPAWN_RATE];
-    int last_non_dead;
-    int total_non_dead;
+    int last_non_dead = -1;
+    int total_non_dead = 0;
     int active_thread_count = 0;
-
-    /* initialize the free_list */
-    free_length = 0;
-
-    idle_thread_count = 0;
-    last_non_dead = -1;
-    total_non_dead = 0;
 
     for (i = 0; i < ap_daemons_limit; ++i) {
         /* Initialization to satisfy the compiler. It doesn't know
@@ -2840,7 +2807,7 @@ static void perform_idle_server_maintenance(int child_bucket, int num_buckets)
         int child_threads_active = 0;
 
         if (i >= retained->max_daemons_limit &&
-            totally_free_length == retained->idle_spawn_rate[child_bucket]) {
+            free_length == retained->idle_spawn_rate[child_bucket]) {
             /* short cut if all active processes have been examined and
              * enough empty scoreboard slots have been found
              */
@@ -2879,28 +2846,9 @@ static void perform_idle_server_maintenance(int child_bucket, int num_buckets)
             }
         }
         active_thread_count += child_threads_active;
-        if (any_dead_threads
-            && totally_free_length < retained->idle_spawn_rate[child_bucket]
-            && free_length < MAX_SPAWN_RATE / num_buckets
-            && (!ps->pid      /* no process in the slot */
-                  || ps->quiescing)) {  /* or at least one is going away */
-            if (all_dead_threads) {
-                /* great! we prefer these, because the new process can
-                 * start more threads sooner.  So prioritize this slot
-                 * by putting it ahead of any slots with active threads.
-                 *
-                 * first, make room by moving a slot that's potentially still
-                 * in use to the end of the array
-                 */
-                free_slots[free_length] = free_slots[totally_free_length];
-                free_slots[totally_free_length++] = i;
-            }
-            else {
-                /* slot is still in use - back of the bus
-                 */
-                free_slots[free_length] = i;
-            }
-            ++free_length;
+        if (!ps->pid && free_length < retained->idle_spawn_rate[child_bucket])
+        {
+            free_slots[free_length++] = i;
         }
         else if (child_threads_active == threads_per_child) {
             had_healthy_child = 1;
@@ -2947,7 +2895,7 @@ static void perform_idle_server_maintenance(int child_bucket, int num_buckets)
         /* terminate the free list */
         if (free_length == 0) { /* scoreboard is full, can't fork */
 
-            if (active_thread_count >= ap_daemons_limit * threads_per_child) {
+            if (active_thread_count >= max_workers) {
                 if (!retained->maxclients_reported) {
                     /* only report this condition once */
                     ap_log_error(APLOG_MARK, APLOG_ERR, 0, ap_server_conf, APLOGNO(00484)
@@ -2998,7 +2946,6 @@ static void perform_idle_server_maintenance(int child_bucket, int num_buckets)
 
 static void server_main_loop(int remaining_children_to_start, int num_buckets)
 {
-    ap_generation_t old_gen;
     int child_slot;
     apr_exit_why_e exitwhy;
     int status, processed_status;
@@ -3062,24 +3009,12 @@ static void server_main_loop(int remaining_children_to_start, int num_buckets)
                     --remaining_children_to_start;
                 }
             }
-            else if (ap_unregister_extra_mpm_process(pid.pid, &old_gen) == 1) {
-
-                event_note_child_killed(-1, /* already out of the scoreboard */
-                                        pid.pid, old_gen);
-                if (processed_status == APEXIT_CHILDSICK
-                    && old_gen == retained->my_generation) {
-                    /* resource shortage, minimize the fork rate */
-                    for (i = 0; i < num_buckets; i++) {
-                        retained->idle_spawn_rate[i] = 1;
-                    }
-                }
 #if APR_HAS_OTHER_CHILD
-            }
             else if (apr_proc_other_child_alert(&pid, APR_OC_REASON_DEATH,
                                                 status) == 0) {
                 /* handled */
-#endif
             }
+#endif
             else if (retained->is_graceful) {
                 /* Great, we've probably just lost a slot in the
                  * scoreboard.  Somehow we don't know about this child.
@@ -3145,10 +3080,16 @@ static int event_run(apr_pool_t * _pconf, apr_pool_t * plog, server_rec * s)
         ap_daemons_limit = num_buckets;
     if (ap_daemons_to_start < num_buckets)
         ap_daemons_to_start = num_buckets;
+    /* We want to create as much children at a time as the number of buckets,
+     * so to optimally accept connections (evenly distributed across buckets).
+     * Thus min_spare_threads should at least maintain num_buckets children,
+     * and max_spare_threads allow num_buckets more children w/o triggering
+     * immediately (e.g. num_buckets idle threads margin, one per bucket).
+     */
     if (min_spare_threads < threads_per_child * (num_buckets - 1) + num_buckets)
         min_spare_threads = threads_per_child * (num_buckets - 1) + num_buckets;
-    if (max_spare_threads < min_spare_threads + threads_per_child * num_buckets)
-        max_spare_threads = min_spare_threads + threads_per_child * num_buckets;
+    if (max_spare_threads < min_spare_threads + (threads_per_child + 1) * num_buckets)
+        max_spare_threads = min_spare_threads + (threads_per_child + 1) * num_buckets;
 
     /* If we're doing a graceful_restart then we're going to see a lot
      * of children exiting immediately when we get into the main loop

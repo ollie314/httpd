@@ -85,26 +85,37 @@ AcceptFilter https data
 
     <p>The default values on Windows are:</p>
     <highlight language="config">
-AcceptFilter http data
-AcceptFilter https data
+AcceptFilter http connect
+AcceptFilter https connect
     </highlight>
 
     <p>Window's mpm_winnt interprets the AcceptFilter to toggle the AcceptEx()
-       API, and does not support http protocol buffering.  There are two values
-       which utilize the Windows AcceptEx() API and will recycle network
-       sockets between connections.  <code>data</code> waits until data has
-       been transmitted as documented above, and the initial data buffer and
-       network endpoint addresses are all retrieved from the single AcceptEx()
-       invocation.  <code>connect</code> will use the AcceptEx() API, also
-       retrieve the network endpoint addresses, but like <code>none</code>
-       the <code>connect</code> option does not wait for the initial data
-       transmission.</p>
+       API, and does not support http protocol buffering. <code>connect</code>
+       will use the AcceptEx() API, also retrieve the network endpoint
+       addresses, but like <code>none</code> the <code>connect</code> option
+       does not wait for the initial data transmission.</p>
 
     <p>On Windows, <code>none</code> uses accept() rather than AcceptEx()
        and will not recycle sockets between connections.  This is useful for
        network adapters with broken driver support, as well as some virtual
        network providers such as vpn drivers, or spam, virus or spyware
        filters.</p>
+
+    <note type="warning">
+      <title>The <code>data</code> AcceptFilter (Windows)</title>
+
+      <p>For versions 2.4.23 and prior, the Windows <code>data</code> accept
+         filter waited until data had been transmitted and the initial data
+         buffer and network endpoint addresses had been retrieved from the
+         single AcceptEx() invocation. This implementation was subject to a
+         denial of service attack and has been disabled.</p>
+
+      <p>Current releases of httpd default to the <code>connect</code> filter
+         on Windows, and will fall back to <code>connect</code> if
+         <code>data</code> is specified. Users of prior releases are encouraged
+         to add an explicit setting of <code>connect</code> for their
+         AcceptFilter, as shown above.</p>
+    </note>
 
 </usage>
 <seealso><directive module="core">Protocol</directive></seealso>
@@ -860,7 +871,7 @@ named file-system directory, sub-directories, and their contents.</description>
 &lt;Directory ~ "^/www/[0-9]{3}"&gt;
 
 &lt;/Directory&gt;
-</highlight>
+    </highlight>
 
     <p>would match directories in <code>/www/</code> that consisted of
     three numbers.</p>
@@ -966,7 +977,7 @@ the contents of file-system directories matching a regular expression.</descript
 &lt;DirectoryMatch "^/www/(.+/)?[0-9]{3}/"&gt;
     # ...
 &lt;/DirectoryMatch&gt;
-</highlight>
+    </highlight>
 
     <p>matches directories in <code>/www/</code> (or any subdirectory thereof)
     that consist of three numbers.</p>
@@ -992,11 +1003,11 @@ the contents of file-system directories matching a regular expression.</descript
     <module>mod_rewrite</module>. In order to prevent confusion, numbered
     (unnamed) backreferences are ignored. Use named groups instead.</p>
 
-<highlight language="config">
+    <highlight language="config">
 &lt;DirectoryMatch "^/var/www/combined/(?&lt;sitename&gt;[^/]+)"&gt;
     Require ldap-group cn=%{env:MATCH_SITENAME},ou=combined,o=Example
 &lt;/DirectoryMatch&gt;
-</highlight>
+    </highlight>
 </usage>
 <seealso><directive type="section" module="core">Directory</directive> for
 a description of how regular expressions are mixed in with normal
@@ -1012,7 +1023,7 @@ sections are combined when a request is received</seealso>
 <description>Directory that forms the main document tree visible
 from the web</description>
 <syntax>DocumentRoot <var>directory-path</var></syntax>
-<default>DocumentRoot /usr/local/apache/htdocs</default>
+<default>DocumentRoot "/usr/local/apache/htdocs"</default>
 <contextlist><context>server config</context><context>virtual host</context>
 </contextlist>
 
@@ -1246,6 +1257,91 @@ EnableSendfile On
        Only global definition of <directive>EnableSendfile</directive>
        is taken into account by the module.
     </p>
+</usage>
+</directivesynopsis>
+
+<directivesynopsis>
+<name>HttpProtocolOptions</name>
+<description>Modify restrictions on HTTP Request Messages</description>
+<syntax>HttpProtocolOptions [Strict|Unsafe] [StrictURL|UnsafeURL]
+ [RegisteredMethods|LenientMethods] [Allow0.9|Require1.0]</syntax>
+<default>HttpProtocolOptions Strict StrictURL LenientMethods Allow0.9</default>
+<contextlist><context>server config</context>
+<context>virtual host</context></contextlist>
+<compatibility>2.2.32 or 2.4.24 and later</compatibility>
+
+<usage>
+    <p>This directive changes the rules applied to the HTTP Request Line
+    (<a href="https://tools.ietf.org/html/rfc7230#section-3.1.1"
+      >RFC 7230 &sect;3.1.1</a>) and the HTTP Request Header Fields
+    (<a href="https://tools.ietf.org/html/rfc7230#section-3.2"
+      >RFC 7230 &sect;3.2</a>), which are now applied by default or using
+    the <code>Strict</code> option. Due to legacy modules, applications or
+    custom user-agents which must be deperecated, <code>Unsafe</code>
+    and <code>UnsafeURL</code> options have been added to revert to the legacy
+    behaviors. These rules are applied prior to request processing, so must be
+    configured at the global or default (first) matching virtual host section,
+    by IP/port interface and not by name, to be honored.</p>
+
+    <p>Prior to the introduction of this directive, the Apache HTTP Server
+    request message parsers were tolerant of a number of forms of input
+    which did not conform to the protocol.
+    <a href="https://tools.ietf.org/html/rfc7230#section-9.4"
+      >RFC 7230 &sect;9.4 Request Splitting</a> and
+    <a href="https://tools.ietf.org/html/rfc7230#section-9.5"
+      >&sect;9.5 Response Smuggling</a> call out only two of the potential
+    risks of accepting non-conformant request messages, while
+    <a href="https://tools.ietf.org/html/rfc7230#section-3.5"
+         >RFC 7230 &sect;3.5</a> "Message Parsing Robustness" identify the
+    risks of accepting obscure whitespace and request message formatting. 
+    As of the introduction of this directive, all grammer rules of the
+    specification are enforced in the default <code>Strict</code> operating
+    mode, and the strict whitespace suggested by section 3.5 is enforced
+    and cannot be relaxed.</p>
+
+    <p><a href="https://tools.ietf.org/html/rfc3986#section-2.2"
+         >RFC 3986 &sect;2.2 and 2.3</a> define "Reserved Characters" and
+    "Unreserved Characters". All other character octets are required to
+    be %XX encoded under this spec, and RFC7230 defers to these requirements.
+    By default the <code>StrictURI</code> option will reject all requests 
+    containing invalid characters. This rule can be relaxed with the
+    <code>UnsafeURI</code> option to support badly written user-agents.</p>
+    
+    <p>Users are strongly cautioned against toggling the <code>Unsafe</code>
+    or <code>UnsafeURI</code> modes of operation, particularly on
+    outward-facing, publicly accessible server deployments.
+    If an interface is required for faulty monitoring or other custom service
+    consumers running on an intranet, users should toggle only those Unsafe
+    options which are necessary, and only on a specific virtual host configured
+    to service only their internal private network.</p>
+
+    <p>Reviewing the messages logged to the <directive>ErrorLog</directive>,
+    configured with <directive>LogLevel</directive> <code>debug</code> level,
+    can help identify such faulty requests along with their origin.
+    Users should pay particular attention to the 400 responses in the access
+    log for invalid requests which were unexpectedly rejected.</p>
+
+    <p><a href="https://tools.ietf.org/html/rfc7231#section-4.1"
+         >RFC 7231 &sect;4.1</a> "Request Methods" "Overview" requires that
+    origin servers shall respond with an error when an unsupported method
+    is encountered in the request line. This already happens when the
+    <code>LenientMethods</code> option is used, but administrators may wish
+    to toggle the <code>RegisteredMethods</code> option and register any
+    non-standard methods using the <directive>RegisterHttpMethod</directive>
+    directive, particularly if the <code>Unsafe</code> option has been toggled.
+    The <code>RegisteredMethods</code> option should <strong>not</strong>
+    be toggled for forward proxy hosts, as the methods supported by the
+    origin servers are unknown to the proxy server.</p>
+
+    <p><a href="https://tools.ietf.org/html/rfc2616#section-19.6"
+         >RFC 2616 &sect;19.6</a> "Compatibility With Previous Versions" had
+    encouraged HTTP servers to support legacy HTTP/0.9 requests. RFC 7230
+    superceeds this with "The expectation to support HTTP/0.9 requests has
+    been removed" and offers additional comments in 
+    <a href="https://tools.ietf.org/html/rfc7230#appendix-A"
+      >RFC 7230 Appendix A</a>. The <code>Require1.0</code> option allows
+    the user to remove support of the default <code>Allow0.9</code> option's
+    behavior.</p>
 </usage>
 </directivesynopsis>
 
@@ -1643,7 +1739,7 @@ ErrorLogFormat "[%{u}t] [%-m:%l] [pid %P:tid %T] %7F: %E: [client\ %a] %M%&nbsp;
 
     <p>This would result in error messages such as:</p>
 
-	<example>
+    <example>
     [Thu May 12 08:28:57.652118 2011] [core:error] [pid 8777:tid 4326490112] [client ::1:58619] File does not exist: /usr/local/apache2/htdocs/favicon.ico
     </example>
 
@@ -1814,7 +1910,7 @@ filenames</description>
 &lt;Files "?at.*"&gt;
     # This would apply to cat.html, bat.html, hat.php and so on.
 &lt;/Files&gt;
-</highlight>
+    </highlight>
     <p><glossary ref="regex">Regular expressions</glossary>
     can also be used, with the addition of the
     <code>~</code> character. For example:</p>
@@ -1823,7 +1919,7 @@ filenames</description>
 &lt;Files ~ "\.(gif|jpe?g|png)$"&gt;
     #...
 &lt;/Files&gt;
-</highlight>
+    </highlight>
 
     <p>would match most common Internet graphics formats. <directive
     module="core" type="section">FilesMatch</directive> is preferred,
@@ -1859,11 +1955,11 @@ filenames</description>
     does. However, it accepts a <glossary ref="regex">regular
     expression</glossary>. For example:</p>
 
-<highlight language="config">
+    <highlight language="config">
 &lt;FilesMatch ".+\.(gif|jpe?g|png)$"&gt;
     # ...
 &lt;/FilesMatch&gt;
-</highlight>
+    </highlight>
 
     <p>would match most common Internet graphics formats.</p>
 
@@ -1878,11 +1974,11 @@ filenames</description>
     <module>mod_rewrite</module>. In order to prevent confusion, numbered
     (unnamed) backreferences are ignored. Use named groups instead.</p>
 
-<highlight language="config">
+    <highlight language="config">
 &lt;FilesMatch "^(?&lt;sitename&gt;[^/]+)"&gt;
     require ldap-group cn=%{env:MATCH_SITENAME},ou=combined,o=Example
 &lt;/FilesMatch&gt;
-</highlight>
+    </highlight>
 </usage>
 
 <seealso><a href="../sections.html">How &lt;Directory&gt;, &lt;Location&gt;
@@ -2812,7 +2908,7 @@ URLs</description>
 &lt;Location ~ "/(extra|special)/data"&gt;
     #...
 &lt;/Location&gt;
-</highlight>
+    </highlight>
 
     <p>would match URLs that contained the substring <code>/extra/data</code>
     or <code>/special/data</code>. The directive <directive
@@ -2883,7 +2979,7 @@ matching URLs</description>
 &lt;LocationMatch "/(extra|special)/data"&gt;
     # ...
 &lt;/LocationMatch&gt;
-</highlight>
+    </highlight>
 
     <p>would match URLs that contained the substring <code>/extra/data</code>
     or <code>/special/data</code>.</p>
@@ -2894,7 +2990,7 @@ matching URLs</description>
     regular expression with a <code>^</code> to require this.</p>
 
     <highlight language="config">
-    &lt;LocationMatch "^/(extra|special)/data"&gt;
+&lt;LocationMatch "^/(extra|special)/data"&gt;
     </highlight>
     </note>
 
@@ -2905,11 +3001,11 @@ matching URLs</description>
     <module>mod_rewrite</module>. In order to prevent confusion, numbered
     (unnamed) backreferences are ignored. Use named groups instead.</p>
 
-<highlight language="config">
+    <highlight language="config">
 &lt;LocationMatch "^/combined/(?&lt;sitename&gt;[^/]+)"&gt;
     require ldap-group cn=%{env:MATCH_SITENAME},ou=combined,o=Example
 &lt;/LocationMatch&gt;
-</highlight>
+    </highlight>
 </usage>
 
 <seealso><a href="../sections.html">How &lt;Directory&gt;, &lt;Location&gt;
@@ -3669,7 +3765,7 @@ directory</description>
     <p>Normally, if multiple <directive>Options</directive> could
     apply to a directory, then the most specific one is used and
     others are ignored; the options are not merged. (See <a
-    href="../sections.html#mergin">how sections are merged</a>.)
+    href="../sections.html#merging">how sections are merged</a>.)
     However if <em>all</em> the options on the
     <directive>Options</directive> directive are preceded by a
     <code>+</code> or <code>-</code> symbol, the options are
@@ -3779,7 +3875,7 @@ Protocol https
             specify:</p>
         
         <highlight language="config">
-            Protocols h2 http/1.1
+Protocols h2 http/1.1
         </highlight>
 
         <p>Valid protocols are <code>http/1.1</code> for http and https connections,
@@ -3950,11 +4046,15 @@ scripts</description>
     by the shebang line (first line, starting with <code>#!</code>) in the
     script. On Win32 systems this line usually looks like:</p>
 
-    <highlight language="perl">#!C:/Perl/bin/perl.exe</highlight>
+    <highlight language="perl">
+#!C:/Perl/bin/perl.exe
+    </highlight>
 
     <p>or, if <code>perl</code> is in the <code>PATH</code>, simply:</p>
 
-    <highlight language="perl">#!perl</highlight>
+    <highlight language="perl">
+#!perl
+    </highlight>
 
     <p>Setting <code>ScriptInterpreterSource Registry</code> will
     cause the Windows Registry tree <code>HKEY_CLASSES_ROOT</code> to be
@@ -4528,16 +4628,18 @@ certain events before failing a request</description>
     <p>Finally, for testing and diagnostic purposes only, request
     bodies may be allowed using the non-compliant <code>TraceEnable
     extended</code> directive.  The core (as an origin server) will
-    restrict the request body to 64k (plus 8k for chunk headers if
+    restrict the request body to 64Kb (plus 8Kb for chunk headers if
     <code>Transfer-Encoding: chunked</code> is used).  The core will
     reflect the full headers and all chunk headers with the response
-    body.  As a proxy server, the request body is not restricted to 64k.</p>
+    body.  As a proxy server, the request body is not restricted to 64Kb.</p>
 
     <note><title>Note</title>
-    <p>Despite claims to the contrary, <code>TRACE</code> is not
-    a security vulnerability, and there is no viable reason for
-    it to be disabled. Doing so necessarily makes your server
-    noncompliant.</p>
+
+    <p>Despite claims to the contrary, enabling the <code>TRACE</code>
+    method does not expose any security vulnerability in Apache httpd.
+    The <code>TRACE</code> method is defined by the HTTP/1.1
+    specification and implementations are expected to support it.</p>
+    
     </note>
 </usage>
 </directivesynopsis>
@@ -4852,7 +4954,7 @@ for external processing, e.g. to a CGI script.</p>
 
 <directivesynopsis>
 <name>QualifyRedirectURL</name>
-<description>Controls whether the REDIRECT_URL environment variable is 
+<description>Controls whether the REDIRECT_URL environment variable is
              fully qualified</description>
 <syntax>QualifyRedirectURL ON|OFF</syntax>
 <default>QualifyRedirectURL OFF</default>

@@ -464,6 +464,10 @@ static void *create_core_server_config(apr_pool_t *a, server_rec *s)
 #if APR_HAS_SO_ACCEPTFILTER
         apr_table_setn(conf->accf_map, "http", ACCEPT_FILTER_NAME);
         apr_table_setn(conf->accf_map, "https", "dataready");
+#elif defined(WIN32)
+        /* 'data' is disabled on Windows due to a DoS vuln (PR 59970) */
+        apr_table_setn(conf->accf_map, "http", "connect");
+        apr_table_setn(conf->accf_map, "https", "connect");
 #else
         apr_table_setn(conf->accf_map, "http", "data");
         apr_table_setn(conf->accf_map, "https", "data");
@@ -532,6 +536,12 @@ static void *merge_core_server_configs(apr_pool_t *p, void *basev, void *virtv)
 
     if (virt->http_conformance != AP_HTTP_CONFORMANCE_UNSET)
         conf->http_conformance = virt->http_conformance;
+
+    if (virt->http_stricturi != AP_HTTP_URI_UNSET)
+        conf->http_stricturi = virt->http_stricturi;
+
+    if (virt->http_methods != AP_HTTP_METHODS_UNSET)
+        conf->http_methods = virt->http_methods;
 
     if (virt->http_cl_head_zero != AP_HTTP_CL_HEAD_ZERO_UNSET)
         conf->http_cl_head_zero = virt->http_cl_head_zero;
@@ -3252,6 +3262,10 @@ static const char *include_config (cmd_parms *cmd, void *dummy,
     int optional = cmd->cmd->cmd_data ? 1 : 0;
     void *data;
 
+    /* NOTE: ap_include_sentinel is also used by ap_process_resource_config()
+     * during DUMP_INCLUDES; don't change its type or remove it without updating
+     * the other.
+     */
     apr_pool_userdata_get(&data, "ap_include_sentinel", cmd->pool);
     if (data) {
         recursion = data;
@@ -3274,6 +3288,24 @@ static const char *include_config (cmd_parms *cmd, void *dummy,
         *recursion = 0;
         return apr_pstrcat(cmd->pool, "Invalid Include path ",
                            name, NULL);
+    }
+
+    if (ap_exists_config_define("DUMP_INCLUDES")) {
+        unsigned *line_number;
+
+        /* NOTE: ap_include_lineno is used by ap_process_resource_config()
+         * during DUMP_INCLUDES; don't change its type or remove it without
+         * updating the other.
+         */
+        apr_pool_userdata_get(&data, "ap_include_lineno", cmd->pool);
+        if (data) {
+            line_number = data;
+        } else {
+            data = line_number = apr_palloc(cmd->pool, sizeof(*line_number));
+            apr_pool_userdata_setn(data, "ap_include_lineno", NULL, cmd->pool);
+        }
+
+        *line_number = cmd->config_file->line_number;
     }
 
     error = ap_process_fnmatch_configs(cmd->server, conffile, &conftree,
@@ -3989,38 +4021,54 @@ static const char *set_protocols_honor_order(cmd_parms *cmd, void *dummy,
     return NULL;
 }
 
-static const char *set_http_protocol(cmd_parms *cmd, void *dummy,
-                                     const char *arg)
+static const char *set_http_protocol_options(cmd_parms *cmd, void *dummy,
+                                             const char *arg)
 {
     core_server_config *conf =
         ap_get_core_module_config(cmd->server->module_config);
 
-    if (strncmp(arg, "min=", 4) == 0) {
-        arg += 4;
-        if (strcmp(arg, "0.9") == 0)
-            conf->http09_enable = AP_HTTP09_ENABLE;
-        else if (strcmp(arg, "1.0") == 0)
-            conf->http09_enable = AP_HTTP09_DISABLE;
-        else
-            return "HttpProtocol 'min' must be one of '0.9' and '1.0'";
-        return NULL;
-    }
-
-    if (strcmp(arg, "strict") == 0)
-        conf->http_conformance = AP_HTTP_CONFORMANCE_STRICT;
-    else if (strcmp(arg, "strict,log-only") == 0)
-        conf->http_conformance = AP_HTTP_CONFORMANCE_STRICT|
-                                 AP_HTTP_CONFORMANCE_LOGONLY;
-    else if (strcmp(arg, "liberal") == 0)
-        conf->http_conformance = AP_HTTP_CONFORMANCE_LIBERAL;
+    if (strcasecmp(arg, "allow0.9") == 0)
+        conf->http09_enable |= AP_HTTP09_ENABLE;
+    else if (strcasecmp(arg, "require1.0") == 0)
+        conf->http09_enable |= AP_HTTP09_DISABLE;
+    else if (strcasecmp(arg, "strict") == 0)
+        conf->http_conformance |= AP_HTTP_CONFORMANCE_STRICT;
+    else if (strcasecmp(arg, "unsafe") == 0)
+        conf->http_conformance |= AP_HTTP_CONFORMANCE_UNSAFE;
+    else if (strcasecmp(arg, "stricturi") == 0)
+        conf->http_stricturi |= AP_HTTP_URI_STRICT;
+    else if (strcasecmp(arg, "unsafeuri") == 0)
+        conf->http_stricturi |= AP_HTTP_URI_UNSAFE;
+    else if (strcasecmp(arg, "registeredmethods") == 0)
+        conf->http_methods |= AP_HTTP_METHODS_REGISTERED;
+    else if (strcasecmp(arg, "lenientmethods") == 0)
+        conf->http_methods |= AP_HTTP_METHODS_LENIENT;
     else
-        return "HttpProtocol accepts 'min=0.9', 'min=1.0', 'liberal', "
-               "'strict', 'strict,log-only'";
+        return "HttpProtocolOptions accepts "
+               "'Unsafe' or 'Strict' (default), "
+               "'UnsafeURI' or 'StrictURI' (default), "
+               "'RegisteredMethods' or 'LenientMethods' (default), and "
+               "'Require1.0' or 'Allow0.9' (default)";
 
-    if ((conf->http_conformance & AP_HTTP_CONFORMANCE_STRICT) &&
-        (conf->http_conformance & AP_HTTP_CONFORMANCE_LIBERAL)) {
-        return "HttpProtocol 'strict' and 'liberal' are mutually exclusive";
-    }
+    if ((conf->http09_enable & AP_HTTP09_ENABLE)
+            && (conf->http09_enable & AP_HTTP09_DISABLE))
+        return "HttpProtocolOptions 'Allow0.9' and 'Require1.0'"
+               " are mutually exclusive";
+
+    if ((conf->http_stricturi & AP_HTTP_URI_STRICT)
+            && (conf->http_stricturi & AP_HTTP_URI_UNSAFE))
+        return "HttpProtocolOptions 'StrictURI' and 'UnsafeURI'"
+               " are mutually exclusive";
+
+    if ((conf->http_conformance & AP_HTTP_CONFORMANCE_STRICT)
+            && (conf->http_conformance & AP_HTTP_CONFORMANCE_UNSAFE))
+        return "HttpProtocolOptions 'Strict' and 'Unsafe'"
+               " are mutually exclusive";
+
+    if ((conf->http_methods & AP_HTTP_METHODS_REGISTERED)
+            && (conf->http_methods & AP_HTTP_METHODS_LENIENT))
+        return "HttpProtocolOptions 'RegisteredMethods' and 'LenientMethods'"
+               " are mutually exclusive";
 
     return NULL;
 }
@@ -4660,9 +4708,9 @@ AP_INIT_TAKE1("TraceEnable", set_trace_enable, NULL, RSRC_CONF,
               "'on' (default), 'off' or 'extended' to trace request body content"),
 AP_INIT_FLAG("MergeTrailers", set_merge_trailers, NULL, RSRC_CONF,
               "merge request trailers into request headers or not"),
-AP_INIT_ITERATE("HttpProtocol", set_http_protocol, NULL, RSRC_CONF,
-              "'min=0.9' (default) or 'min=1.0' to allow/deny HTTP/0.9; "
-              "'liberal', 'strict', 'strict,log-only'"),
+AP_INIT_ITERATE("HttpProtocolOptions", set_http_protocol_options, NULL, RSRC_CONF,
+              "'Allow0.9' or 'Require1.0' (default) to allow or deny HTTP/0.9; "
+              "'Unsafe' or 'Strict' (default) to process incorrect requests"),
 AP_INIT_ITERATE("RegisterHttpMethod", set_http_method, NULL, RSRC_CONF,
                 "Registers non-standard HTTP methods"),
 AP_INIT_FLAG("HttpContentLengthHeadZero", set_cl_head_zero, NULL, OR_OPTIONS,

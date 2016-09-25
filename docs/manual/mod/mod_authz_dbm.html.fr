@@ -159,9 +159,7 @@ AuthDBMUserFile "/www/userbase"</pre>
     passe chiffré. Viennent ensuite le caractère ':' et la liste des
     groupes séparés par des virgules. Il est possible d'ajouter
     d'autres données en fin de ligne après un autre caractère ':',
-    mais elles seront ignorées par le module d'autorisation. C'est
-    le format utilisé par www.telescope.org pour sa base de données
-    combinée groupes et mots de passe.</p>
+    mais elles seront ignorées par le module d'autorisation.</p>
 
 </div>
 <div class="top"><a href="#page-header"><img alt="top" src="../images/up.gif" /></a></div>

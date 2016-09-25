@@ -1253,7 +1253,7 @@ int ap_proxy_http_process_response(apr_pool_t * p, request_rec *r,
     const char *buf;
     char keepchar;
     apr_bucket *e;
-    apr_bucket_brigade *bb, *tmp_bb;
+    apr_bucket_brigade *bb;
     apr_bucket_brigade *pass_bb;
     int len, backasswards;
     int interim_response = 0; /* non-zero whilst interim 1xx responses
@@ -1306,16 +1306,17 @@ int ap_proxy_http_process_response(apr_pool_t * p, request_rec *r,
     backend->r->proxyreq = PROXYREQ_RESPONSE;
     apr_table_setn(r->notes, "proxy-source-port", apr_psprintf(r->pool, "%hu",
                    origin->local_addr->port));
-    tmp_bb = apr_brigade_create(p, c->bucket_alloc);
     do {
         apr_status_t rc;
 
         apr_brigade_cleanup(bb);
 
-        rc = ap_proxygetline(tmp_bb, buffer, sizeof(buffer), backend->r, 0, &len);
+        rc = ap_proxygetline(backend->tmp_bb, buffer, sizeof(buffer),
+                             backend->r, 0, &len);
         if (len == 0) {
             /* handle one potential stray CRLF */
-            rc = ap_proxygetline(tmp_bb, buffer, sizeof(buffer), backend->r, 0, &len);
+            rc = ap_proxygetline(backend->tmp_bb, buffer, sizeof(buffer),
+                                 backend->r, 0, &len);
         }
         if (len <= 0) {
             ap_log_rerror(APLOG_MARK, APLOG_ERR, rc, r, APLOGNO(01102)
@@ -1551,7 +1552,7 @@ int ap_proxy_http_process_response(apr_pool_t * p, request_rec *r,
         } else {
             /* an http/0.9 response */
             backasswards = 1;
-            r->status = 200;
+            r->status = proxy_status = 200;
             r->status_line = "200 OK";
             backend->close = 1;
         }
@@ -1600,20 +1601,52 @@ int ap_proxy_http_process_response(apr_pool_t * p, request_rec *r,
                               "undefined proxy interim response policy");
             }
         }
+
         /* Moved the fixups of Date headers and those affected by
          * ProxyPassReverse/etc from here to ap_proxy_read_headers
          */
 
-        if ((proxy_status == 401) && (dconf->error_override)) {
-            const char *buf;
-            const char *wa = "WWW-Authenticate";
-            if ((buf = apr_table_get(r->headers_out, wa))) {
-                apr_table_set(r->err_headers_out, wa, buf);
-            } else {
-                ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(01109)
-                              "origin server sent 401 without "
-                              "WWW-Authenticate header");
+        /* PR 41646: get HEAD right with ProxyErrorOverride */
+        if (ap_is_HTTP_ERROR(proxy_status) && dconf->error_override) {
+            if (proxy_status == HTTP_UNAUTHORIZED) {
+                const char *buf;
+                const char *wa = "WWW-Authenticate";
+                if ((buf = apr_table_get(r->headers_out, wa))) {
+                    apr_table_set(r->err_headers_out, wa, buf);
+                } else {
+                    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(01109)
+                                  "origin server sent 401 without "
+                                  "WWW-Authenticate header");
+                }
             }
+            /* clear r->status for override error, otherwise ErrorDocument
+             * thinks that this is a recursive error, and doesn't find the
+             * custom error page
+             */
+            r->status = HTTP_OK;
+            /* Discard body, if one is expected (not HEAD request) */
+            if (!r->header_only) {
+                const char *tmp;
+                /* Add minimal headers needed to allow http_in filter
+                 * detecting end of body without waiting for a timeout. */
+                if ((tmp = apr_table_get(r->headers_out, "Transfer-Encoding"))) {
+                    apr_table_set(backend->r->headers_in, "Transfer-Encoding", tmp);
+                }
+                else if ((tmp = apr_table_get(r->headers_out, "Content-Length"))) {
+                    apr_table_set(backend->r->headers_in, "Content-Length", tmp);
+                }
+                else if (te) {
+                    apr_table_set(backend->r->headers_in, "Transfer-Encoding", te);
+                }
+                ap_discard_request_body(backend->r);
+            }
+            proxy_run_detach_backend(r, backend);
+            /*
+             * prevent proxy_handler() from treating this as an
+             * internal error.
+             */
+            apr_table_setn(r->notes, "proxy-error-override", "1");
+            return proxy_status;
         }
 
         r->sent_bodyct = 1;
@@ -1640,39 +1673,6 @@ int ap_proxy_http_process_response(apr_pool_t * p, request_rec *r,
             }
             e = apr_bucket_heap_create(buffer, cntr, NULL, c->bucket_alloc);
             APR_BRIGADE_INSERT_TAIL(bb, e);
-        }
-        /* PR 41646: get HEAD right with ProxyErrorOverride */
-        if (ap_is_HTTP_ERROR(r->status) && dconf->error_override) {
-            /* clear r->status for override error, otherwise ErrorDocument
-             * thinks that this is a recursive error, and doesn't find the
-             * custom error page
-             */
-            r->status = HTTP_OK;
-            /* Discard body, if one is expected */
-            if (!r->header_only && /* not HEAD request */
-                (proxy_status != HTTP_NO_CONTENT) && /* not 204 */
-                (proxy_status != HTTP_NOT_MODIFIED)) { /* not 304 */
-                const char *tmp;
-                /* Add minimal headers needed to allow http_in filter
-                 * detecting end of body without waiting for a timeout. */
-                if ((tmp = apr_table_get(r->headers_out, "Transfer-Encoding"))) {
-                    apr_table_set(backend->r->headers_in, "Transfer-Encoding", tmp);
-                }
-                else if ((tmp = apr_table_get(r->headers_out, "Content-Length"))) {
-                    apr_table_set(backend->r->headers_in, "Content-Length", tmp);
-                }
-                else if (te) {
-                    apr_table_set(backend->r->headers_in, "Transfer-Encoding", te);
-                }
-                ap_discard_request_body(backend->r);
-            }
-            proxy_run_detach_backend(r, backend);
-            /*
-             * prevent proxy_handler() from treating this as an
-             * internal error.
-             */
-            apr_table_setn(r->notes, "proxy-error-override", "1");
-            return proxy_status;
         }
 
         /* send body - but only if a body is expected */
@@ -1993,12 +1993,7 @@ static int proxy_http_handler(request_rec *r, proxy_worker *worker,
                                               worker, r->server)) != OK)
         goto cleanup;
 
-
     backend->is_ssl = is_ssl;
-
-    if (is_ssl) {
-        ap_proxy_ssl_connection_cleanup(backend, r);
-    }
 
     /*
      * In the case that we are handling a reverse proxy connection and this
@@ -2073,7 +2068,10 @@ static int proxy_http_handler(request_rec *r, proxy_worker *worker,
         }
 
         /* Step Two: Make the Connection */
-        if (ap_proxy_connect_backend(proxy_function, backend, worker, r->server)) {
+        if (ap_proxy_check_connection(proxy_function, backend, r->server, 1,
+                                      PROXY_CHECK_CONN_EMPTY)
+                && ap_proxy_connect_backend(proxy_function, backend, worker,
+                                            r->server)) {
             ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, APLOGNO(01114)
                           "HTTP: failed to make connection to backend: %s",
                           backend->hostname);
@@ -2117,7 +2115,7 @@ static int proxy_http_handler(request_rec *r, proxy_worker *worker,
                                             flushall)) != OK) {
             proxy_run_detach_backend(r, backend);
             if ((status == HTTP_SERVICE_UNAVAILABLE) &&
-                    worker->s->ping_timeout_set) {
+                    PROXY_DO_100_CONTINUE(worker, r)) {
                 backend->close = 1;
                 ap_log_rerror(APLOG_MARK, APLOG_INFO, status, r, APLOGNO(01115)
                               "HTTP: 100-Continue failed to %pI (%s)",

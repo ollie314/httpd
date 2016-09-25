@@ -139,6 +139,8 @@ h2_ngn_shed *h2_ngn_shed_get_shed(h2_req_engine *ngn)
 
 void h2_ngn_shed_abort(h2_ngn_shed *shed)
 {
+    ap_log_cerror(APLOG_MARK, APLOG_TRACE1, 0, shed->c, APLOGNO(03394)
+                  "h2_ngn_shed(%ld): abort", shed->c->id);
     shed->aborted = 1;
 }
 
@@ -166,6 +168,12 @@ apr_status_t h2_ngn_shed_push_task(h2_ngn_shed *shed, const char *ngn_type,
         return APR_EOF;
     }
     
+    if (task->assigned) {
+        --task->assigned->no_assigned;
+        --task->assigned->no_live;
+        task->assigned = NULL;
+    }
+    
     ngn = apr_hash_get(shed->ngns, ngn_type, APR_HASH_KEY_STRING);
     if (ngn && !ngn->shutdown) {
         /* this task will be processed in another thread,
@@ -176,7 +184,6 @@ apr_status_t h2_ngn_shed_push_task(h2_ngn_shed *shed, const char *ngn_type,
         if (!h2_task_is_detached(task)) {
             h2_task_freeze(task);
         }
-        /* FIXME: sometimes ngn is garbage, probly alread freed */
         ngn_add_task(ngn, task);
         ngn->no_assigned++;
         return APR_SUCCESS;
@@ -202,7 +209,7 @@ apr_status_t h2_ngn_shed_push_task(h2_ngn_shed *shed, const char *ngn_type,
         status = einit(newngn, newngn->id, newngn->type, newngn->pool,
                        shed->req_buffer_size, task->r, 
                        &newngn->out_consumed, &newngn->out_consumed_ctx);
-        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, status, task->c,
+        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, status, task->c, APLOGNO(03395)
                       "h2_ngn_shed(%ld): create engine %s (%s)", 
                       shed->c->id, newngn->id, newngn->type);
         if (status == APR_SUCCESS) {
@@ -245,11 +252,11 @@ apr_status_t h2_ngn_shed_pull_task(h2_ngn_shed *shed,
     
     AP_DEBUG_ASSERT(ngn);
     *ptask = NULL;
-    ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, shed->c,
+    ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, shed->c, APLOGNO(03396)
                   "h2_ngn_shed(%ld): pull task for engine %s, shutdown=%d", 
                   shed->c->id, ngn->id, want_shutdown);
     if (shed->aborted) {
-        ap_log_cerror(APLOG_MARK, APLOG_TRACE2, 0, shed->c,
+        ap_log_cerror(APLOG_MARK, APLOG_TRACE1, 0, shed->c, APLOGNO(03397)
                       "h2_ngn_shed(%ld): abort while pulling requests %s", 
                       shed->c->id, ngn->id);
         ngn->shutdown = 1;
@@ -268,7 +275,7 @@ apr_status_t h2_ngn_shed_pull_task(h2_ngn_shed *shed,
     }
     
     if ((entry = pop_detached(ngn))) {
-        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, entry->task->c,
+        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, entry->task->c, APLOGNO(03398)
                       "h2_ngn_shed(%ld): pulled request %s for engine %s", 
                       shed->c->id, entry->task->id, ngn->id);
         ngn->no_live++;
@@ -280,12 +287,18 @@ apr_status_t h2_ngn_shed_pull_task(h2_ngn_shed *shed,
         if (entry->task->c && ngn->c) {
             entry->task->c->current_thread = ngn->c->current_thread;
         }
+        if (entry->task->engine == ngn) {
+            /* If an engine pushes its own base task, and then pulls
+             * it back to itself again, it needs to be thawed.
+             */
+            h2_task_thaw(entry->task);
+        }
         return APR_SUCCESS;
     }
     
     if (1) {
         h2_ngn_entry *entry = H2_REQ_ENTRIES_FIRST(&ngn->entries);
-        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, shed->c,
+        ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, shed->c, APLOGNO(03399)
                       "h2_ngn_shed(%ld): pull task, nothing, first task %s", 
                       shed->c->id, entry->task->id);
     }
@@ -295,7 +308,7 @@ apr_status_t h2_ngn_shed_pull_task(h2_ngn_shed *shed,
 static apr_status_t ngn_done_task(h2_ngn_shed *shed, h2_req_engine *ngn, 
                                   h2_task *task, int waslive, int aborted)
 {
-    ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, shed->c,
+    ap_log_cerror(APLOG_MARK, APLOG_DEBUG, 0, shed->c, APLOGNO(03400)
                   "h2_ngn_shed(%ld): task %s %s by %s", 
                   shed->c->id, task->id, aborted? "aborted":"done", ngn->id);
     ngn->no_finished++;
