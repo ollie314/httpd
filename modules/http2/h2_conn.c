@@ -241,13 +241,14 @@ apr_status_t h2_conn_pre_close(struct h2_ctx *ctx, conn_rec *c)
     return status;
 }
 
-conn_rec *h2_slave_create(conn_rec *master, apr_uint32_t slave_id, 
+conn_rec *h2_slave_create(conn_rec *master, int slave_id, 
                           apr_pool_t *parent, apr_allocator_t *allocator)
 {
     apr_pool_t *pool;
     conn_rec *c;
     void *cfg;
-    unsigned long l;
+    unsigned int free_bits;
+    unsigned long l, lor;
     
     AP_DEBUG_ASSERT(master);
     ap_log_cerror(APLOG_MARK, APLOG_TRACE3, 0, master,
@@ -290,12 +291,18 @@ conn_rec *h2_slave_create(conn_rec *master, apr_uint32_t slave_id,
      * many streams. 
      */
     l = master->id;
+    lor = 0;
     if (sizeof(unsigned long) >= 8 && l < APR_UINT32_MAX) {
-        c->id = l|((unsigned long)slave_id << 32);
+        free_bits = 32;
     }
     else {
-        c->id = l^(~slave_id);
+        /* Assume that we never encounter ranges stream ids where this 
+         * leads to many collisions. With 32 bit longs, we have a hard time
+         * to make server wide unique ids. */
+        free_bits = 16;
+        lor= (1 << 31);
     }
+    c->id = (l^((unsigned long)slave_id << free_bits))|lor;
     c->master                 = master;
     c->pool                   = pool;   
     c->conn_config            = ap_create_conn_config(pool);

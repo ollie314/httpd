@@ -27,7 +27,7 @@
 #include "h2_util.h"
 
 /* h2_log2(n) iff n is a power of 2 */
-unsigned char h2_log2(apr_uint32_t n)
+unsigned char h2_log2(int n)
 {
     int lz = 0;
     if (!n) {
@@ -1198,9 +1198,6 @@ static literal IgnoredResponseTrailers[] = {
     H2_DEF_LITERAL("www-authenticate"),
     H2_DEF_LITERAL("proxy-authenticate"),
 };
-static literal IgnoredProxyRespHds[] = {
-    H2_DEF_LITERAL("alt-svc"),
-};
 
 static int ignore_header(const literal *lits, size_t llen,
                          const char *name, size_t nlen)
@@ -1231,12 +1228,6 @@ int h2_req_ignore_trailer(const char *name, size_t len)
 int h2_res_ignore_trailer(const char *name, size_t len)
 {
     return ignore_header(H2_LIT_ARGS(IgnoredResponseTrailers), name, len);
-}
-
-int h2_proxy_res_ignore_header(const char *name, size_t len)
-{
-    return (h2_req_ignore_header(name, len) 
-            || ignore_header(H2_LIT_ARGS(IgnoredProxyRespHds), name, len));
 }
 
 apr_status_t h2_headers_add_h1(apr_table_t *headers, apr_pool_t *pool, 

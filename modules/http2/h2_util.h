@@ -160,7 +160,7 @@ int h2_iq_shift(h2_iqueue *q);
  * common helpers
  ******************************************************************************/
 /* h2_log2(n) iff n is a power of 2 */
-unsigned char h2_log2(apr_uint32_t n);
+unsigned char h2_log2(int n);
 
 /**
  * Count the bytes that all key/value pairs in a table have
@@ -191,7 +191,6 @@ const char *h2_util_first_token_match(apr_pool_t *pool, const char *s,
 int h2_req_ignore_header(const char *name, size_t len);
 int h2_req_ignore_trailer(const char *name, size_t len);
 int h2_res_ignore_trailer(const char *name, size_t len);
-int h2_proxy_res_ignore_header(const char *name, size_t len);
 
 /**
  * Set the push policy for the given request. Takes request headers into 

@@ -79,10 +79,10 @@ struct h2_req_engine {
     unsigned int done : 1;     /* engine has finished */
 
     APR_RING_HEAD(h2_req_entries, h2_ngn_entry) entries;
-    apr_uint32_t capacity;     /* maximum concurrent requests */
-    apr_uint32_t no_assigned;  /* # of assigned requests */
-    apr_uint32_t no_live;      /* # of live */
-    apr_uint32_t no_finished;  /* # of finished */
+    int capacity;     /* maximum concurrent requests */
+    int no_assigned;  /* # of assigned requests */
+    int no_live;      /* # of live */
+    int no_finished;  /* # of finished */
     
     h2_output_consumed *out_consumed;
     void *out_consumed_ctx;
@@ -107,8 +107,8 @@ void h2_req_engine_out_consumed(h2_req_engine *engine, conn_rec *c,
 }
 
 h2_ngn_shed *h2_ngn_shed_create(apr_pool_t *pool, conn_rec *c,
-                                apr_uint32_t default_capacity, 
-                                apr_uint32_t req_buffer_size)
+                                int default_capacity, 
+                                apr_size_t req_buffer_size)
 {
     h2_ngn_shed *shed;
     
@@ -183,7 +183,7 @@ apr_status_t h2_ngn_shed_push_request(h2_ngn_shed *shed, const char *ngn_type,
         ap_log_cerror(APLOG_MARK, APLOG_TRACE1, 0, task->c,
                       "h2_ngn_shed(%ld): pushing request %s to %s", 
                       shed->c->id, task->id, ngn->id);
-        if (!h2_task_is_detached(task)) {
+        if (!h2_task_has_thawed(task)) {
             h2_task_freeze(task);
         }
         ngn_add_task(ngn, task, r);
@@ -232,7 +232,7 @@ static h2_ngn_entry *pop_detached(h2_req_engine *ngn)
     for (entry = H2_REQ_ENTRIES_FIRST(&ngn->entries);
          entry != H2_REQ_ENTRIES_SENTINEL(&ngn->entries);
          entry = H2_NGN_ENTRY_NEXT(entry)) {
-        if (h2_task_is_detached(entry->task) 
+        if (h2_task_has_thawed(entry->task) 
             || (entry->task->engine == ngn)) {
             /* The task hosting this engine can always be pulled by it.
              * For other task, they need to become detached, e.g. no longer
@@ -246,7 +246,7 @@ static h2_ngn_entry *pop_detached(h2_req_engine *ngn)
 
 apr_status_t h2_ngn_shed_pull_request(h2_ngn_shed *shed, 
                                       h2_req_engine *ngn, 
-                                      apr_uint32_t capacity, 
+                                      int capacity, 
                                       int want_shutdown,
                                       request_rec **pr)
 {   
