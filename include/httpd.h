@@ -1647,22 +1647,12 @@ AP_DECLARE(const char *) ap_scan_http_field_content(const char *ptr);
  */
 AP_DECLARE(const char *) ap_scan_http_token(const char *ptr);
 
-/* Scan a string for valid URI characters per RFC3986, and 
- * return a pointer to the first non-URI character encountered.
+/* Scan a string for visible ASCII (0x21-0x7E) or obstext (0x80+)
+ * and return a pointer to the first SP/CTL/NUL character encountered.
  * @param ptr The string to scan
- * @return A pointer to the first non-token character.
+ * @return A pointer to the first SP/CTL character.
  */
-AP_DECLARE(const char *) ap_scan_http_uri_safe(const char *ptr);
-
-/* Retrieve a token, advancing the pointer to the first non-token character
- * and returning a copy of the token string.
- * @param ptr The string to scan. On return, this points to the first non-token
- *  character encountered, or NULL if *ptr was not a token character
- * @return A copy of the token string
- * @note The caller must handle leading and trailing whitespace as applicable
- *  and evaluate the terminating character.
- */
-AP_DECLARE(char *) ap_get_http_token(apr_pool_t *p, const char **ptr);
+AP_DECLARE(const char *) ap_scan_vchar_obstext(const char *ptr);
 
 /**
  * Retrieve an array of tokens in the format "1#token" defined in RFC2616. Only
@@ -2444,14 +2434,6 @@ AP_DECLARE(void) ap_get_loadavg(ap_loadavg_t *ld)
  */
 AP_DECLARE(void) ap_bin2hex(const void *src, apr_size_t srclen, char *dest)
                  AP_FN_ATTR_NONNULL_ALL;
-
-/**
- * Check if string contains a control character
- * @param str the string to check
- * @return 1 if yes, 0 if no control characters
- */
-AP_DECLARE(int) ap_has_cntrl(const char *str)
-                AP_FN_ATTR_NONNULL_ALL;
 
 /**
  * Wrapper for @a apr_password_validate() to cache expensive calculations
